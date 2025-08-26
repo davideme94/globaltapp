@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Montserrat:wght@600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root{
+  --brand-primary:#B13B85;
+  --brand-primary-600:#9E388B;
+  --brand-secondary:#E7831F;
+  --brand-secondary-700:#C96A0E;
+  --brand-deep:#1A15B7;
+  --brand-deep-900:#0B1350;
+
+  --neutral-50:#F8FAFC;
+  --neutral-200:#E5E7EB;
+  --neutral-700:#374151;
+  --neutral-900:#111827;
+
+  --success:#10B981;
+  --warning:#F59E0B;
+  --danger:#EF4444;
+
+  --grad-brand: linear-gradient(90deg,#FF4DA6 0%,#7C2AE8 50%,#22D3EE 100%);
+  --grad-primary: linear-gradient(90deg,#B13B85 0%,#7C2AE8 100%);
+}
+
+html { color-scheme: light; }
+body { @apply bg-neutral-50 text-neutral-900 font-sans; }
+h1,h2,h3,h4 { @apply font-heading text-neutral-900; }
+
+/* === Tus utilidades dentro de @layer components === */
+@layer components {
+  .focus-ring { @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-primary; }
+
+  .btn { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 font-medium transition shadow; }
+  .btn-primary { @apply text-white; background-image: var(--grad-primary); }
+  .btn-primary:hover { filter: saturate(1.1) brightness(1.05); }
+  .btn-secondary { @apply border border-brand-primary text-brand-primary bg-white; }
+  .btn-secondary:hover { background: #FCE7F3; }
+
+  .input { @apply w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 focus-visible:ring-2 focus-visible:ring-brand-primary outline-none; }
+
+  .card { @apply rounded-xl bg-white shadow-card; }
+
+  .badge { @apply inline-flex items-center rounded-xl px-2 py-1 text-sm font-medium; }
+  .badge-derqui { background:#FFF4E6; color: var(--brand-secondary); }
+  .badge-jcp { background:#F8E8FB; color: var(--brand-primary); }
+
+  .skeleton { @apply animate-pulse bg-neutral-200 rounded; }
+}

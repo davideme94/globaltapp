@@ -1,0 +1,9 @@
+# general
+.DS_Store
+node_modules
+dist
+.env
+# web
+web/.vite
+# server
+server/logs
