@@ -6,6 +6,7 @@ import { requireAuth, allowRoles } from '../middlewares/rbac';
 import { User } from '../models/user';
 import { Enrollment } from '../models/enrollment';
 import { Course } from '../models/course';
+import { buildDefaultEmail } from '../utils/email'; // ⬅️ NUEVO
 
 const router = Router();
 
@@ -45,6 +46,18 @@ function toPublic(u: any) {
     createdAt: u.createdAt,
     updatedAt: u.updatedAt
   };
+}
+
+// Pequeño helper para asegurar unicidad si el email fue auto-generado
+async function uniqueEmail(candidate: string) {
+  let e = candidate;
+  let i = 1;
+  while (await User.exists({ email: e })) {
+    const [local, domain] = candidate.split('@');
+    e = `${local}${i}@${domain}`;
+    i++;
+  }
+  return e;
 }
 
 // ===== Routes =====
@@ -115,11 +128,15 @@ router.post(
   async (req, res, next) => {
     try {
       const data = createUserSchema.parse(req.body);
-      const email = (data.email || '').toLowerCase().trim();
+      let email = (data.email || '').toLowerCase().trim();
 
+      // Si vino email explícito, validar duplicado
       if (email) {
         const exists = await User.findOne({ email }).lean();
         if (exists) return res.status(409).json({ error: 'El email ya está registrado' });
+      } else {
+        // Si no vino, generar con el dominio por defecto y asegurar unicidad
+        email = await uniqueEmail(buildDefaultEmail(data.name));
       }
 
       // generar contraseña y guardar HASH en passwordHash
@@ -130,7 +147,7 @@ router.post(
         name: data.name,
         role: data.role,
         campus: data.campus,
-        email: email || `${data.name.trim().toLowerCase().replace(/\s+/g, '.')}.${Date.now()}@inst.test`,
+        email,
         passwordHash,         // ⬅️ campo correcto del esquema
         active: false         // empieza inactivo; luego "Activar" desde la UI
       });

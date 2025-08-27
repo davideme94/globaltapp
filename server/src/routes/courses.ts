@@ -19,7 +19,7 @@ router.get(
       const q = z
         .object({
           year: z.coerce.number().int().optional(),
-          campus: campusSchema.optional()
+          campus: campusSchema.optional(),
         })
         .parse(req.query);
 
@@ -50,14 +50,14 @@ router.post(
         .object({
           name: z.string().min(2),
           year: z.number().int().min(2000).max(3000),
-          campus: campusSchema
+          campus: campusSchema,
         })
         .parse(req.body);
 
       const course = await Course.create({
         name: body.name,
         year: body.year,
-        campus: body.campus
+        campus: body.campus,
       });
 
       const populated = await Course.findById(course._id)
@@ -100,7 +100,7 @@ router.put(
   }
 );
 
-/** GET /courses/:id/roster -> { roster } */
+/** GET /courses/:id/roster -> { roster }  (año del curso + activos, ENRIQUECIDO) */
 router.get(
   '/courses/:id/roster',
   requireAuth,
@@ -108,16 +108,78 @@ router.get(
   async (req, res, next) => {
     try {
       const { id } = req.params;
-      const rows = await Enrollment.find({ course: id })
-        .populate('student', 'name email')
+
+      const course = await Course.findById(id).lean();
+      if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
+
+      const rows = await Enrollment.find({
+        course: id,
+        year: course.year,
+        status: 'active',
+      })
+        .populate(
+          'student',
+          'name email phone photoUrl dob birthDate tutor tutorPhone guardianPhone'
+        )
         .lean();
 
-      const roster = rows.map((r: any) => ({
-        _id: String(r._id),
-        student: r.student
-          ? { _id: String(r.student._id), name: r.student.name, email: r.student.email }
-          : null
-      }));
+      // Acepta dob 'YYYY-MM-DD', 'DD/MM/YYYY' o Date (birthDate)
+      const parseDob = (val: any): Date | null => {
+        if (!val) return null;
+        if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+        if (typeof val === 'string') {
+          const s = val.trim();
+          // DD/MM/YYYY -> YYYY-MM-DD
+          if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+            const [d, m, y] = s.split('/').map(Number);
+            const dt = new Date(Date.UTC(y, m - 1, d));
+            return isNaN(dt.getTime()) ? null : dt;
+          }
+          // YYYY-MM-DD (o ISO)
+          const dt = new Date(s);
+          return isNaN(dt.getTime()) ? null : dt;
+        }
+        return null;
+      };
+
+      const calcAge = (d: Date | null) => {
+        if (!d) return null;
+        const now = new Date();
+        let age = now.getUTCFullYear() - d.getUTCFullYear();
+        const m = now.getUTCMonth() - d.getUTCMonth();
+        if (m < 0 || (m === 0 && now.getUTCDate() < d.getUTCDate())) age--;
+        return age;
+      };
+
+      const roster = rows.map((r: any) => {
+        const s = r.student;
+        const dobDate = parseDob(s?.dob ?? s?.birthDate ?? null);
+        const dobISO = dobDate
+          ? new Date(
+              Date.UTC(dobDate.getUTCFullYear(), dobDate.getUTCMonth(), dobDate.getUTCDate())
+            )
+              .toISOString()
+              .slice(0, 10)
+          : null;
+
+        return {
+          _id: String(r._id),
+          student: s
+            ? {
+                _id: String(s._id),
+                name: s.name,
+                email: s.email,
+                phone: s.phone || '',
+                photoUrl: s.photoUrl || '',
+                dob: dobISO,                         // normalizado YYYY-MM-DD
+                age: calcAge(dobDate),               // edad calculada (si hay fecha)
+                tutor: s.tutor || '',
+                tutorName: s.tutor || '',            // compat front que usa tutorName
+                tutorPhone: s.tutorPhone || s.guardianPhone || '',
+              }
+            : null,
+        };
+      });
 
       res.json({ roster });
     } catch (e) {
@@ -126,7 +188,7 @@ router.get(
   }
 );
 
-/** POST /courses/:id/enroll  (por studentId O por email) */
+/** POST /courses/:id/enroll  (por studentId O por email)  -> upsert (course,student,year) + status:active */
 router.post(
   '/courses/:id/enroll',
   requireAuth,
@@ -138,10 +200,14 @@ router.post(
         .object({
           studentId: z.string().optional(),
           email: z.string().email().optional(),
-          autoCreate: z.boolean().optional()
+          autoCreate: z.boolean().optional(),
         })
         .refine((v) => !!(v.studentId || v.email), { message: 'Proveer studentId o email' })
         .parse(req.body || {});
+
+      const course = await Course.findById(id).lean();
+      if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
+      const year = course.year;
 
       let student: any = null;
       let createdPassword: string | undefined;
@@ -156,25 +222,25 @@ router.post(
           const plain = Math.random().toString(36).slice(-10) + 'A1';
           const bcrypt = (await import('bcryptjs')).default;
           const hash = await bcrypt.hash(plain, 10);
-          const created = await User.create({
+          const created = await (await import('../models/user')).User.create({
             name: email.split('@')[0],
             email,
             role: 'student',
             campus: 'DERQUI',
-            password: hash,
-            active: true
-          });
+            passwordHash: hash,
+            active: true,
+          } as any);
           student = created.toObject();
           createdPassword = plain;
         }
         if (!student) return res.status(404).json({ error: 'Alumno no encontrado' });
       }
 
-      const exists = await Enrollment.findOne({ course: id, student: student._id }).lean();
-      let enrollment = exists;
-      if (!exists) {
-        enrollment = await Enrollment.create({ course: id, student: student._id });
-      }
+      const enrollment = await Enrollment.findOneAndUpdate(
+        { course: id, student: student._id, year },
+        { $set: { status: 'active' }, $setOnInsert: { course: id, student: student._id, year } },
+        { new: true, upsert: true }
+      ).lean();
 
       res.json({ ok: true, enrollment, createdPassword });
     } catch (e) {
@@ -183,7 +249,10 @@ router.post(
   }
 );
 
-/** DELETE /courses/:id/enroll/:studentId  -> desinscribe */
+/** DELETE /courses/:id/enroll/:studentId  -> desinscribe
+ * Soft delete (status:'inactive'). Para borrar duro: ?hard=1
+ * Además, deshabilita la práctica del alumno (defensivo).
+ */
 router.delete(
   '/courses/:id/enroll/:studentId',
   requireAuth,
@@ -191,7 +260,28 @@ router.delete(
   async (req, res, next) => {
     try {
       const { id, studentId } = req.params;
-      await Enrollment.findOneAndDelete({ course: id, student: studentId });
+      const hard = 'hard' in req.query;
+
+      const course = await Course.findById(id).lean();
+      if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
+
+      const filter = { course: id, student: studentId, year: course.year };
+
+      if (hard) {
+        await Enrollment.deleteOne(filter);
+      } else {
+        await Enrollment.findOneAndUpdate(filter, { $set: { status: 'inactive' } }, { new: true }).lean();
+      }
+
+      try {
+        const { PracticeAccess } = await import('../models/practice');
+        await PracticeAccess.updateOne(
+          { student: studentId },
+          { $set: { enabled: false } },
+          { upsert: false }
+        );
+      } catch {}
+
       res.json({ ok: true });
     } catch (e) {
       next(e);
@@ -208,7 +298,10 @@ router.get(
     try {
       const c = await Course.findById(req.params.id).lean();
       if (!c) return res.status(404).json({ error: 'Curso no encontrado' });
-      res.json({ course: { _id: String(c._id), name: c.name, year: c.year }, links: (c as any).links || null });
+      res.json({
+        course: { _id: String(c._id), name: c.name, year: c.year },
+        links: (c as any).links || null,
+      });
     } catch (e) {
       next(e);
     }
@@ -221,7 +314,9 @@ router.put(
   allowRoles('coordinator', 'admin', 'teacher'),
   async (req, res, next) => {
     try {
-      const body = z.object({ syllabusUrl: z.string().url().optional(), materialsUrl: z.string().url().optional() }).parse(req.body || {});
+      const body = z
+        .object({ syllabusUrl: z.string().url().optional(), materialsUrl: z.string().url().optional() })
+        .parse(req.body || {});
       const updated = await Course.findByIdAndUpdate(
         req.params.id,
         { $set: { links: body } },
@@ -235,7 +330,7 @@ router.put(
   }
 );
 
-/** (opcionales) Schedule del curso: GET/PUT */
+/** Schedule del curso: GET/PUT */
 router.get(
   '/courses/:id/schedule',
   requireAuth,
@@ -246,7 +341,7 @@ router.get(
       if (!c) return res.status(404).json({ error: 'Curso no encontrado' });
       res.json({
         course: { _id: String(c._id), name: c.name, year: c.year },
-        schedule: (c as any).schedule || []
+        schedule: (c as any).schedule || [],
       });
     } catch (e) {
       next(e);
@@ -267,10 +362,10 @@ router.put(
               z.object({
                 day: z.enum(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']),
                 start: z.string(),
-                end: z.string()
+                end: z.string(),
               })
             )
-            .default([])
+            .default([]),
         })
         .parse(req.body || {});
       const updated = await Course.findByIdAndUpdate(
@@ -286,49 +381,83 @@ router.put(
   }
 );
 
-/** ★★★ NUEVO: Mis cursos (alumno actual) ★★★
- * GET /courses/mine -> { year, rows: [{ course, schedule }] }
- * Filtra por course.year y normaliza schedule (day o dayOfWeek).
- */
-router.get(
-  '/courses/mine',
-  requireAuth,
-  async (req: any, res, next) => {
-    try {
-      const { year } = z.object({ year: z.coerce.number().int().optional() }).parse(req.query);
-      const y = year ?? new Date().getFullYear();
-      const userId = req.userId as string;
+/** ★ Mis cursos (alumno actual): GET /courses/mine -> { year, rows:[{course,schedule}] } */
+router.get('/courses/mine', requireAuth, async (req: any, res, next) => {
+  try {
+    const { year } = z.object({ year: z.coerce.number().int().optional() }).parse(req.query);
+    const y = year ?? new Date().getFullYear();
+    const userId = req.userId as string;
 
-      const enrolls = await Enrollment.find({ student: userId })
-        .populate({ path: 'course', select: '_id name year campus schedule', model: Course })
-        .lean();
+    const enrolls = await Enrollment.find({ student: userId, year: y, status: 'active' })
+      .populate({ path: 'course', select: '_id name year campus schedule', model: Course })
+      .lean();
 
-      const mapNumToCode = (n: number) => ['SUN','MON','TUE','WED','THU','FRI','SAT'][n];
+    const mapNumToCode = (n: number) =>
+      ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][n];
 
-      const rows = (enrolls || [])
-        .map((e: any) => e.course)
-        .filter(Boolean)
-        .filter((c: any) => c.year === y)
-        .map((c: any) => {
-          const sch = Array.isArray(c.schedule) ? c.schedule : [];
-          const schedule = sch.map((it: any) => {
-            // Soporta ambas formas: { day: 'MON' } o { dayOfWeek: 1 }
+    const rows = (enrolls || [])
+      .map((e: any) => e.course)
+      .filter(Boolean)
+      .map((c: any) => {
+        const sch = Array.isArray(c.schedule) ? c.schedule : [];
+        const schedule = sch
+          .map((it: any) => {
             if (it.day) return { day: it.day, start: it.start, end: it.end };
             if (typeof it.dayOfWeek === 'number') {
               const code = mapNumToCode(it.dayOfWeek);
-              if (code === 'SUN') return null; // tu front no usa domingo
+              if (code === 'SUN') return null;
               return { day: code, start: it.start, end: it.end };
             }
             return null;
-          }).filter(Boolean);
+          })
+          .filter(Boolean);
 
-          return {
-            course: { _id: String(c._id), name: c.name, year: c.year, campus: c.campus },
-            schedule
-          };
-        });
+        return {
+          course: { _id: String(c._id), name: c.name, year: c.year, campus: c.campus },
+          schedule,
+        };
+      });
 
-      res.json({ year: y, rows });
+    res.json({ year: y, rows });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** DELETE /courses/:id  -> elimina curso y datos relacionados (si existen) */
+router.delete(
+  '/courses/:id',
+  requireAuth,
+  allowRoles('coordinator', 'admin'),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+
+      const exists = await Course.findById(id).lean();
+      if (!exists) return res.status(404).json({ error: 'Curso no encontrado' });
+
+      await Enrollment.deleteMany({ course: id });
+
+      const safe = async <T = any>(loader: () => Promise<T>, key: string) => {
+        try {
+          const mod: any = await loader();
+          const M = mod[key];
+          if (M?.deleteMany) await M.deleteMany({ course: id });
+        } catch {}
+      };
+
+      await Promise.all([
+        safe(() => import('../models/reportCard'), 'ReportCard'),
+        safe(() => import('../models/partialReport'), 'PartialReport'),
+        safe(() => import('../models/attendance'), 'Attendance'),
+        safe(() => import('../models/topic'), 'Topic'),
+        safe(() => import('../models/communication'), 'Communication'),
+        safe(() => import('../models/britishExam'), 'BritishExam'),
+      ]);
+
+      await Course.deleteOne({ _id: id });
+
+      res.json({ ok: true });
     } catch (e) {
       next(e);
     }

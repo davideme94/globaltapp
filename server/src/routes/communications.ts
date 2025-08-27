@@ -4,6 +4,7 @@ import { requireAuth, allowRoles } from '../middlewares/rbac';
 import { Course } from '../models/course';
 import { Enrollment } from '../models/enrollment';
 import { Communication } from '../models/communication';
+import { User } from '../models/user';
 
 const router = Router();
 
@@ -110,5 +111,65 @@ router.put('/communications/:id/read', requireAuth, allowRoles('student'), async
     res.json({ ok: true, item: c });
   } catch (e) { next(e); }
 });
+
+/* ============================
+ * NUEVO: BROADCAST MASIVO
+ * ============================ */
+router.post(
+  '/communications/broadcast',
+  requireAuth,
+  allowRoles('coordinator', 'admin'),
+  async (req, res, next) => {
+    try {
+      const schema = z.object({
+        title: z.string().min(3),
+        body: z.string().min(1),
+        category: z.enum(['TASK', 'BEHAVIOR', 'ADMIN', 'INFO']).default('INFO'),
+        roles: z.array(z.enum(['student', 'teacher', 'coordinator', 'admin'])).optional(),
+        campuses: z.array(z.enum(['DERQUI', 'JOSE_C_PAZ'])).optional(),
+        active: z.boolean().optional(),
+        courseId: z.string().optional(),
+      });
+
+      const {
+        title, body, category, roles, campuses, active, courseId,
+      } = schema.parse(req.body || {});
+
+      // validar curso si se envía
+      if (courseId) {
+        const exists = await Course.exists({ _id: courseId });
+        if (!exists) return res.status(404).json({ error: 'Curso no encontrado' });
+      }
+
+      const where: any = {};
+      if (roles?.length) where.role = { $in: roles };
+      if (campuses?.length) where.campus = { $in: campuses };
+      if (typeof active === 'boolean') where.active = active;
+
+      const recipients = await User.find(where, { _id: 1 }).lean();
+      if (!recipients.length) return res.json({ ok: true, sent: 0, ids: [] });
+
+      const year = new Date().getFullYear();
+      const senderId = (req as any).userId as string;
+      const senderRole = (req as any).userRole as 'coordinator'|'admin'|'teacher';
+
+      const docs = recipients.map((u) => ({
+        course: courseId || undefined,
+        student: u._id,
+        sender: senderId,
+        senderRole,
+        year,
+        category,
+        title,
+        body,
+        readAt: null,
+      }));
+
+      const inserted = await Communication.insertMany(docs, { ordered: false });
+      const ids = inserted.map((d) => String(d._id));
+      res.json({ ok: true, sent: ids.length, ids });
+    } catch (e) { next(e); }
+  }
+);
 
 export default router;

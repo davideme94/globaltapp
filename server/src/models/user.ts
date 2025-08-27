@@ -19,6 +19,12 @@ export interface IUser extends Document<Types.ObjectId> {
   passwordHash: string;
   practiceEnabled?: boolean;
   active: boolean;             // <- NUEVO: soft-delete / desactivación
+
+  // ===== NUEVOS CAMPOS (agregados) =====
+  dob?: Date;                  // fecha de nacimiento alternativa (se mantiene birthDate existente)
+  tutor?: string;              // nombre del tutor
+  tutorPhone?: string;         // teléfono del tutor
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,6 +43,11 @@ const userSchema = new Schema<IUser>(
     passwordHash: { type: String, required: true },
     practiceEnabled: { type: Boolean, default: false, index: true },
     active: { type: Boolean, default: true, index: true }, // <- NUEVO
+
+    // ===== NUEVOS CAMPOS (agregados) =====
+    dob: { type: Date, default: null },
+    tutor: { type: String, default: '' },
+    tutorPhone: { type: String, default: '' },
   },
   { timestamps: true }
 );

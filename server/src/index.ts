@@ -39,6 +39,7 @@ import coursesMineRoute from './routes/coursesMine';
 import usersRoute from './routes/users';     // GET/POST /users, PUT /users/:id/active, POST /users/:id/reset-password
 import profileRoute from './routes/profile'; // PUT /me
 import uploadsRoute from './routes/uploads'; // POST /uploads/avatar
+import meRoutes from './routes/me';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -96,6 +97,7 @@ app.use('/api', coursesMineRoute);
 app.use('/api', usersRoute);
 app.use('/api', profileRoute);
 app.use('/api', uploadsRoute);
+app.use('/api', meRoutes);
 
 
 /** Manejo de errores */
