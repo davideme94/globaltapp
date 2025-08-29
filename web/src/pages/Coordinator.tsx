@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createCourse, enrollByEmail, getCourses } from '../lib/courses';
 import { useState } from 'react';
-import { logout } from '../lib/api';
+import { api } from '../lib/api'; // ⬅️ cambia: usamos el objeto api
 
 const thisYear = new Date().getFullYear();
 

@@ -36,10 +36,15 @@ import enrollmentsRoute from './routes/enrollments';
 import coursesMineRoute from './routes/coursesMine';
 
 /** utilitarios perfil/usuarios/uploads */
-import usersRoute from './routes/users';     // GET/POST /users, PUT /users/:id/active, POST /users/:id/reset-password
-import profileRoute from './routes/profile'; // PUT /me
-import uploadsRoute from './routes/uploads'; // POST /uploads/avatar
+import usersRoute from './routes/users';
+// import profileRoute from './routes/profile';
+import uploadsRoute from './routes/uploads';
 import meRoutes from './routes/me';
+
+/** 👇👇👇  NUEVO: montar las rutas de Casos y de Alertas  */
+import casesRoute from './routes/cases';
+import alertsRoute from './routes/alerts';
+/** ☝☝☝  (asegurate de tener export default router en esos archivos) */
 
 const app = express();
 app.set('trust proxy', 1);
@@ -70,12 +75,10 @@ app.use('/uploads', express.static(path.resolve('uploads')));
 app.use('/api', healthRoute);
 app.use('/api', authRoute);
 
-/**
- * 👇 IMPORTANTE: este primero para que gane el handler de enroll con year
- */
+/** Primero: manage (inscripción con year) */
 app.use('/api', courseManageRoute);
 
-/** Luego el resto (incluye coursesRoute que puede tener paths similares) */
+/** Luego el resto */
 app.use('/api', coursesRoute);
 app.use('/api', studentsRoute);
 app.use('/api', communicationsRoute);
@@ -89,18 +92,22 @@ app.use('/api', practiceRoute);
 app.use('/api', scheduleRoute);
 app.use('/api', britishRoutes);
 
-/** Mis inscripciones + compat cursos/míos (para el dashboard del alumno/docente) */
+/** Mis inscripciones + compat cursos/míos */
 app.use('/api', enrollmentsRoute);
 app.use('/api', coursesMineRoute);
 
 /** utilitarios */
 app.use('/api', usersRoute);
-app.use('/api', profileRoute);
+// app.use('/api', profileRoute);
 app.use('/api', uploadsRoute);
 app.use('/api', meRoutes);
 
+/** 👇👇👇  NUEVO: activar endpoints de Casos y Alertas  */
+app.use('/api', casesRoute);
+app.use('/api', alertsRoute);
+/** ☝☝☝ */
 
-/** Manejo de errores */
+/** Errores */
 app.use(errorHandler);
 
 /** Bootstrap */

@@ -3,8 +3,8 @@ import { useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 
 // ⚠️ Cambiá estas URLs por tu logo e imagen de portada
-const LOGO_URL = 'https://dummyimage.com/180x60/ffffff/000&text=Global-T';
-const COVER_URL = 'https://upload.wikimedia.org/wikipedia/commons/3/3e/Palace_of_Westminster%2C_London_-_Feb_2007.jpg';
+const LOGO_URL = 'https://bu-cdn.tiendup.com/business/22002/images/logo_658df98f9d5f9_medium.jpg';
+const COVER_URL = 'https://upload.wikimedia.org/wikipedia/commons/4/4c/British_Houses_of_Parliament.jpg';
 
 // Tipado del detalle que trae todo listo para imprimir
 type Detail = Awaited<ReturnType<typeof api.reportcards.detail>>;

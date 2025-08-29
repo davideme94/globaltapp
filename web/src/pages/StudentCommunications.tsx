@@ -21,7 +21,28 @@ function normalizeCategory(raw?: string | null) {
   return CAT_MAP[key] ?? DEFAULT_TAG;
 }
 
-function Item({ c, onRead }: { c: Communication; onRead: (id: string) => void }) {
+function ReplyItem({ r }: { r: NonNullable<Communication['replies']>[number] }) {
+  const who = typeof r.user === 'string' ? '' : (r.user?.name || '');
+  const when = r.createdAt ? new Date(r.createdAt) : null;
+  return (
+    <div style={{ borderLeft: '3px solid #e5e7eb', paddingLeft: 10, marginTop: 6 }}>
+      <div style={{ fontSize: 12, color: '#64748b' }}>
+        {who ? `${who} • ` : ''}{r.role} • {when ? when.toLocaleString() : ''}
+      </div>
+      <div style={{ whiteSpace: 'pre-wrap', marginTop: 2 }}>{r.body}</div>
+    </div>
+  );
+}
+
+function Item({
+  c,
+  onRead,
+  onReply,
+}: {
+  c: Communication;
+  onRead: (id: string) => void;
+  onReply: (id: string, body: string) => Promise<void>;
+}) {
   const created = c.createdAt ? new Date(c.createdAt) : null;
   const tag = normalizeCategory((c as any).category);
 
@@ -29,6 +50,9 @@ function Item({ c, onRead }: { c: Communication; onRead: (id: string) => void })
   const courseName =
     typeof c.course === 'string' ? '' : `${c.course.name} (${c.course.year})`;
   const senderName = typeof c.sender === 'string' ? '' : c.sender?.name || '';
+
+  const [reply, setReply] = useState('');
+  const [sending, setSending] = useState(false);
 
   return (
     <div
@@ -87,6 +111,40 @@ function Item({ c, onRead }: { c: Communication; onRead: (id: string) => void })
         {courseName ? <>Curso: {courseName} — </> : null}
         {senderName ? <>Enviado por: {senderName}</> : null}
       </div>
+
+      {/* Hilo de respuestas */}
+      {!!(c.replies && c.replies.length) && (
+        <div style={{ marginTop: 10 }}>
+          {c.replies!.map((r) => <ReplyItem key={r._id} r={r} />)}
+        </div>
+      )}
+
+      {/* Cuadro para responder */}
+      <div style={{ marginTop: 10 }}>
+        <textarea
+          placeholder="Escribí tu respuesta (opcional)…"
+          value={reply}
+          onChange={(e) => setReply(e.target.value)}
+          style={{ width: '100%', minHeight: 70, padding: 8, borderRadius: 8, border: '1px solid #e5e7eb' }}
+        />
+        <div style={{ marginTop: 6, display: 'flex', gap: 8 }}>
+          <button
+            disabled={!reply.trim() || sending}
+            onClick={async () => {
+              setSending(true);
+              try {
+                await onReply(c._id, reply.trim());
+                setReply('');
+              } finally {
+                setSending(false);
+              }
+            }}
+            className="btn btn-primary"
+          >
+            {sending ? 'Enviando…' : 'Responder'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -126,6 +184,11 @@ export default function StudentCommunications() {
     }
   }
 
+  async function sendReply(id: string, body: string) {
+    await api.communications.reply(id, body);
+    await load();
+  }
+
   if (loading) return <div style={{ padding: 16 }}>Cargando…</div>;
 
   return (
@@ -138,7 +201,7 @@ export default function StudentCommunications() {
       {rows.length === 0 ? (
         <p>Aún no hay mensajes.</p>
       ) : (
-        rows.map((r) => <Item key={r._id} c={r} onRead={markRead} />)
+        rows.map((r) => <Item key={r._id} c={r} onRead={markRead} onReply={sendReply} />)
       )}
     </div>
   );

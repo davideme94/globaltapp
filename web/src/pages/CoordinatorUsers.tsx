@@ -14,6 +14,10 @@ export default function CoordinatorUsers() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // NUEVO: mapa alumno -> cursos del año actual
+  const [studentCourses, setStudentCourses] = useState<Record<string, string[]>>({});
+  const [loadingStudentCourses, setLoadingStudentCourses] = useState(false);
+
   // Modal crear
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<{ name: string; email?: string; campus: Campus; role: Role }>({
@@ -45,6 +49,44 @@ export default function CoordinatorUsers() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role, q]);
+
+  // NUEVO: cuando hay filas (y el rol es student), cargo cursos del año y cruzo rosters
+  useEffect(() => {
+    if (role !== 'student' || !rows.length) {
+      setStudentCourses({});
+      return;
+    }
+    let alive = true;
+    (async () => {
+      setLoadingStudentCourses(true);
+      try {
+        const year = new Date().getFullYear();
+        const ids = new Set(rows.map(r => String(r._id)));
+        const map: Record<string, string[]> = {};
+        const { courses } = await api.courses.list({ year });
+        // Recorro cursos y completo el mapa con los alumnos visibles
+        for (const c of courses) {
+          if (!alive) return;
+          try {
+            const { roster } = await api.courses.roster(c._id);
+            for (const item of (roster || [])) {
+              const sid = String(item?.student?._id || '');
+              if (!sid || !ids.has(sid)) continue;
+              if (!map[sid]) map[sid] = [];
+              map[sid].push(c.name);
+            }
+          } catch {
+            // ignorar errores de roster individuales
+          }
+        }
+        if (!alive) return;
+        setStudentCourses(map);
+      } finally {
+        if (alive) setLoadingStudentCourses(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [role, rows]);
 
   const onChange = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
@@ -139,19 +181,27 @@ export default function CoordinatorUsers() {
               <th className="p-3">Email</th>
               <th className="p-3">Rol</th>
               <th className="p-3">Sede</th>
+              {/* NUEVO */}
+              <th className="p-3">Curso(s)</th>
               <th className="p-3">Estado</th>
               <th className="p-3">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {loading && (<tr><td className="p-3" colSpan={6}>Cargando...</td></tr>)}
-            {!loading && filtered.length === 0 && (<tr><td className="p-3" colSpan={6}>Sin resultados.</td></tr>)}
+            {loading && (<tr><td className="p-3" colSpan={7}>Cargando...</td></tr>)}
+            {!loading && filtered.length === 0 && (<tr><td className="p-3" colSpan={7}>Sin resultados.</td></tr>)}
             {!loading && filtered.map(u => (
               <tr key={u._id} className="border-t">
                 <td className="p-3 font-medium">{u.name}</td>
                 <td className="p-3">{u.email || <span className="text-slate-500">—</span>}</td>
                 <td className="p-3">{u.role}</td>
                 <td className="p-3">{u.campus}</td>
+                {/* NUEVO: muestra cursos solo para alumnos; si no tiene, vacío (… mientras carga) */}
+                <td className="p-3">
+                  {u.role === 'student'
+                    ? (studentCourses[u._id]?.join(', ') || (loadingStudentCourses ? '...' : ''))
+                    : ''}
+                </td>
                 <td className="p-3">{u.active ? 'Activo' : 'Inactivo'}</td>
                 <td className="p-3 space-x-3">
                   <button className="underline text-indigo-700" onClick={() => handleReset(u)}>Reset clave</button>

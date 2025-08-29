@@ -1,3 +1,4 @@
+// src/App.tsx
 import { BrowserRouter, Routes, Route, Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { api, type Me } from './lib/api';
@@ -25,7 +26,6 @@ import CourseMaterialsPage from './pages/CourseMaterialsPage';
 
 import StudentProfile from './pages/StudentProfile';
 import StudentCommunications from './pages/StudentCommunications';
-import ComposeMessage from './pages/ComposeMessage';
 import StudentPartialCards from './pages/StudentPartialCards';
 import StudentFinalCards from './pages/StudentFinalCards';
 import PrintFinalReport from './pages/PrintFinalReport';
@@ -34,6 +34,18 @@ import StudentBritishExam from './pages/StudentBritishExam';
 
 /* ➕ NUEVO: británico curso (coordinador/teacher) */
 import CoordinatorBritishCourse from './pages/CoordinatorBritishCourse';
+
+/* ➕ NUEVO: Comunicaciones unificada */
+import Communications from './pages/Communications';
+
+/* ➕ NUEVO: Listado de alumnos del docente */
+import TeacherStudents from './pages/TeacherStudents';
+
+/* ➕ NUEVO: Alumnos de un curso específico del profe */
+import TeacherCourseStudents from './pages/TeacherCourseStudents';
+
+/* ➕ NUEVO: Casos (seguimiento) coord/admin */
+import StaffCases from './pages/StaffCases';
 
 /* ------- Utiles ------- */
 const L: Record<DayCode, string> = { MON:'Lun', TUE:'Mar', WED:'Mié', THU:'Jue', FRI:'Vie', SAT:'Sáb' };
@@ -60,14 +72,31 @@ function Shell() {
   const nav = useNavigate();
   const loc = useLocation();
 
+  // 🔎 estado del buscador global
+  const [globalQ, setGlobalQ] = useState('');
+  const doGlobalSearch = () => {
+    const q = globalQ.trim();
+    if (!q) return;
+    // navega pasando la query — la página autocargará resultados
+    nav(`/coordinator/students?q=${encodeURIComponent(q)}`);
+  };
+
   const navItems = useMemo(() => {
     const items: { to:string; label:string; icon:any; show:boolean }[] = [
       { to: '/', label: 'Dashboard', icon: LayoutDashboard, show: true },
       { to: '/coordinator/courses', label: 'Cursos', icon: BookOpen, show: me?.role === 'coordinator' || me?.role === 'admin' },
-      { to: '/coordinator/students', label: 'Estudiantes', icon: Users, show: me?.role === 'coordinator' || me?.role === 'admin' },
+      // 🔻 quitamos "Estudiantes" del sidebar como pediste
+      // { to: '/coordinator/students', label: 'Estudiantes', icon: Users, show: me?.role === 'coordinator' || me?.role === 'admin' },
       { to: '/coordinator/users', label: 'Personas', icon: Users, show: me?.role === 'coordinator' || me?.role === 'admin' },
       { to: '/teacher/courses', label: 'Mis cursos', icon: ClipboardList, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
+      /* ➕ NUEVO: alumnos del docente */
+      { to: '/teacher/students', label: 'Alumnos', icon: Users, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
+      /* ➕ NUEVO: comunicaciones visible para teacher/coord/admin */
+      { to: '/communications', label: 'Comunicaciones', icon: Mail, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
+      /* ➕ NUEVO: Casos (coord/admin) */
+      { to: '/staff/cases', label: 'Casos', icon: ClipboardList, show: me?.role === 'coordinator' || me?.role === 'admin' },
       { to: '/me', label: 'Mi perfil', icon: UserCog, show: !!me },
+      /* ➕ NUEVO: comunicaciones para alumnos en el sidebar */
       { to: '/student/communications', label: 'Comunicaciones', icon: Mail, show: me?.role === 'student' },
       { to: '/student/partials', label: 'Informes parciales', icon: FileText, show: me?.role === 'student' },
       { to: '/student/finals', label: 'Boletín', icon: BarChart3, show: me?.role === 'student' },
@@ -95,12 +124,18 @@ function Shell() {
               <label className="relative w-full" aria-label="Búsqueda global">
                 <Search className="absolute left-3 top-2.5" size={18}/>
                 <input
-                  className="input pl-9"
+                  className="input pl-9 pr-24"
                   placeholder="Buscar por Nombre, DNI o Curso…"
-                  onKeyDown={e=>{
-                    if(e.key==='Enter') nav('/coordinator/students');
-                  }}
+                  value={globalQ}
+                  onChange={e=>setGlobalQ(e.target.value)}
+                  onKeyDown={e=>{ if(e.key==='Enter') doGlobalSearch(); }}
                 />
+                <button
+                  className="absolute right-1 top-1 btn btn-secondary !px-3 !py-1.5"
+                  onClick={doGlobalSearch}
+                >
+                  Buscar
+                </button>
               </label>
             </div>
           )}
@@ -220,6 +255,9 @@ function Home() {
               {(me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/coordinator/students">Buscar alumno</Link>}
               {(me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/coordinator/users">Personas</Link>}
               {(me.role === 'teacher' || me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/teacher/courses">Mis cursos</Link>}
+              {/* ➕ NUEVO: acceso rápido Alumnos (docente) */}
+              {(me.role === 'teacher' || me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/teacher/students">Alumnos</Link>}
+              {(me.role === 'teacher' || me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/communications">Comunicaciones</Link>}
               {me && <Link className="btn btn-secondary" to="/me">Mi perfil</Link>}
               {me?.role === 'student' && <Link className="btn btn-secondary" to="/student/communications">Comunicaciones</Link>}
               {me?.role === 'student' && <Link className="btn btn-secondary" to="/student/partials">Informes parciales</Link>}
@@ -319,6 +357,9 @@ export default function App() {
 
           {/* Profesor */}
           <Route path="/teacher/courses" element={<TeacherCourses />} />
+          <Route path="/teacher/students" element={<TeacherStudents />} />
+          {/* ➕ NUEVO: alumnos por curso del profe */}
+          <Route path="/teacher/course/:id/students" element={<TeacherCourseStudents />} />
           <Route path="/teacher/course/:id/attendance" element={<AttendancePage />} />
           <Route path="/teacher/course/:id/partials" element={<TeacherCoursePartials />} />
           <Route path="/teacher/course/:id/boletin" element={<TeacherCourseReport />} />
@@ -329,9 +370,11 @@ export default function App() {
           {/* ➕ NUEVO: Británico (solo lectura para el profe) */}
           <Route path="/teacher/course/:id/british" element={<CoordinatorBritishCourse mode="view" />} />
 
-          {/* Comunicaciones */}
-          <Route path="/teacher/message/:courseId/:studentId" element={<ComposeMessage />} />
-          <Route path="/course/:id/communications" element={<ComposeMessage />} />
+          {/* ➕ NUEVO: Comunicaciones unificada */}
+          <Route path="/communications" element={<Communications />} />
+
+          {/* ➕ NUEVO: Casos (seguimiento) coord/admin */}
+          <Route path="/staff/cases" element={<StaffCases />} />
 
           {/* Perfil para TODOS */}
           <Route path="/me" element={<StudentProfile />} />

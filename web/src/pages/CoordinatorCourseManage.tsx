@@ -8,10 +8,14 @@ type RosterItem = {
     _id: string;
     name: string;
     email?: string;
-    tutorPhone?: string;
-    tutorName?: string;
     photoUrl?: string;
-    dob?: string;
+
+    // NUEVO / compat
+    age?: number | null;
+    dob?: string | null;          // YYYY-MM-DD
+    tutor?: string;
+    tutorName?: string;
+    tutorPhone?: string;
   };
 };
 type CourseInfo = { _id: string; name: string; year: number; campus?: string };
@@ -20,6 +24,24 @@ type PickRow = { _id: string; name: string; email?: string };
 /* ====== BASE URL: siempre con /api ====== */
 const ORIGIN = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 const BASE = ORIGIN ? `${ORIGIN}/api` : "/api";
+
+/* ===== Helpers extra para avatar ===== */
+function resolveUploadUrl(url?: string | null) {
+  if (!url) return "";
+  const clean = String(url).trim();
+  if (!clean) return "";
+  if (/^https?:\/\//i.test(clean)) return clean; // ya es absoluta
+  // si es relativa a /uploads, armar absoluta contra VITE_API_URL
+  return clean.startsWith("/uploads/") && ORIGIN ? `${ORIGIN}${clean}` : clean;
+}
+function initialsFromName(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() || "")
+    .join("");
+}
 
 /* ====== HTTP helpers ====== */
 const http = async (
@@ -192,33 +214,50 @@ export default function CoordinatorCourseManage() {
           </thead>
           <tbody className="text-sm">
             {loading && (<tr><td colSpan={6} className="px-3 py-6"><div className="h-16 skeleton" /></td></tr>)}
-            {!loading && sorted.map((r) => (
-              <tr key={r.student._id} className="hover:bg-neutral-50">
-                <td className="px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <img
-                      src={r.student.photoUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(r.student.name || 'A')}`}
-                      alt=""
-                      className="h-8 w-8 rounded-full"
-                    />
-                    <div className="font-medium">{r.student.name}</div>
-                  </div>
-                </td>
-                <td className="px-3 py-2 whitespace-nowrap">{ageFrom(r.student.dob) ?? "—"}</td>
-                <td className="px-3 py-2">{r.student.tutorName || "—"}</td>
-                <td className="px-3 py-2">{r.student.tutorPhone || "—"}</td>
-                <td className="px-3 py-2">{r.student.email || "—"}</td>
-                <td className="px-3 py-2 whitespace-nowrap">
-                  <button
-                    className="btn btn-secondary !py-1"
-                    onClick={() => onRemove(r.student._id)}
-                    disabled={busyId === r.student._id}
-                  >
-                    Quitar
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {!loading && sorted.map((r) => {
+              const s = r.student;
+              const src = resolveUploadUrl(s.photoUrl);
+              const initials = initialsFromName(s.name || "A");
+              const fallback = `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(initials || "A")}`;
+              return (
+                <tr key={s._id} className="hover:bg-neutral-50">
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-full bg-neutral-200 overflow-hidden flex items-center justify-center text-xs font-semibold text-neutral-700">
+                        {src ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={src}
+                            alt={s.name}
+                            className="h-8 w-8 object-cover"
+                            onError={(e) => { e.currentTarget.src = fallback; }}
+                          />
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={fallback} alt={s.name} className="h-8 w-8 object-cover" />
+                        )}
+                      </div>
+                      <div className="font-medium">{s.name}</div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {s.age ?? ageFrom(s.dob ?? undefined) ?? "—"}
+                  </td>
+                  <td className="px-3 py-2">{s.tutorName || s.tutor || "—"}</td>
+                  <td className="px-3 py-2">{s.tutorPhone || "—"}</td>
+                  <td className="px-3 py-2">{s.email || "—"}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <button
+                      className="btn btn-secondary !py-1"
+                      onClick={() => onRemove(s._id)}
+                      disabled={busyId === s._id}
+                    >
+                      Quitar
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
             {!loading && sorted.length === 0 && (
               <tr><td colSpan={6} className="px-3 py-6 text-center text-neutral-700">No hay alumnos en este curso.</td></tr>
             )}
@@ -290,7 +329,7 @@ export default function CoordinatorCourseManage() {
 }
 
 /* ===== helpers ===== */
-function ageFrom(dob?: string) {
+function ageFrom(dob?: string | null) {
   if (!dob) return null;
   const d = new Date(dob);
   if (Number.isNaN(d.getTime())) return null;
@@ -301,12 +340,12 @@ function ageFrom(dob?: string) {
   return age;
 }
 
-/* Buscar alumnos por nombre/email: usa users.search (y fallbacks) */
+/* Buscar alumnos por nombre/email */
 async function searchStudents(q: string): Promise<PickRow[]> {
   const endpoints = [
-    `/users/search?role=student&q=${encodeURIComponent(q)}`, // principal
-    `/students/search?q=${encodeURIComponent(q)}`,           // compat
-    `/users?role=student&q=${encodeURIComponent(q)}`         // listado
+    `/users/search?role=student&q=${encodeURIComponent(q)}`,
+    `/students/search?q=${encodeURIComponent(q)}`,
+    `/users?role=student&q=${encodeURIComponent(q)}`
   ];
   for (const p of endpoints) {
     try {

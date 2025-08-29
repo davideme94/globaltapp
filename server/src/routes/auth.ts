@@ -4,7 +4,7 @@ import { z } from 'zod';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import env from '../config';
-import { User } from '../models/user';
+import { User } from '../models/user'; // <- minúscula, como tu proyecto
 
 const router = Router();
 
@@ -32,14 +32,30 @@ function setAuthCookie(res: any, token: string) {
 }
 
 function clearAuthCookie(res: any) {
-  // Para borrar, las opciones deben matchear
-  res.clearCookie(COOKIE_NAME, {
-    ...cookieOptsBase,
-  });
+  res.clearCookie(COOKIE_NAME, { ...cookieOptsBase });
 }
 
 function signToken(payload: JwtPayload) {
   return jwt.sign(payload, env.JWT_SECRET, { expiresIn: '7d' });
+}
+
+/** Serializa usuario para el front (incluye dob YYYY-MM-DD y campos extra) */
+function serializeUser(u: any) {
+  const dobDate = u?.dob || u?.birthDate || null;
+  const dobStr = dobDate ? new Date(dobDate).toISOString().slice(0, 10) : null;
+
+  return {
+    id: String(u._id),
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    campus: u.campus,
+    phone: u.phone || '',
+    photoUrl: u.photoUrl || '',
+    dob: dobStr,
+    tutor: u.tutor || '',
+    tutorPhone: u.tutorPhone || u.guardianPhone || '',
+  };
 }
 
 async function getUserFromTokenCookie(req: any) {
@@ -49,19 +65,10 @@ async function getUserFromTokenCookie(req: any) {
     const decoded = jwt.verify(raw, env.JWT_SECRET) as JwtPayload;
     const u = await User.findById(decoded.uid).lean();
     if (!u) return null;
-    // Si tu esquema tiene "active", respetalo. Si no, ignóralo.
+    // Si tu esquema tiene "active", respetalo
     // @ts-ignore
     if (typeof u.active === 'boolean' && !u.active) return null;
-
-    return {
-      id: String(u._id),
-      name: u.name,
-      email: u.email,
-      role: u.role,
-      campus: u.campus,
-      phone: u.phone,
-      photoUrl: u.photoUrl,
-    };
+    return serializeUser(u);
   } catch {
     return null;
   }
@@ -78,7 +85,7 @@ router.post('/auth/login', async (req, res, next) => {
     const user = await User.findOne({ email: body.email.toLowerCase().trim() });
     if (!user) return res.status(401).json({ error: 'Credenciales inválidas' });
 
-    // Si tu modelo tiene "active", solo deja loguear si está activo
+    // Si tu modelo tiene "active", sólo deja loguear si está activo
     // @ts-ignore
     if (typeof user.active === 'boolean' && !user.active) {
       return res.status(403).json({ error: 'Usuario inactivo' });
@@ -90,17 +97,7 @@ router.post('/auth/login', async (req, res, next) => {
     const token = signToken({ uid: String(user._id), role: user.role });
     setAuthCookie(res, token);
 
-    return res.json({
-      user: {
-        id: String(user._id),
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        campus: user.campus,
-        phone: user.phone,
-        photoUrl: user.photoUrl,
-      },
-    });
+    return res.json({ user: serializeUser(user) });
   } catch (e) {
     next(e);
   }

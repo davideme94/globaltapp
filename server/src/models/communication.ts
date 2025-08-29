@@ -12,6 +12,16 @@ export interface ICommunication extends Document<Types.ObjectId> {
   title: string;
   body: string;
   readAt?: Date | null;           // leído por el alumno (solo si student está seteado)
+
+  // 👇 NUEVO: hilo de respuestas
+  replies?: {
+    _id: Types.ObjectId;
+    user: Types.ObjectId;
+    role: 'student'|'teacher'|'coordinator'|'admin';
+    body: string;
+    createdAt: Date;
+  }[];
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,7 +36,16 @@ const schema = new Schema<ICommunication>(
     category: { type: String, enum: ['TASK','BEHAVIOR','ADMIN','INFO'], required: true, index: true },
     title: { type: String, required: true },
     body:  { type: String, required: true },
-    readAt:{ type: Date, default: null }
+    readAt:{ type: Date, default: null },
+
+    // 👇 NUEVO: subdocumentos para respuestas
+    replies: [{
+      _id: { type: Schema.Types.ObjectId, auto: true },
+      user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+      role: { type: String, enum: ['student','teacher','coordinator','admin'], required: true },
+      body: { type: String, trim: true, required: true },
+      createdAt: { type: Date, default: Date.now },
+    }],
   },
   { timestamps: true }
 );

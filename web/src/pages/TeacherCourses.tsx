@@ -175,9 +175,12 @@ export default function TeacherCourses() {
                   <span className="font-medium">{c.studentsCount ?? 0}</span> alumnos
                 </span>
                 {' '}—{' '}
-                {/* Acciones */}
+                {/* Acciones (sin "Comunicaciones") */}
                 <Link to={`/teacher/course/${c._id}/attendance`} className="text-brand-primary underline">
                   Tomar asistencia
+                </Link>{' '}{'·'}{' '}
+                <Link to={`/teacher/course/${c._id}/students`} className="text-brand-primary underline">
+                  Alumnos
                 </Link>{' '}{'·'}{' '}
                 <Link to={`/teacher/course/${c._id}/partials`} className="text-brand-primary underline">
                   Informes parciales
@@ -193,9 +196,6 @@ export default function TeacherCourses() {
                 </Link>{' '}{'·'}{' '}
                 <Link to={`/teacher/course/${c._id}/materials`} className="text-brand-primary underline">
                   Material del curso
-                </Link>{' '}{'·'}{' '}
-                <Link to={`/course/${c._id}/communications`} className="text-brand-primary underline">
-                  Comunicaciones
                 </Link>
               </div>
             </div>

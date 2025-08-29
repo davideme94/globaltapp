@@ -51,3 +51,7 @@ const partialSchema = new Schema<IPartialReport>(
 partialSchema.index({ student: 1, course: 1, year: 1, term: 1 }, { unique: true });
 
 export const PartialReport = model<IPartialReport>('PartialReport', partialSchema);
+
+// ➕ Aliases de compatibilidad (para poder usar `Partials.find(...)` en otros módulos)
+export { PartialReport as Partials };
+export { PartialReport as partials };

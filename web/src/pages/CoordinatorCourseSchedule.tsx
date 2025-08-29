@@ -1,167 +1,175 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { api } from '../lib/api';
+import { Link, useParams } from 'react-router-dom';
+import { api, type CourseScheduleItem } from '../lib/api';
 
-type Day = 'MON'|'TUE'|'WED'|'THU'|'FRI'|'SAT';
-const DAY_LABEL: Record<Day,string> = { MON:'Lunes', TUE:'Martes', WED:'Miércoles', THU:'Jueves', FRI:'Viernes', SAT:'Sábado' };
-const DAYS: Day[] = ['MON','TUE','WED','THU','FRI','SAT'];
-type Row = { day: Day; start: string; end: string };
+// Códigos y labels
+const DAYS: { code: 'MON'|'TUE'|'WED'|'THU'|'FRI'|'SAT'; label: string }[] = [
+  { code: 'MON', label: 'Lunes' },
+  { code: 'TUE', label: 'Martes' },
+  { code: 'WED', label: 'Miércoles' },
+  { code: 'THU', label: 'Jueves' },
+  { code: 'FRI', label: 'Viernes' },
+  { code: 'SAT', label: 'Sábado' },
+];
 
-const th: React.CSSProperties = { borderBottom:'1px solid #e2e8f0', padding:6, textAlign:'left', background:'#f8fafc' };
-const td: React.CSSProperties = { borderBottom:'1px solid #eef2f7', padding:6 };
+const DAY_LABEL: Record<string,string> = Object.fromEntries(DAYS.map(d => [d.code, d.label]));
 
-function padTime(v: string) {
-  const m = v.trim().match(/^(\d{1,2}):(\d{1,2})$/);
-  if (!m) return null;
-  let h = Number(m[1]), n = Number(m[2]);
-  if (isNaN(h) || isNaN(n) || h<0 || h>23 || n<0 || n>59) return null;
-  const hh = String(h).padStart(2,'0');
-  const mm = String(n).padStart(2,'0');
-  return `${hh}:${mm}`;
+type Row = { day: 'MON'|'TUE'|'WED'|'THU'|'FRI'|'SAT'; start: string; end: string };
+
+function toRow(items: CourseScheduleItem[]): Row[] {
+  return (items || []).map(it => ({
+    day: (it.day as any) || 'MON',
+    start: it.start || '',
+    end: it.end || '',
+  }));
 }
-function timeToMins(t: string) { const [h,m]=t.split(':').map(Number); return h*60+m; }
+
+function fromRows(rows: Row[]): CourseScheduleItem[] {
+  return rows
+    .filter(r => r.start && r.end)
+    .map(r => ({ day: r.day, start: r.start, end: r.end }));
+}
+
+function formatPreview(rows: Row[]) {
+  return rows
+    .filter(r => r.start && r.end)
+    .map(r => `${DAY_LABEL[r.day]} ${r.start}–${r.end}`)
+    .join(' · ');
+}
 
 export default function CoordinatorCourseSchedule() {
-  const { id } = useParams<{ id:string }>();
-  const [course, setCourse] = useState<{ _id:string; name:string; year:number }|null>(null);
+  const { id: courseId } = useParams();
+  const [course, setCourse] = useState<{ _id:string; name:string; year:number } | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
-  const [msg, setMsg] = useState<string|null>(null);
-  const [err, setErr] = useState<string|null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string|null>(null);
+  const [msg, setMsg] = useState<string|null>(null);
 
-  async function load() {
-    if (!id) return;
-    try {
+  useEffect(() => {
+    let alive = true;
+    (async () => {
       setLoading(true); setErr(null);
-      const r = await api.courses.schedule.get(id);
-      setCourse(r.course);
-      setRows((r.schedule as Row[]) ?? []);
-    } catch (e:any) {
-      setErr(e?.message || 'No se pudieron cargar los horarios');
-    } finally {
-      setLoading(false);
-    }
-  }
-  useEffect(()=>{ load(); }, [id]);
-
-  const title = useMemo(()=> course ? `${course.name} (${course.year})` : '', [course]);
-
-  function addRow() {
-    // Por UX, si ya hay filas intenta usar mismo día de la última
-    const lastDay = rows.at(-1)?.day ?? 'MON';
-    setRows(prev => [...prev, { day:lastDay as Day, start:'18:00', end:'19:00' }]);
-  }
-  function removeRow(i: number) {
-    setRows(prev => prev.filter((_,idx)=>idx!==i));
-  }
-
-  async function save() {
-    if (!id) return;
-
-    // Normalización + validaciones
-    const normalized: Row[] = [];
-    for (let i=0;i<rows.length;i++){
-      const r = rows[i];
-      const start = padTime(r.start || '');
-      const end   = padTime(r.end || '');
-      if (!start || !end) {
-        return setErr(`Fila ${i+1}: formato inválido. Usá HH:mm (ej: 18:30).`);
+      try {
+        if (!courseId) throw new Error('Falta courseId');
+        const { course, schedule } = await api.courses.schedule.get(courseId);
+        if (!alive) return;
+        setCourse(course);
+        // ⚠️ Si vienen items viejos sin "day", default a 'MON'
+        setRows(toRow((schedule as any[]) || []).map(r => ({
+          day: (r as any).day || 'MON',
+          start: (r as any).start || '',
+          end: (r as any).end || '',
+        })));
+      } catch (e:any) {
+        if (!alive) return;
+        setErr(e.message || 'Error al cargar horarios');
+      } finally {
+        if (alive) setLoading(false);
       }
-      if (timeToMins(end) <= timeToMins(start)) {
-        return setErr(`Fila ${i+1}: la hora de fin debe ser mayor a la de inicio.`);
-      }
-      normalized.push({ day:r.day, start, end });
-    }
+    })();
+    return () => { alive = false; };
+  }, [courseId]);
 
-    // Ordenar por día + hora
-    const dayOrder: Record<Day,number> = { MON:0, TUE:1, WED:2, THU:3, FRI:4, SAT:5 };
-    const toSave = normalized.slice().sort((a,b)=>{
-      const da = dayOrder[a.day] - dayOrder[b.day];
-      if (da !== 0) return da;
-      return timeToMins(a.start) - timeToMins(b.start);
-    });
+  const addRow = () => setRows(prev => [...prev, { day: 'MON', start: '', end: '' }]);
+  const removeRow = (i: number) => setRows(prev => prev.filter((_, idx) => idx !== i));
 
-    setSaving(true); setErr(null);
+  const setRow = (i: number, patch: Partial<Row>) =>
+    setRows(prev => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+
+  const preview = useMemo(() => formatPreview(rows), [rows]);
+
+  const save = async () => {
+    if (!courseId) return;
     try {
-      await api.courses.schedule.set(id, toSave as any);
-      setMsg('Horarios guardados'); setTimeout(()=>setMsg(null), 1500);
-      await load();
+      setSaving(true); setErr(null); setMsg(null);
+      const items = fromRows(rows);
+      await api.courses.schedule.set(courseId, items);
+      setMsg('Horarios guardados');
     } catch (e:any) {
-      setErr(e?.message || 'No se pudo guardar');
+      setErr(e.message || 'No se pudo guardar');
     } finally {
       setSaving(false);
     }
-  }
+  };
 
-  if (loading) return <div style={{ padding:16 }}>Cargando…</div>;
+  if (loading) return <div className="card p-4"><div className="h-6 w-40 skeleton mb-3"/><div className="h-20 skeleton"/></div>;
+  if (err) return <div className="card p-4 text-danger">{err}</div>;
+  if (!course) return null;
 
   return (
-    <div style={{ padding:16, maxWidth:900, margin:'0 auto', display:'grid', gap:12 }}>
-      <h1>Horarios — {title}</h1>
+    <div className="space-y-3">
+      <h1 className="font-heading text-xl">
+        Horarios — {course.name} ({course.year})
+      </h1>
 
-      <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
-        <Link to={`/coordinator/courses`}>↩ Volver</Link>
-        <Link to={`/coordinator/course/${id}/manage`}>Gestionar</Link>
-        <Link to={`/coordinator/course/${id}/attendance`}>Asistencia</Link>
-        <Link to={`/coordinator/course/${id}/partials`}>Parciales</Link>
-        <Link to={`/coordinator/course/${id}/boletin`}>Boletín</Link>
-        <Link to={`/coordinator/course/${id}/practice`}>Práctica</Link>
-        {msg && <span style={{ color:'#16a34a' }}>{msg}</span>}
-        {err && <span style={{ color:'#dc2626' }}>{err}</span>}
+      <div className="flex flex-wrap gap-3 text-brand-primary">
+        <Link to={`/coordinator/course/${course._id}/manage`} className="underline">↪ Volver</Link>
+        <Link to={`/coordinator/course/${course._id}/attendance`} className="underline">Asistencia</Link>
+        <Link to={`/coordinator/course/${course._id}/partials`} className="underline">Parciales</Link>
+        <Link to={`/coordinator/course/${course._id}/boletin`} className="underline">Boletín</Link>
+        <Link to={`/coordinator/course/${course._id}/practice`} className="underline">Práctica</Link>
       </div>
 
-      <table style={{ width:'100%', borderCollapse:'collapse' }}>
-        <thead>
-          <tr>
-            <th style={th}>Día</th>
-            <th style={th}>Desde (HH:mm)</th>
-            <th style={th}>Hasta (HH:mm)</th>
-            <th style={th}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i)=>(
-            <tr key={i}>
-              <td style={td}>
-                <select
-                  value={r.day}
-                  onChange={e=>setRows(prev=>prev.map((x,idx)=>idx===i?{...x, day:e.target.value as Day}:x))}
-                >
-                  {DAYS.map(d=><option key={d} value={d}>{DAY_LABEL[d]}</option>)}
-                </select>
-              </td>
-              <td style={td}>
-                <input
-                  value={r.start}
-                  onChange={e=>setRows(prev=>prev.map((x,idx)=>idx===i?{...x, start:e.target.value}:x))}
-                  placeholder="18:00"
-                />
-              </td>
-              <td style={td}>
-                <input
-                  value={r.end}
-                  onChange={e=>setRows(prev=>prev.map((x,idx)=>idx===i?{...x, end:e.target.value}:x))}
-                  placeholder="19:00"
-                />
-              </td>
-              <td style={td}><button onClick={()=>removeRow(i)}>Quitar</button></td>
+      <div className="card p-4">
+        <table className="min-w-full">
+          <thead>
+            <tr className="text-left text-sm text-neutral-700">
+              <th className="px-3 py-2 border-b">Día</th>
+              <th className="px-3 py-2 border-b">Desde (HH:mm)</th>
+              <th className="px-3 py-2 border-b">Hasta (HH:mm)</th>
+              <th className="px-3 py-2 border-b"></th>
             </tr>
-          ))}
-          {rows.length===0 && <tr><td colSpan={4} style={td}>Sin horarios cargados.</td></tr>}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="text-sm">
+            {rows.map((r, i) => (
+              <tr key={i}>
+                <td className="px-3 py-2">
+                  <select
+                    className="input"
+                    value={r.day}
+                    onChange={e => setRow(i, { day: e.target.value as Row['day'] })}
+                  >
+                    {DAYS.map(d => <option key={d.code} value={d.code}>{d.label}</option>)}
+                  </select>
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    className="input"
+                    type="time"
+                    value={r.start}
+                    onChange={e => setRow(i, { start: e.target.value })}
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    className="input"
+                    type="time"
+                    value={r.end}
+                    onChange={e => setRow(i, { end: e.target.value })}
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <button className="text-danger underline" onClick={() => removeRow(i)}>Quitar</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
 
-      <div style={{ display:'flex', gap:8 }}>
-        <button onClick={addRow}>+ Agregar fila</button>
-        <button onClick={save} disabled={saving}>{saving ? 'Guardando…' : '💾 Guardar'}</button>
-      </div>
-
-      {rows.length>0 && (
-        <div style={{ marginTop:8, color:'#64748b' }}>
-          Vista previa: {rows.map(r=>`${DAY_LABEL[r.day]} ${padTime(r.start) ?? r.start}-${padTime(r.end) ?? r.end}`).join(' · ')}
+        <div className="mt-3 flex items-center gap-3">
+          <button className="text-brand-primary underline" onClick={addRow}>+ Agregar fila</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>
+            {saving ? 'Guardando…' : 'Guardar'}
+          </button>
+          {msg && <span className="text-success text-sm">{msg}</span>}
+          {err && <span className="text-danger text-sm">{err}</span>}
         </div>
-      )}
+
+        <div className="mt-4 text-neutral-600">
+          <b>Vista previa:</b> {preview || '—'}
+        </div>
+      </div>
     </div>
   );
 }

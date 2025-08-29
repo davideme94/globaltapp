@@ -5,6 +5,7 @@ import { Course } from '../models/course';
 import { Enrollment } from '../models/enrollment';
 import { Communication } from '../models/communication';
 import { User } from '../models/user';
+import { CommReply } from '../models/commReply'; // 👈 NUEVO
 
 const router = Router();
 
@@ -24,6 +25,22 @@ async function canSend(userId: string, role: string, courseId: string) {
   }
   return true;
 }
+
+/* ===== Helpers de autorización para replies ===== */
+async function canViewOrReply(uid: string, role: 'student'|'teacher'|'coordinator'|'admin', comm: any) {
+  if (!comm) return false;
+  if (role === 'student') {
+    return String(comm.student) === String(uid);
+  }
+  if (role === 'teacher') {
+    const ok = await Course.exists({ _id: comm.course, teacher: uid });
+    return !!ok;
+  }
+  // coordinador/admin ven todo
+  return role === 'coordinator' || role === 'admin';
+}
+
+/* ========= Envío ========= */
 
 // POST /communications  -> enviar (a alumno o a todo el curso)
 router.post('/communications', requireAuth, allowRoles('teacher','coordinator','admin'), async (req, res, next) => {
@@ -71,21 +88,10 @@ router.get('/communications/course/:courseId', requireAuth, allowRoles('teacher'
   } catch (e) { next(e); }
 });
 
-// GET /communications/mine -> alumno ve las suyas (directas + de su curso)
+// GET /communications/mine -> alumno ve las suyas
 router.get('/communications/mine', requireAuth, allowRoles('student'), async (req, res, next) => {
   try {
     const studentId = (req as any).userId as string;
-    // cursos activos del alumno por año actual (y también mensajes directos)
-    const enrolls = await Enrollment.find({ student: studentId, status: 'active' }).select('course year').lean();
-    const courseIds = enrolls.map(e => String(e.course));
-    const q: any = {
-      $or: [
-        { student: studentId },
-        { student: studentId } // ya que hacemos broadcast creando 1 por alumno, con esto alcanza
-      ]
-    };
-    // opcionalmente filtramos por cursos en los que está
-    if (courseIds.length) q.$or.push({ course: { $in: courseIds }, student: studentId });
 
     const rows = await Communication.find({ student: studentId })
       .sort({ createdAt: -1 })
@@ -112,6 +118,74 @@ router.put('/communications/:id/read', requireAuth, allowRoles('student'), async
   } catch (e) { next(e); }
 });
 
+/* =========================
+ * NUEVO: REPLIES (GET/POST)
+ * ========================= */
+
+// GET /communications/:id/replies  -> lista de respuestas (staff ve todas; alumno solo las suyas)
+router.get(
+  '/communications/:id/replies',
+  requireAuth,
+  allowRoles('student','teacher','coordinator','admin'),
+  async (req, res, next) => {
+    try {
+      const id = req.params.id;
+      const uid = (req as any).userId as string;
+      const role = (req as any).userRole as 'student'|'teacher'|'coordinator'|'admin';
+
+      const comm = await Communication.findById(id).lean();
+      if (!comm) return res.status(404).json({ error: 'Comunicación no encontrada' });
+
+      if (!(await canViewOrReply(uid, role, comm))) return res.status(403).json({ error: 'No autorizado' });
+
+      const replies = await CommReply.find({ communication: id })
+        .sort({ createdAt: 1 })
+        .populate('user','name')
+        .lean();
+
+      res.json({
+        replies: replies.map(r => ({
+          _id: String(r._id),
+          body: r.body,
+          role: r.role,
+          createdAt: r.createdAt,
+          user: r.user, // {_id, name}
+        })),
+      });
+    } catch (e) { next(e); }
+  }
+);
+
+// POST /communications/:id/replies  -> crear respuesta (alumno y también staff)
+router.post(
+  '/communications/:id/replies',
+  requireAuth,
+  allowRoles('student','teacher','coordinator','admin'),
+  async (req, res, next) => {
+    try {
+      const schema = z.object({ body: z.string().min(1).max(2000) });
+      const { body } = schema.parse(req.body || {});
+      const id = req.params.id;
+      const uid = (req as any).userId as string;
+      const role = (req as any).userRole as 'student'|'teacher'|'coordinator'|'admin';
+
+      const comm = await Communication.findById(id).lean();
+      if (!comm) return res.status(404).json({ error: 'Comunicación no encontrada' });
+
+      if (!(await canViewOrReply(uid, role, comm))) return res.status(403).json({ error: 'No autorizado' });
+
+      const doc = await CommReply.create({
+        communication: id,
+        user: uid,
+        role,
+        body: body.trim(),
+      });
+
+      res.json({ ok: true, reply: { _id: doc._id, body: doc.body, role: doc.role, createdAt: doc.createdAt } });
+    } catch (e) { next(e); }
+  }
+);
+
 /* ============================
  * NUEVO: BROADCAST MASIVO
  * ============================ */
@@ -135,7 +209,6 @@ router.post(
         title, body, category, roles, campuses, active, courseId,
       } = schema.parse(req.body || {});
 
-      // validar curso si se envía
       if (courseId) {
         const exists = await Course.exists({ _id: courseId });
         if (!exists) return res.status(404).json({ error: 'Curso no encontrado' });

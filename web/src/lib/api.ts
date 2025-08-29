@@ -2,18 +2,41 @@
 const ORIGIN = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const BASE = ORIGIN ? `${ORIGIN}/api` : '/api'; // si no hay VITE_API_URL, cae a /api (útil con proxy)
 
+// 👇 DEBUG: mostrar a dónde está pegando el front
+if (typeof window !== 'undefined') {
+  console.debug('[api] BASE =', BASE);
+  (window as any).__API_BASE__ = BASE;
+}
+
 // --- fetch con parseo robusto ---
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const url = `${BASE}${path}`;
-  const res = await fetch(url, {
-    credentials: 'include', // manda cookies
-    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
-    ...init,
-  });
+  const mkUrl = (base: string) => `${base}${path}`;
+  let url = mkUrl(BASE);
+
+  const doFetch = async (u: string) =>
+    fetch(u, {
+      credentials: 'include', // manda cookies
+      headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+      ...init,
+    });
+
+  let res = await doFetch(url);
 
   const ct = res.headers.get('content-type') || '';
   const isJSON = ct.includes('application/json');
-  const payload = isJSON ? await res.json() : await res.text();
+  let payload: any = isJSON ? await res.json() : await res.text();
+
+  // Fallback DEV opcional: si vino HTML (del dev server) y NO tenés VITE_API_URL,
+  // reintentamos contra http://localhost:4000/api
+  if (!res.ok && typeof payload === 'string' && payload.trim().startsWith('<!DOCTYPE') && !ORIGIN) {
+    const fallback = 'http://localhost:4000/api';
+    console.warn('[api] HTML detectado desde el dev server. Reintentando contra', fallback);
+    url = mkUrl(fallback);
+    res = await doFetch(url);
+    const ct2 = res.headers.get('content-type') || '';
+    const isJSON2 = ct2.includes('application/json');
+    payload = isJSON2 ? await res.json() : await res.text();
+  }
 
   if (!res.ok) {
     // Sesión inválida → logout + redirect
@@ -67,6 +90,10 @@ export type Me = {
   user: {
     id: string; name: string; email: string; role: Role; campus: Campus;
     phone?: string; photoUrl?: string;
+    // campos extra que usamos en el perfil
+    dob?: string | null;
+    tutor?: string;
+    tutorPhone?: string;
   }
 };
 
@@ -78,9 +105,19 @@ export type Course = {
   teacher?: { _id: string; name: string; email: string } | null; // poblado
 };
 
+// 🔸 Roster enriquecido
 export type RosterItem = {
   _id: string;
-  student: { _id: string; name: string; email: string };
+  student: {
+    _id: string;
+    name: string;
+    email: string;
+    phone?: string;
+    photoUrl?: string;
+    dob?: string | null;       // fecha de nacimiento (ISO) o null
+    tutor?: string;
+    tutorPhone?: string;
+  };
 };
 
 export type TermGrades = { writing: number|null; speaking: number|null; reading: number|null; listening: number|null; comments?: string; };
@@ -106,6 +143,15 @@ export type TopicEntry = {
 
 export type CommCategory = 'TASK'|'BEHAVIOR'|'ADMIN'|'INFO';
 
+// 👇 NUEVO (hilo de respuestas de comunicaciones)
+export type Reply = {
+  _id: string;
+  user: string | { _id: string; name: string };
+  role: 'student'|'teacher'|'coordinator'|'admin';
+  body: string;
+  createdAt: string;
+};
+
 export type Communication = {
   _id: string;
   course: { _id:string; name:string; year:number }|string;
@@ -118,6 +164,9 @@ export type Communication = {
   body: string;
   readAt?: string|null;
   createdAt: string;
+
+  // 👇 NUEVO
+  replies?: Reply[];
 };
 
 // --- Tipos para "mis cursos" (Dashboard) ---
@@ -148,16 +197,52 @@ export type BritishResult = {
 };
 export type BritishMine = { results: BritishResult[] };
 
+// --- NUEVO: Tipos de Casos (staff) ---
+export type CaseCategory = 'ACADEMIC_DIFFICULTY'|'BEHAVIOR'|'ATTENDANCE'|'ADMIN'|'OTHER';
+export type CaseSeverity  = 'LOW'|'MEDIUM'|'HIGH';
+export type CaseStatus    = 'OPEN'|'IN_PROGRESS'|'RESOLVED'|'ARCHIVED';
+
+export type StaffCase = {
+  _id: string;
+  course?: { _id:string; name:string; year:number } | string | null;
+  student: { _id:string; name:string; email?:string } | string;
+  createdBy: string | { _id:string; name:string };
+  assignee?: { _id:string; name:string } | string | null;
+  watchers?: string[];
+  category: CaseCategory;
+  severity: CaseSeverity;
+  status: CaseStatus;
+  source: 'MANUAL'|'AUTOMATION';
+  ruleId?: string|null;
+  title: string;
+  description?: string;
+  checklist?: { label:string; done:boolean; doneAt?:string|null; by?:string|null }[];
+  createdAt: string;
+  updatedAt: string;
+};
+
 export const api = {
-  // AUTH
+  // AUTH / Perfil actual
   me: () => request<Me>('/auth/me'),
   login: (email: string, password: string) =>
     request<Me>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   logout: () => request<{ ok: true }>('/auth/logout', { method: 'POST' }),
 
   // PERFIL
-  updateMe: (payload: { name?:string; campus?:Campus; phone?:string; photoUrl?:string }) =>
-    request<{ ok?:true }>('/me', { method:'PUT', body: JSON.stringify(payload) }),
+  updateMe: (payload: {
+    name?: string;
+    campus?: Campus;
+    phone?: string;
+    photoUrl?: string;
+    // nuevos opcionales:
+    dob?: string;        // YYYY-MM-DD
+    tutor?: string;
+    tutorPhone?: string;
+  }) =>
+    request<{ ok?: true; user?: any }>(
+      '/me',
+      { method: 'PUT', body: JSON.stringify(payload) }
+    ),
 
   // USERS (gestión coord/admin)
   users: {
@@ -222,6 +307,9 @@ export const api = {
       request<{ ok:true; enrollment:any; createdPassword?: string }>(`/courses/${courseId}/enroll`, { method:'POST', body: JSON.stringify({ email, autoCreate }) }),
     unenroll: (courseId: string, studentId: string) =>
       request<{ ok:true }>(`/courses/${courseId}/enroll/${studentId}`, { method:'DELETE' }),
+    // NUEVO: desinscripción "dura" usando ?hard=1
+    unenrollHard: (courseId: string, studentId: string) =>
+      request<{ ok:true }>(`/courses/${courseId}/enroll/${studentId}?hard=1`, { method: 'DELETE' }),
     delete: (id: string) =>
       request<{ ok:true }>(`/courses/${id}`, { method: 'DELETE' }),
   },
@@ -294,6 +382,26 @@ export const api = {
       request<{ rows: Communication[] }>('/communications/mine'),
     markRead: (id: string) =>
       request<{ ok:true; item: Communication }>(`/communications/${id}/read`, { method: 'PUT' }),
+    // NUEVO: broadcast masivo (coord/admin)
+    broadcast: (payload: {
+      title: string;
+      body: string;
+      category?: 'TASK'|'BEHAVIOR'|'ADMIN'|'INFO';
+      roles?: ('student'|'teacher'|'coordinator'|'admin')[];
+      campuses?: ('DERQUI'|'JOSE_C_PAZ')[];
+      active?: boolean;
+      courseId?: string;
+    }) =>
+      request<{ ok:true; sent:number; ids:string[] }>(
+        '/communications/broadcast',
+        { method: 'POST', body: JSON.stringify(payload) }
+      ),
+    // 👇 NUEVO: responder a una comunicación
+    reply: (id: string, body: string) =>
+      request<{ ok:true; reply: Reply }>(
+        `/communications/${id}/replies`,
+        { method: 'POST', body: JSON.stringify({ body }) }
+      ),
   },
 
   // PRACTICE
@@ -305,7 +413,7 @@ export const api = {
     seed: () => request<{ ok:true; created:number }>(`/practice/seed-simple`, { method:'POST' }),
     play: () => request<{ questions: { _id:string; prompt:string; type:'MC'|'GAP'; options?: string[]|null }[] }>(`/practice/play`),
     submit: (questionId: string, answer: string) =>
-      request<{ correct: boolean }>(`/practice/submit`, { method:'POST', body: JSON.stringify({ questionId, answer }) }),
+      request<{ correct: boolean }>(`/practice/submit`, { method:'POST', body: JSON.stringify({ questionId, answer }) } ),
     createQuestion: (payload: { prompt:string; type:'MC'|'GAP'; options?:string[]; answer:string; level?:string; courseId?:string }) =>
       request<{ ok:true; question:any }>(`/practice/questions`, { method:'POST', body: JSON.stringify(payload) }),
     listQuestions: () => request<{ questions:any[] }>(`/practice/questions`),
@@ -327,6 +435,49 @@ export const api = {
       request<{ ok: true; result: any }>(
         '/british',
         { method: 'PUT', body: JSON.stringify(payload) }
+      ),
+  },
+
+  // 👇 NUEVO: Casos (seguimiento de alumnos)
+  cases: {
+    create: (payload: {
+      studentId: string; courseId?: string;
+      title: string; description?: string;
+      category: CaseCategory; severity?: CaseSeverity;
+      checklist?: string[]; assigneeId?: string;
+    }) =>
+      request<{ ok:true; case: StaffCase }>(
+        '/cases',
+        { method:'POST', body: JSON.stringify(payload) }
+      ),
+
+    list: (filters?: {
+      status?: CaseStatus; category?: CaseCategory;
+      studentId?: string; courseId?: string; severity?: CaseSeverity
+    }) =>
+      request<{ rows: StaffCase[] }>(
+        `/cases${qs(filters)}`
+      ),
+
+    update: (id: string, patch: Partial<Pick<StaffCase,'status'|'severity'>> & { assignee?: string }) =>
+      request<{ ok:true; case: StaffCase }>(
+        `/cases/${id}`,
+        { method:'PUT', body: JSON.stringify(patch) }
+      ),
+
+    reply: (id: string, body: string) =>
+      request<{ ok:true; reply:any }>(
+        `/cases/${id}/replies`,
+        { method:'POST', body: JSON.stringify({ body }) }
+      ),
+  },
+
+  // 👇 NUEVO: Alerts (automatizaciones)
+  alerts: {
+    run: (opts?: { courseId?: string; reminders?: boolean }) =>
+      request<{ ok:true; scanned:number; created:number }>(
+        `/alerts/run${qs({ ...opts, reminders: opts?.reminders ? 1 : undefined })}`,
+        { method:'POST' }
       ),
   },
 };

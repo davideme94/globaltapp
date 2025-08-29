@@ -7,12 +7,21 @@ const router = Router();
 
 const campusSchema = z.enum(['DERQUI', 'JOSE_C_PAZ']);
 
+// ✅ Aceptamos URL ABSOLUTA (http/https) o RELATIVA que empiece con /uploads/
+const photoUrlSchema = z
+  .string()
+  .min(1)
+  .refine(
+    (v) => /^https?:\/\//i.test(v) || v.startsWith('/uploads/'),
+    { message: 'Invalid url' }
+  );
+
 // Campos permitidos a editar por el dueño del perfil.
 const payloadSchema = z.object({
   name: z.string().min(2).optional(),
   campus: campusSchema.optional(),
   phone: z.string().max(40).optional(),
-  photoUrl: z.string().url().optional(),
+  photoUrl: photoUrlSchema.optional(), // 👈 aquí el cambio
 
   // Nuevos (opcionales)
   dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // YYYY-MM-DD
@@ -37,19 +46,23 @@ router.put(
       if (body.phone !== undefined) $set.phone = body.phone;
       if (body.photoUrl !== undefined) $set.photoUrl = body.photoUrl;
 
-      // dob: lo guardamos como birthDate (Date) y también como 'dob' (string ISO) para compatibilidad.
+      // dob: guardamos como Date y reflejamos en birthDate
       if (body.dob !== undefined) {
-        $set.birthDate = new Date(`${body.dob}T00:00:00.000Z`);
-        $set.dob = body.dob; // opcional, útil para front que espera el string
+        const d = new Date(`${body.dob}T00:00:00.000Z`);
+        if (isNaN(d.getTime())) {
+          return res.status(400).json({ error: 'dob inválido' });
+        }
+        $set.dob = d;
+        $set.birthDate = d;
       }
 
       // Tutor
       if (body.tutor !== undefined) $set.tutor = body.tutor;
 
-      // Tel. Tutor: reflejamos en guardianPhone (nombre usado en el modelo) y mantenemos tutorPhone por compat.
+      // Tel. Tutor: reflejamos en guardianPhone y tutorPhone
       if (body.tutorPhone !== undefined) {
         $set.guardianPhone = body.tutorPhone;
-        $set.tutorPhone = body.tutorPhone; // opcional
+        $set.tutorPhone = body.tutorPhone;
       }
 
       const updated = await User.findByIdAndUpdate(
@@ -59,6 +72,12 @@ router.put(
       ).lean();
 
       if (!updated) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+      // Normalizamos dob para devolver YYYY-MM-DD
+      const dobDate = (updated as any).dob || (updated as any).birthDate || null;
+      const dobStr = dobDate
+        ? new Date(dobDate).toISOString().slice(0, 10)
+        : null;
 
       res.json({
         ok: true,
@@ -70,10 +89,7 @@ router.put(
           campus: updated.campus,
           phone: (updated as any).phone || '',
           photoUrl: (updated as any).photoUrl || '',
-          // devolvemos ambos por comodidad del front
-          dob: (updated as any).dob || (updated as any).birthDate
-            ? new Date((updated as any).birthDate).toISOString().slice(0, 10)
-            : null,
+          dob: dobStr,
           tutor: (updated as any).tutor || '',
           tutorPhone:
             (updated as any).tutorPhone ||

@@ -1,49 +1,45 @@
+// server/src/models/course.ts
 import { Schema, model, type Document, type Types } from 'mongoose';
-import { Campuses, type Campus } from './user';
+
+export const Campuses = ['DERQUI', 'JOSE_C_PAZ'] as const;
+export type Campus = typeof Campuses[number];
 
 export interface ICourse extends Document<Types.ObjectId> {
   name: string;
   year: number;
   campus: Campus;
   teacher?: Types.ObjectId | null;
-  schedule: { dayOfWeek: number; start: string; end: string }[];
-  materials: { title: string; url: string }[];
-  syllabusUrl?: string;
+  // ⬇⬇ IMPORTANTE: cada item incluye 'day'
+  schedule: { day?: 'MON'|'TUE'|'WED'|'THU'|'FRI'|'SAT'; start: string; end: string }[];
+  links?: { syllabusUrl?: string; materialsUrl?: string } | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const scheduleSchema = new Schema(
+// Subdocumento de horario (acepta 'day')
+const scheduleItemSchema = new Schema(
   {
-    dayOfWeek: { type: Number, min: 0, max: 6, required: true },
-    start: { type: String, required: true },
-    end: { type: String, required: true },
-  },
-  { _id: false }
-);
-
-const materialSchema = new Schema(
-  {
-    title: { type: String, required: true },
-    url: { type: String, required: true },
+    day:   { type: String, enum: ['MON','TUE','WED','THU','FRI','SAT'], required: false },
+    start: { type: String, required: true }, // HH:MM
+    end:   { type: String, required: true }, // HH:MM
   },
   { _id: false }
 );
 
 const courseSchema = new Schema<ICourse>(
   {
-    name: { type: String, required: true, trim: true },
-    year: { type: Number, required: true, index: true },
+    name:   { type: String, required: true, trim: true },
+    year:   { type: Number, required: true, index: true },
     campus: { type: String, enum: Campuses, required: true, index: true },
-    teacher: { type: Schema.Types.ObjectId, ref: 'User', default: null, index: true },
-    schedule: { type: [scheduleSchema], default: [] },
-    materials: { type: [materialSchema], default: [] },
-    syllabusUrl: String,
+
+    teacher: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+
+    // ⬇⬇ Array de items con 'day' opcional (para compat de datos viejos)
+    schedule: { type: [scheduleItemSchema], default: [] },
+
+    links:   { type: Object, default: null },
   },
   { timestamps: true }
 );
-
-// Evita duplicados por nombre+año+sede
-courseSchema.index({ name: 1, year: 1, campus: 1 }, { unique: true });
 
 export const Course = model<ICourse>('Course', courseSchema);
