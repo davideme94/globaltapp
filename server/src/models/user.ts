@@ -11,12 +11,12 @@ export interface IUser extends Document<Types.ObjectId> {
   email: string;
   role: Role;
   campus: Campus;
-  phone?: string;
-  avatarUrl?: string;  // 👈 agregar este campo opcional
+  phone?: string; // 👈 agregar este campo opcional
   guardianPhone?: string;
   address?: string;
   photoUrl?: string;
   birthDate?: Date;
+  avatarUrl?: string; 
   passwordHash: string;
   practiceEnabled?: boolean;
   active: boolean;             // <- NUEVO: soft-delete / desactivación
