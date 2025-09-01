@@ -4,6 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* === Tokens de marca === */
 :root{
   --brand-primary:#B13B85;
   --brand-primary-600:#9E388B;
@@ -26,26 +27,170 @@
 }
 
 html { color-scheme: light; }
+/* ⬇️ para que navegadores ajusten formularios/scrollbars en oscuro */
+html.dark { color-scheme: dark; }
+
 body { @apply bg-neutral-50 text-neutral-900 font-sans; }
 h1,h2,h3,h4 { @apply font-heading text-neutral-900; }
 
-/* === Tus utilidades dentro de @layer components === */
+/* === Base: fondo con degradé suave (dark compatible) === */
+@layer base {
+  body {
+    @apply min-h-screen bg-gradient-to-br from-indigo-50 via-white to-fuchsia-50
+           dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-neutral-100;
+  }
+  h1,h2,h3,h4 { @apply dark:text-neutral-100; }
+}
+
+/* === Utilidades de componentes === */
 @layer components {
   .focus-ring { @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-primary; }
 
   .btn { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 font-medium transition shadow; }
   .btn-primary { @apply text-white; background-image: var(--grad-primary); }
   .btn-primary:hover { filter: saturate(1.1) brightness(1.05); }
-  .btn-secondary { @apply border border-brand-primary text-brand-primary bg-white; }
-  .btn-secondary:hover { background: #FCE7F3; }
+  .btn-secondary { @apply border border-brand-primary text-brand-primary bg-white dark:bg-transparent dark:text-neutral-100 dark:border-neutral-600; }
+  .btn-secondary:hover { background: #FCE7F3; } /* claro */
+  .dark .btn-secondary:hover { background: rgba(255,255,255,0.06); } /* oscuro */
 
-  .input { @apply w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 focus-visible:ring-2 focus-visible:ring-brand-primary outline-none; }
+  .input {
+    @apply w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 focus-visible:ring-2 focus-visible:ring-brand-primary outline-none;
+    @apply dark:bg-slate-800 dark:border-slate-700 dark:text-neutral-100 placeholder:opacity-70;
+  }
 
-  .card { @apply rounded-xl bg-white shadow-card; }
+  .card { @apply rounded-xl bg-white shadow-card dark:bg-slate-900; }
 
   .badge { @apply inline-flex items-center rounded-xl px-2 py-1 text-sm font-medium; }
   .badge-derqui { background:#FFF4E6; color: var(--brand-secondary); }
   .badge-jcp { background:#F8E8FB; color: var(--brand-primary); }
 
-  .skeleton { @apply animate-pulse bg-neutral-200 rounded; }
+  .skeleton { @apply animate-pulse bg-neutral-200 rounded dark:bg-slate-700; }
+
+  /* Alerts (para errores de login, etc.) */
+  .alert { @apply rounded-xl px-3 py-2 text-sm; }
+  .alert-error { @apply bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-900; }
+}
+
+/* ===== Extras Dark Mode (hover/inputs/tablas/links) ===== */
+
+/* Selects estilados (claro + oscuro) */
+@layer base {
+  select {
+    @apply rounded-xl border border-neutral-200 bg-white px-3 py-2 outline-none
+           focus-visible:ring-2 focus-visible:ring-brand-primary
+           dark:bg-slate-800 dark:border-slate-700 dark:text-neutral-100;
+  }
+}
+
+/* Tablas dentro de cards: encabezados, filas y hover + fix de fondos en dark */
+@layer components {
+  .card table { @apply w-full; }
+
+  /* 🔧 Fix: evitar “bloques” blancos en modo oscuro */
+  .dark .card table :is(thead, tbody, tr, th, td) {
+    background-color: transparent !important;
+  }
+  /* Anular posibles clases de striping / bg en dark */
+  .dark .card tr[class*="odd:bg-"],
+  .dark .card tr[class*="even:bg-"],
+  .dark .card tr[class*="bg-white"],
+  .dark .card tr[class*="bg-neutral-"],
+  .dark .card tbody[class*="bg-"],
+  .dark .card thead[class*="bg-"] {
+    background: transparent !important;
+  }
+
+  .card thead th {
+    @apply text-left font-medium py-2
+           text-neutral-700 dark:text-neutral-300
+           border-b border-neutral-200 dark:border-slate-700;
+  }
+  .card tbody td {
+    @apply py-2 align-middle
+           text-neutral-900 dark:text-neutral-100;
+  }
+  .card tbody tr {
+    @apply border-b border-neutral-200 dark:border-slate-800;
+  }
+  .card tbody tr:hover {
+    @apply bg-neutral-50 dark:bg-slate-800/60;
+  }
+}
+
+/* Color de enlaces por defecto (acciones tipo Reset clave/Eliminar) */
+@layer base {
+  a { @apply text-brand-primary hover:underline; }
+  .dark a { @apply text-fuchsia-300; }
+}
+
+
+/* ==== FIX FINAL: “franja blanca” en listas/tablas dentro de .card (modo oscuro) ==== */
+@layer components {
+  /* 1) Anula cualquier bg claro heredado (tablas o grids) */
+  .dark .card :is(thead, tbody, tr, th, td, div, li, section)[class*="bg-white"],
+  .dark .card :is(thead, tbody, tr, th, td, div, li, section)[class*="bg-neutral-50"],
+  .dark .card :is(thead, tbody, tr, th, td, div, li, section)[class*="bg-slate-50"],
+  .dark .card :is(thead, tbody, tr, th, td, div, li, section)[class*="bg-gray-50"],
+  .dark .card :is(thead, tbody, tr, th, td, div, li, section)[class*="bg-zinc-50"] {
+    background-color: transparent !important;
+  }
+
+  /* 2) Si usaste “striping” (odd:/even:) también lo apagamos en dark */
+  .dark .card :is(tr, div)[class*="odd:bg-"],
+  .dark .card :is(tr, div)[class*="even:bg-"] {
+    background: transparent !important;
+  }
+
+  /* 3) Texto más legible */
+  .dark .card thead :is(th, td) { color: rgb(203 213 225 / .95) !important; } /* slate-300 */
+  .dark .card tbody :is(th, td, div, span, p) { color: rgb(241 245 249 / .92) !important; } /* slate-50 */
+
+  /* 4) Hover sutil para filas/rows (table o grid) */
+  .dark .card :is(tr, [role="row"], .row):hover {
+    background: rgba(148, 163, 184, 0.08) !important; /* slate-400/8% */
+  }
+}
+
+/* ==== DARK MODE – Fix “papel blanco” dentro de .card (tablas/grids) ==== */
+@layer components {
+  /* 1) Apaga cualquier fondo claro heredado en dark (salvo botones/inputs) */
+  .dark .card :is(thead, tbody, tr, th, td, div, section, article, li)[class*="bg-white"],
+  .dark .card :is(thead, tbody, tr, th, td, div, section, article, li)[class*="bg-neutral-50"],
+  .dark .card :is(thead, tbody, tr, th, td, div, section, article, li)[class*="bg-slate-50"],
+  .dark .card :is(thead, tbody, tr, th, td, div, section, article, li)[class*="bg-gray-50"],
+  .dark .card :is(thead, tbody, tr, th, td, div, section, article, li)[class*="bg-zinc-50"] {
+    background-color: transparent !important;
+  }
+
+  /* 2) Si hay “striping” (odd:/even:) también lo apagamos en dark */
+  .dark .card :is(tr, div)[class*="odd:bg-"],
+  .dark .card :is(tr, div)[class*="even:bg-"] {
+    background: transparent !important;
+  }
+
+  /* 3) Bordes de celdas y contenedores internos */
+  .dark .card :is(th, td, div, section, article)[class*="border-neutral-200"],
+  .dark .card :is(th, td, div, section, article)[class*="border-gray-200"],
+  .dark .card :is(th, td, div, section, article)[class*="border-slate-200"] {
+    border-color: #334155 !important; /* slate-700 */
+  }
+
+  /* 4) Contraste de texto (encabezados y celdas) */
+  .dark .card thead :is(th, td) { color: rgb(203 213 225 / .95) !important; } /* slate-300 */
+  .dark .card tbody :is(th, td, div, span, p) { color: rgb(241 245 249 / .92) !important; } /* slate-50 */
+
+  /* 5) Hover sutil para filas o filas-grid */
+  .dark .card :is(tr, [role="row"], .row):hover {
+    background: rgba(148, 163, 184, 0.08) !important; /* slate-400/8% */
+  }
+}
+
+/* (Opcional) Enlaces dentro de cards – legibles en dark */
+@layer base {
+  .dark .card a { color: #e879f9; } /* fuchsia-400 aprox */
+}
+
+/* Mantener blanco al imprimir aunque estés en dark */
+@media print {
+  html { color-scheme: light; }
 }

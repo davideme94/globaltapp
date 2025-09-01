@@ -381,6 +381,75 @@ router.put(
   }
 );
 
+/** ★★★ NUEVO: Material para alumnos (student-materials) — GET/PUT **/
+// GET: accesible también para alumnos para que puedan ver sus links
+router.get(
+  '/courses/:id/student-materials',
+  requireAuth,
+  allowRoles('coordinator', 'admin', 'teacher', 'student'),
+  async (req, res, next) => {
+    try {
+      const c = await Course.findById(req.params.id)
+        .select('name year studentMaterials')
+        .setOptions({ strict: false })
+        .lean();
+      if (!c) return res.status(404).json({ error: 'Curso no encontrado' });
+
+      const sm = (c as any).studentMaterials || {};
+      res.json({
+        course: { _id: String(c._id), name: c.name, year: c.year },
+        studentMaterials: {
+          studentBook: sm.studentBook || '',
+          workbook: sm.workbook || '',
+          reader: sm.reader || '',
+        },
+      });
+    } catch (e) { next(e); }
+  }
+);
+
+// PUT: solo coord/admin editan
+router.put(
+  '/courses/:id/student-materials',
+  requireAuth,
+  allowRoles('coordinator', 'admin'),
+  async (req, res, next) => {
+    try {
+      const body = z
+        .object({
+          studentBook: z.string().optional(),
+          workbook: z.string().optional(),
+          reader: z.string().optional(),
+        })
+        .parse(req.body || {});
+
+      const updated = await Course.findByIdAndUpdate(
+        req.params.id,
+        {
+          $set: {
+            'studentMaterials.studentBook': String(body.studentBook ?? ''),
+            'studentMaterials.workbook': String(body.workbook ?? ''),
+            'studentMaterials.reader': String(body.reader ?? ''),
+          },
+        },
+        { new: true, strict: false }
+      ).select('studentMaterials').lean();
+
+      if (!updated) return res.status(404).json({ error: 'Curso no encontrado' });
+
+      const sm = (updated as any).studentMaterials || {};
+      res.json({
+        ok: true,
+        studentMaterials: {
+          studentBook: sm.studentBook || '',
+          workbook: sm.workbook || '',
+          reader: sm.reader || '',
+        },
+      });
+    } catch (e) { next(e); }
+  }
+);
+
 /** ★ Mis cursos (alumno actual): GET /courses/mine -> { year, rows:[{course,schedule}] } */
 router.get('/courses/mine', requireAuth, async (req: any, res, next) => {
   try {
@@ -424,43 +493,21 @@ router.get('/courses/mine', requireAuth, async (req: any, res, next) => {
   }
 });
 
-/** DELETE /courses/:id  -> elimina curso y datos relacionados (si existen) */
-router.delete(
-  '/courses/:id',
-  requireAuth,
-  allowRoles('coordinator', 'admin'),
+/* =========================
+   NUEVO: /courses/:id/teacher
+   ========================= */
+// GET /courses/:id/teacher -> { teacher }
+router.get(
+  '/courses/:id/teacher',
+  requireAuth, // accesible para alumnos
   async (req, res, next) => {
     try {
-      const { id } = req.params;
-
-      const exists = await Course.findById(id).lean();
-      if (!exists) return res.status(404).json({ error: 'Curso no encontrado' });
-
-      await Enrollment.deleteMany({ course: id });
-
-      const safe = async <T = any>(loader: () => Promise<T>, key: string) => {
-        try {
-          const mod: any = await loader();
-          const M = mod[key];
-          if (M?.deleteMany) await M.deleteMany({ course: id });
-        } catch {}
-      };
-
-      await Promise.all([
-        safe(() => import('../models/reportCard'), 'ReportCard'),
-        safe(() => import('../models/partialReport'), 'PartialReport'),
-        safe(() => import('../models/attendance'), 'Attendance'),
-        safe(() => import('../models/topic'), 'Topic'),
-        safe(() => import('../models/communication'), 'Communication'),
-        safe(() => import('../models/britishExam'), 'BritishExam'),
-      ]);
-
-      await Course.deleteOne({ _id: id });
-
-      res.json({ ok: true });
-    } catch (e) {
-      next(e);
-    }
+      const course = await Course.findById(req.params.id)
+        .populate('teacher', 'name email photoUrl')
+        .lean();
+      if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
+      return res.json({ teacher: (course as any).teacher || null });
+    } catch (e) { next(e); }
   }
 );
 

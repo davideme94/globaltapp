@@ -21,6 +21,7 @@ type UiRow = {
   grades: Grades;
   comments: string;
   saving?: boolean;
+  editing?: boolean; // ⬅️ bloquea/edita por fila
 };
 
 const TERMS: { code: Term; label: string }[] = [
@@ -28,6 +29,36 @@ const TERMS: { code: Term; label: string }[] = [
   { code: 'OCT', label: 'Octubre' },
 ];
 const G: Grade[] = ['A', 'B', 'C', 'D', 'E'];
+const KEYS: (keyof Grades)[] = ['reading','writing','listening','speaking','attendance','commitment'];
+
+/** Intenta extraer una letra A..E desde varios caminos posibles */
+function extractGrade(doc: any, key: keyof Grades): Grade | null {
+  if (!doc) return null;
+  const tryPaths: any[] = [
+    (d: any) => d?.grades?.[key],
+    (d: any) => d?.partial?.grades?.[key],
+    (d: any) => d?.report?.grades?.[key],
+    (d: any) => d?.data?.grades?.[key],
+    (d: any) => d?.[key],
+  ];
+  for (const fn of tryPaths) {
+    const v = fn(doc);
+    if (typeof v === 'string') {
+      const up = v.toUpperCase();
+      if ('ABCDE'.includes(up)) return up as Grade;
+    }
+  }
+  return null;
+}
+
+function extractComments(doc: any): string {
+  return (
+    doc?.comments ??
+    doc?.partial?.comments ??
+    doc?.report?.comments ??
+    ''
+  );
+}
 
 export default function TeacherCoursePartials() {
   const { id: courseId } = useParams<{ id: string }>();
@@ -39,7 +70,9 @@ export default function TeacherCoursePartials() {
   const [err, setErr] = useState<string | null>(null);
   const [courseTitle, setCourseTitle] = useState<string>('Curso');
   const [rows, setRows] = useState<UiRow[]>([]);
+
   const anySaving = useMemo(() => rows.some(r => r.saving), [rows]);
+  const anyEditing = useMemo(() => rows.some(r => r.editing), [rows]);
 
   useEffect(() => {
     let alive = true;
@@ -47,9 +80,7 @@ export default function TeacherCoursePartials() {
       if (!courseId) return;
       setLoading(true); setErr(null);
       try {
-        // 1) Roster del curso
         const rosterR = await api.courses.roster(courseId);
-        // 2) Reportes existentes para el curso/año/term
         const partR = await api.partials.course(courseId, { term, year }).catch(() => null);
 
         if (partR?.course) {
@@ -57,35 +88,42 @@ export default function TeacherCoursePartials() {
           setCourseTitle(`${c.name} — ${c.year}`);
         }
 
-        // Mapear parciales existentes por estudiante
         const byStudent = new Map<string, any>();
         (partR?.rows || []).forEach((doc: any) => {
           const sid = typeof doc.student === 'string' ? doc.student : doc.student?._id;
           if (sid) byStudent.set(sid, doc);
         });
 
-        // Construir filas UI combinando roster + parciales (si existen)
         const ui: UiRow[] = (rosterR.roster || []).map((r: any) => {
           const sid = r.student?._id || r.student;
           const name = r.student?.name || 'Alumno';
           const existing = byStudent.get(sid);
 
+          const grades: Grades = {
+            reading:    extractGrade(existing, 'reading')    ?? 'C',
+            writing:    extractGrade(existing, 'writing')    ?? 'C',
+            listening:  extractGrade(existing, 'listening')  ?? 'C',
+            speaking:   extractGrade(existing, 'speaking')   ?? 'C',
+            attendance: extractGrade(existing, 'attendance') ?? 'C',
+            commitment: extractGrade(existing, 'commitment') ?? 'C',
+          };
+
+          const comments = extractComments(existing);
+
+          // si hay algún valor distinto de C o hay comentarios, asumimos que ya estaba guardado → bloqueado
+          const hasRealData =
+            comments?.trim().length > 0 ||
+            KEYS.some(k => grades[k] !== 'C');
+
           return {
             studentId: sid,
             name,
-            grades: {
-              reading: existing?.grades?.reading ?? 'C',
-              writing: existing?.grades?.writing ?? 'C',
-              listening: existing?.grades?.listening ?? 'C',
-              speaking: existing?.grades?.speaking ?? 'C',
-              attendance: existing?.grades?.attendance ?? 'C',
-              commitment: existing?.grades?.commitment ?? 'C',
-            },
-            comments: existing?.comments ?? '',
+            grades,
+            comments,
+            editing: !existing ? true : !hasRealData ? true : false,
           };
         });
 
-        // Orden alfabético por nombre
         ui.sort((a, b) => a.name.localeCompare(b.name));
 
         if (!alive) return;
@@ -113,6 +151,10 @@ export default function TeacherCoursePartials() {
     setRows(prev => prev.map(r => r.studentId === sid ? { ...r, comments: txt } : r));
   };
 
+  const toggleEdit = (sid: string, on?: boolean) => {
+    setRows(prev => prev.map(r => r.studentId === sid ? { ...r, editing: (on ?? !r.editing) } : r));
+  };
+
   const saveOne = async (r: UiRow) => {
     if (!courseId) return;
     setRows(prev => prev.map(x => x.studentId === r.studentId ? { ...x, saving: true } : x));
@@ -126,16 +168,19 @@ export default function TeacherCoursePartials() {
         comments: r.comments?.trim() || '',
       });
       toast.success('Guardado');
+      setRows(prev => prev.map(x =>
+        x.studentId === r.studentId ? { ...x, saving: false, editing: false } : x
+      ));
     } catch (e: any) {
       toast.error(e?.message || 'No se pudo guardar el parcial.');
-    } finally {
       setRows(prev => prev.map(x => x.studentId === r.studentId ? { ...x, saving: false } : x));
     }
   };
 
   const saveAll = async () => {
     if (!courseId) return;
-    const toSave = [...rows];
+    const toSave = rows.filter(r => r.editing);
+    if (toSave.length === 0) return;
     try {
       for (const r of toSave) {
         await api.partials.upsert({
@@ -148,6 +193,7 @@ export default function TeacherCoursePartials() {
         });
       }
       toast.success('Parciales guardados.');
+      setRows(prev => prev.map(r => r.editing ? { ...r, editing: false } : r));
     } catch (e: any) {
       toast.error(e?.message || 'Error al guardar en lote.');
     }
@@ -204,7 +250,7 @@ export default function TeacherCoursePartials() {
                 <th className="text-left px-3 py-2">Attendance</th>
                 <th className="text-left px-3 py-2">Commitment</th>
                 <th className="text-left px-3 py-2">Comentarios</th>
-                <th className="px-3 py-2 text-right">Acciones</th>
+                <th className="px-3 py-2 text-right">Acción</th>
               </tr>
             </thead>
             <tbody>
@@ -216,44 +262,56 @@ export default function TeacherCoursePartials() {
                 </tr>
               )}
 
-              {rows.map(r => (
-                <tr key={r.studentId} className="border-t">
-                  <td className="px-3 py-2 whitespace-nowrap font-medium">{r.name}</td>
+              {rows.map(r => {
+                const disabled = r.saving || anySaving || !r.editing;
+                return (
+                  <tr key={r.studentId} className="border-t">
+                    <td className="px-3 py-2 whitespace-nowrap font-medium">{r.name}</td>
 
-                  {(['reading','writing','listening','speaking','attendance','commitment'] as const).map(k => (
-                    <td key={k} className="px-3 py-2">
-                      <select
-                        className="input !h-8"
-                        value={r.grades[k]}
-                        disabled={r.saving || anySaving}
-                        onChange={e => setGrade(r.studentId, k, e.target.value as Grade)}
-                      >
-                        {G.map(g => <option key={g} value={g}>{g}</option>)}
-                      </select>
+                    {KEYS.map(k => (
+                      <td key={k} className="px-3 py-2">
+                        <select
+                          className="input !h-8"
+                          value={r.grades[k]}
+                          disabled={disabled}
+                          onChange={e => setGrade(r.studentId, k, e.target.value as Grade)}
+                        >
+                          {G.map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                      </td>
+                    ))}
+
+                    <td className="px-3 py-2 min-w-[220px]">
+                      <input
+                        className="input !h-8 w-full"
+                        placeholder="Comentario (opcional)"
+                        value={r.comments}
+                        disabled={disabled}
+                        onChange={e => setComment(r.studentId, e.target.value)}
+                      />
                     </td>
-                  ))}
 
-                  <td className="px-3 py-2 min-w-[220px]">
-                    <input
-                      className="input !h-8 w-full"
-                      placeholder="Comentario (opcional)"
-                      value={r.comments}
-                      disabled={r.saving || anySaving}
-                      onChange={e => setComment(r.studentId, e.target.value)}
-                    />
-                  </td>
-
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      className="btn btn-primary !h-8 !py-0 disabled:opacity-60"
-                      disabled={r.saving || anySaving}
-                      onClick={() => saveOne(r)}
-                    >
-                      {r.saving ? 'Guardando…' : 'Guardar'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    <td className="px-3 py-2 text-right">
+                      {r.editing ? (
+                        <button
+                          className="btn btn-primary !h-8 !py-0 disabled:opacity-60"
+                          disabled={r.saving || anySaving}
+                          onClick={() => saveOne(r)}
+                        >
+                          {r.saving ? 'Guardando…' : 'Guardar'}
+                        </button>
+                      ) : (
+                        <button
+                          className="btn btn-secondary !h-8 !py-0"
+                          onClick={() => toggleEdit(r.studentId, true)}
+                        >
+                          Editar
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -264,7 +322,8 @@ export default function TeacherCoursePartials() {
           <button
             className="btn btn-secondary"
             onClick={saveAll}
-            disabled={anySaving}
+            disabled={anySaving || !anyEditing}
+            title={!anyEditing ? 'No hay filas en edición' : 'Guardar filas en edición'}
           >
             Guardar todo
           </button>

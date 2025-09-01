@@ -295,6 +295,10 @@ export default function CoordinatorCourses() {
                       <Link to={`/coordinator/course/${c._id}/practice`} className="text-brand-primary underline">Práctica</Link>
                       <Link to={`/coordinator/course/${c._id}/topics`} className="text-brand-primary underline">Libro de temas</Link>
                       <Link to={`/coordinator/course/${c._id}/materials`} className="text-brand-primary underline">Material</Link>
+                      {/* ⬇️ NUEVO: Tablón */}
+                      <Link to={`/coordinator/course/${c._id}/board`} className="text-brand-primary underline">MURO</Link>
+                      {/* ⬇️ Ya existente: Material para alumnos */}
+                      <Link to={`/coordinator/course/${c._id}/student-materials`} className="text-brand-primary underline">Material alumnos</Link>
                       <Link to={`/coordinator/course/${c._id}/partials`} className="text-brand-primary underline">Informes parciales</Link>
                       <Link to={`/coordinator/course/${c._id}/boletin`} className="text-brand-primary underline">Boletín</Link>
                       <Link to={`/coordinator/course/${c._id}/british`} className="text-brand-primary underline">Británico</Link>

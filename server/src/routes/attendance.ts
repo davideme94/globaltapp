@@ -106,4 +106,59 @@ router.get('/attendance/grid', requireAuth, allowRoles('teacher','coordinator','
   } catch (e) { next(e); }
 });
 
+/* =========================
+   NUEVO: /attendance/mine
+   ========================= */
+// GET /attendance/mine?courseId=...&from=YYYY-MM-DD&to=YYYY-MM-DD[&studentId=...]
+router.get('/attendance/mine', requireAuth, async (req, res, next) => {
+  try {
+    const { courseId, from, to, studentId } = req.query as {
+      courseId?: string; from?: string; to?: string; studentId?: string;
+    };
+    if (!courseId) return res.status(400).json({ error: 'courseId es requerido' });
+
+    const role = (req as any).userRole as string | undefined;
+    const uid  = (req as any).userId as string;
+    const sid  = role === 'student' ? uid : (studentId || uid);
+
+    const course = await Course.findById(courseId).lean();
+    if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
+
+    const qDates: any = { course: courseId };
+    if (from) qDates.date = { ...(qDates.date||{}), $gte: from };
+    if (to)   qDates.date = { ...(qDates.date||{}), $lte: to };
+
+    const itemsCourse = await Attendance.find(qDates).lean();
+
+    const dateSet = new Set<string>();
+    itemsCourse.forEach(it => dateSet.add(it.date));
+    const dates = Array.from(dateSet).sort((a,b)=> a.localeCompare(b));
+
+    const qStudent: any = { ...qDates, student: sid };
+    const items = await Attendance.find(qStudent).lean();
+
+    const statusByDate: Record<string, 'P'|'A'|'T'|'J'|null> = {};
+    let P=0,A=0,T=0,J=0;
+    for (const d of dates) statusByDate[d] = null;
+    for (const it of items) {
+      statusByDate[it.date] = it.status as any;
+      if (it.status==='P') P++;
+      else if (it.status==='A') A++;
+      else if (it.status==='T') T++;
+      else if (it.status==='J') J++;
+    }
+    const total = P + A + T + J;
+    const percent = total ? Math.round((P / total) * 100) : 0;
+
+    return res.json({
+      dates,
+      row: {
+        student: { _id: String(sid) },
+        statusByDate,
+        resume: { P, A, J, T, total, percent },
+      }
+    });
+  } catch (e) { next(e); }
+});
+
 export default router;

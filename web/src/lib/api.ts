@@ -1,3 +1,4 @@
+// src/lib/api.ts
 // --- base URL: siempre apunta al backend con /api ---
 const ORIGIN = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const BASE = ORIGIN ? `${ORIGIN}/api` : '/api'; // si no hay VITE_API_URL, cae a /api (útil con proxy)
@@ -270,6 +271,11 @@ export const api = {
       request<{ ok:true }>(`/users/${id}`, { method: 'DELETE' }),
   },
 
+      // Eliminar una pregunta por ID
+    deleteQuestion: (id: string) =>
+      request<{ ok: true }>(`/practice/questions/${id}`, { method: 'DELETE' }),
+
+
   // COURSES
   courses: {
     list: (filters?: { year?: number; campus?: Campus }) =>
@@ -312,6 +318,11 @@ export const api = {
       request<{ ok:true }>(`/courses/${courseId}/enroll/${studentId}?hard=1`, { method: 'DELETE' }),
     delete: (id: string) =>
       request<{ ok:true }>(`/courses/${id}`, { method: 'DELETE' }),
+    // ===== NUEVO =====
+    teacher: (courseId: string) =>
+      request<{ teacher: { _id:string; name:string; email:string; photoUrl?:string } | null }>(
+        `/courses/${courseId}/teacher`
+      ),
   },
 
   // PARTIALS (informes parciales)
@@ -362,6 +373,16 @@ export const api = {
       request<{ ok: true; item: any }>('/attendance', { method: 'PUT', body: JSON.stringify(payload) }),
     grid: (courseId: string, params?: { from?: string; to?: string }) =>
       request<{ dates: string[]; rows: { student: { _id:string; name:string }, statusByDate: Record<string,string|null>, resume: { P:number; A:number; J:number; T:number; total:number; percent:number } }[] }>(`/attendance/grid${qs({ courseId, ...(params||{}) })}`),
+    // ===== NUEVO =====
+    mine: (opts: { courseId: string; from?: string; to?: string; studentId?: string }) =>
+      request<{
+        dates: string[];
+        row: {
+          student: { _id: string };
+          statusByDate: Record<string, 'P'|'A'|'T'|'J'|null>;
+          resume: { P:number; A:number; J:number; T:number; total:number; percent:number };
+        };
+      }>(`/attendance/mine${qs(opts)}`),
   },
 
   // TOPICS
@@ -404,20 +425,135 @@ export const api = {
       ),
   },
 
-  // PRACTICE
+   // PRACTICE
   practice: {
-    accessByCourse: (courseId: string) =>
-      request<{ rows: { student: { _id:string; name:string; email:string }, enabled: boolean }[] }>(`/practice/access/course/${courseId}`),
-    setAccess: (studentId: string, enabled: boolean) =>
-      request<{ ok:true; access:any }>(`/practice/access`, { method:'PUT', body: JSON.stringify({ studentId, enabled }) } ),
-    seed: () => request<{ ok:true; created:number }>(`/practice/seed-simple`, { method:'POST' }),
-    play: () => request<{ questions: { _id:string; prompt:string; type:'MC'|'GAP'; options?: string[]|null }[] }>(`/practice/play`),
-    submit: (questionId: string, answer: string) =>
-      request<{ correct: boolean }>(`/practice/submit`, { method:'POST', body: JSON.stringify({ questionId, answer }) } ),
-    createQuestion: (payload: { prompt:string; type:'MC'|'GAP'; options?:string[]; answer:string; level?:string; courseId?:string }) =>
+    /* ===================== NUEVO: Sets ===================== */
+    // Lista todos los sets (coord/admin/teacher y student para mostrar)
+    listSets: () =>
+      request<{ rows: { _id:string; title:string; units?:number; tags?:string[] }[] }>(`/practice/sets`),
+
+    // Crear un set (coord/admin/teacher)
+    createSet: (payload: { title:string; level?:string; units?:number; tags?:string[] }) =>
+      request<{ ok:true; set:{ _id:string; title:string } }>(
+        `/practice/sets`,
+        { method:'POST', body: JSON.stringify(payload) }
+      ),
+
+    // 🔧 NUEVO: actualizar / borrar set
+    updateSet: (id: string, patch: { title?:string; units?:number; tags?:string[] }) =>
+      request<{ ok:true; set:any }>(
+        `/practice/sets/${id}`,
+        { method:'PUT', body: JSON.stringify(patch) }
+      ),
+
+    deleteSet: (id: string) =>
+      request<{ ok:true }>(`/practice/sets/${id}`, { method:'DELETE' }),
+
+    // Sets habilitados para el alumno actual
+    mySets: () =>
+      request<{ rows:{ set:{ _id:string; title:string; units?:number }, updatedAt:string }[] }>(`/practice/my-sets`),
+
+    /* ======== NUEVO: Habilitación por curso + set ========= */
+    // (no rompe tu endpoint viejo; éste exige setId)
+    accessByCourseForSet: (courseId: string, setId: string) =>
+      request<{ rows: { student: { _id:string; name:string; email:string }, enabled: boolean }[] }>(
+        `/practice/access/course/${courseId}${qs({ setId })}`
+      ),
+
+    setAccessForSet: (studentId: string, setId: string, enabled: boolean, courseId?: string) =>
+      request<{ ok:true; access:any }>(
+        `/practice/access`,
+        { method:'PUT', body: JSON.stringify({ studentId, setId, enabled, courseId }) }
+      ),
+
+    /* ============ NUEVO: Jugar por set/unidad ============ */
+    // Devuelve 10 random del set (y unidad opcional)
+    playSet: (setId: string, unit?: number) =>
+      request<{ questions: {
+        _id:string; prompt:string; type:'MC'|'GAP';
+        options?: string[]|null; imageUrl?:string|null; embedUrl?:string|null; unit?:number|null
+      }[]; completed?: boolean; progress?: { total:number; seen:number; remaining:number } }>(
+        `/practice/play${qs({ setId, unit })}`
+      ),
+
+    /* ========= NUEVO: Preguntas con media (v2) ========== */
+    createQuestionV2: (payload: {
+      setId:string; unit?:number; prompt:string; type:'MC'|'GAP';
+      options?:string[]; answer:string; level?:string; imageUrl?:string; embedUrl?:string; courseId?:string
+    }) =>
       request<{ ok:true; question:any }>(`/practice/questions`, { method:'POST', body: JSON.stringify(payload) }),
+
+    // 🔧 NUEVO: actualizar / borrar pregunta
+    updateQuestion: (id: string, patch: {
+      setId?:string; unit?:number; prompt?:string; type?:'MC'|'GAP';
+      options?:string[]; answer?:string; imageUrl?:string; embedUrl?:string
+    }) =>
+      request<{ ok:true; question:any }>(
+        `/practice/questions/${id}`,
+        { method:'PUT', body: JSON.stringify(patch) }
+      ),
+
+    deleteQuestion: (id: string) =>
+      request<{ ok:true }>(`/practice/questions/${id}`, { method:'DELETE' }),
+
+    // Listar preguntas por set (para editor)
+    listQuestionsBySet: (setId?: string) =>
+      request<{ questions:any[] }>(`/practice/questions${qs({ setId })}`),
+
+    /* ============== LO ANTERIOR (se mantiene) ============== */
+    accessByCourse: (courseId: string) =>
+      request<{ rows: { student: { _id:string; name:string; email:string }, enabled: boolean }[] }>(
+        `/practice/access/course/${courseId}`
+      ),
+
+    setAccess: (studentId: string, enabled: boolean) =>
+      request<{ ok:true; access:any }>(
+        `/practice/access`,
+        { method:'PUT', body: JSON.stringify({ studentId, enabled }) }
+      ),
+
+    seed: () => request<{ ok:true; created:number }>(`/practice/seed-simple`, { method:'POST' }),
+
+    // Versión legacy (sin setId). La dejamos por compatibilidad.
+    // ➕ incluye media opcional en la respuesta para futuros usos
+    play: () =>
+      request<{ questions: { _id:string; prompt:string; type:'MC'|'GAP'; options?: string[]|null; imageUrl?:string|null; embedUrl?:string|null }[] }>(`/practice/play`),
+
+    submit: (questionId: string, answer: string) =>
+      request<{ correct: boolean }>(
+        `/practice/submit`,
+        { method:'POST', body: JSON.stringify({ questionId, answer }) }
+      ),
+
+      // dentro de api.practice = { ... }
+progressByCourseSet: (courseId: string, setId: string, goal = 10) =>
+  request<{ rows: {
+    student:{ _id:string; name:string; email:string };
+    enabled:boolean; attempts:number; correct:number; distinct:number;
+    percent:number; lastAt?:string|null; completed:boolean;
+  }[]; goal:number; totalQuestions:number }>(
+    `/practice/progress/course/${courseId}${qs({ setId, goal })}`
+  ),
+
+    // ➕ expandimos tipos para aceptar setId/unit/media (compat con tu builder)
+    createQuestion: (payload: {
+      prompt:string; type:'MC'|'GAP'; options?:string[]; answer:string; level?:string; courseId?:string;
+      setId?:string; unit?:number; imageUrl?:string; embedUrl?:string;
+    }) =>
+      request<{ ok:true; question:any }>(
+        `/practice/questions`,
+        { method:'POST', body: JSON.stringify(payload) }
+      ),
+
     listQuestions: () => request<{ questions:any[] }>(`/practice/questions`),
+
+    // NUEVO: progreso del alumno para un set
+    progressMine: (setId: string) =>
+      request<{ attempts:number; correct:number; distinct:number; lastAt?:string|null; total:number; completed:boolean }>(
+        `/practice/progress/mine${qs({ setId })}`
+      ),
   },
+
 
   // BRITISH
   british: {
@@ -478,6 +614,72 @@ export const api = {
       request<{ ok:true; scanned:number; created:number }>(
         `/alerts/run${qs({ ...opts, reminders: opts?.reminders ? 1 : undefined })}`,
         { method:'POST' }
+      ),
+  },
+
+  /* ========= NUEVO: Agregador para NOTIFICACIONES (front-only) =========
+     - NO cambia tu backend.
+     - mineSummary(): devuelve los arrays “míos” (comunicaciones, parciales, boletín).
+     - countsSince(): calcula contadores contra fechas “last seen” opcionales.
+  */
+  notifications: {
+    async mineSummary(): Promise<{
+      communications: any[];
+      partials: any[];
+      reportcards: any[];
+    }> {
+      const [cm, pr, rc] = await Promise.all([
+        request<{ rows: any[] }>('/communications/mine').catch(() => ({ rows: [] })),
+        request<{ rows?: any[]; reports?: any[] }>('/partials/mine').catch(() => ({ rows: [] })),
+        request<{ cards: any[] }>('/reportcards/mine').catch(() => ({ cards: [] })),
+      ]);
+
+      return {
+        communications: (cm?.rows || []),
+        partials: (Array.isArray((pr as any)?.rows) ? (pr as any).rows : ((pr as any)?.reports || [])),
+        reportcards: (rc?.cards || []),
+      };
+    },
+
+    async countsSince(since?: {
+      comms?: string | Date;
+      partials?: string | Date;
+      reportcards?: string | Date;
+    }): Promise<{ communications:number; partials:number; reportcards:number; total:number }> {
+      const s = {
+        comms: since?.comms ? new Date(since.comms) : new Date(0),
+        partials: since?.partials ? new Date(since.partials) : new Date(0),
+        reportcards: since?.reportcards ? new Date(since.reportcards) : new Date(0),
+      };
+
+      const { communications, partials, reportcards } = await this.mineSummary();
+
+      // comunicaciones: preferimos no leídas; si todas tienen readAt, usamos comparación por fecha
+      let commNew = communications.filter((r: any) => !r.readAt).length;
+      if (commNew === 0) {
+        commNew = communications.filter((r: any) => r?.createdAt && new Date(r.createdAt) > s.comms).length;
+      }
+
+      const partNew = partials.filter((r: any) => r?.updatedAt && new Date(r.updatedAt) > s.partials).length;
+      const cardNew = reportcards.filter((c: any) => c?.updatedAt && new Date(c.updatedAt) > s.reportcards).length;
+
+      const total = commNew + partNew + cardNew;
+      return { communications: commNew, partials: partNew, reportcards: cardNew, total };
+    },
+  },
+
+  // ====== NUEVO: API del Tablón del curso (opcional, por si lo querés usar desde otros componentes) ======
+  board: {
+    list: (courseId: string, opts?: { before?: string; limit?: number }) =>
+      request<{ rows: any[] }>(`/courses/${courseId}/board${qs(opts)}`),
+    create: (courseId: string, payload: { title?: string; body?: string; links?: { url:string }[] }) =>
+      request<{ ok:true; post:any }>(`/courses/${courseId}/board`, { method: 'POST', body: JSON.stringify(payload) }),
+    remove: (postId: string) =>
+      request<{ ok:true }>(`/board/${postId}`, { method: 'DELETE' }),
+    unfurl: (url: string) =>
+      request<{ title?:string; description?:string; image?:string; provider?:string; type?:string }>(
+        `/unfurl`,
+        { method: 'POST', body: JSON.stringify({ url }) }
       ),
   },
 };

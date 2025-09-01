@@ -2,10 +2,11 @@
 import { BrowserRouter, Routes, Route, Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { api, type Me } from './lib/api';
+import './styles/responsive.css';
 import type { MyCourseRow, CourseScheduleItem, DayCode } from './lib/api';
 import {
-  Menu, Bell, LayoutDashboard, Users, UserCog, BookOpen, ClipboardList,
-  FileText, Mail, BarChart3, Settings, Search, GraduationCap
+  Menu, LayoutDashboard, Users, UserCog, BookOpen, ClipboardList,
+  FileText, Mail, BarChart3, Settings, Search, GraduationCap, Sun, Moon
 } from 'lucide-react';
 
 /* Páginas */
@@ -47,8 +48,58 @@ import TeacherCourseStudents from './pages/TeacherCourseStudents';
 /* ➕ NUEVO: Casos (seguimiento) coord/admin */
 import StaffCases from './pages/StaffCases';
 
+/* ➕ Imagen de fondo para Login (mantén el nombre real del archivo) */
+import hero from './assets/login-hero.jpg.png';
+
+/* ➕ NUEVO: Card de asistencias del estudiante */
+import StudentAttendanceCard from './components/StudentAttendanceCard';
+
+/* ➕ NUEVO: Campanita con contador */
+import NotifBell from './components/NotifBell';
+
+/* ➕ NUEVO: Material alumnos (páginas) */
+import CourseStudentMaterials from './pages/CourseStudentMaterials';
+import StudentMaterials from './pages/StudentMaterials';
+
+/* ➕ NUEVO: Tablón del curso */
+import CourseBoardPage from './pages/CourseBoardPage';
+
+/* ➕ NUEVO: Sets de práctica (coord/admin/teacher) */
+import CoordinatorPracticeSets from './pages/CoordinatorPracticeSets';
+
 /* ------- Utiles ------- */
 const L: Record<DayCode, string> = { MON:'Lun', TUE:'Mar', WED:'Mié', THU:'Jue', FRI:'Vie', SAT:'Sáb' };
+
+/* ===== Toggle de Tema (persistente) ===== */
+function ThemeToggle() {
+  const [theme, setTheme] = useState<'light'|'dark'>(() => {
+    if (typeof window === 'undefined') return 'light';
+    const saved = localStorage.getItem('theme');
+    if (saved === 'light' || saved === 'dark') return saved;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'dark') root.classList.add('dark');
+    else root.classList.remove('dark');
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+      className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm
+                 hover:bg-neutral-100 dark:hover:bg-slate-800 focus-visible:outline-none
+                 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-primary"
+      aria-label="Cambiar tema"
+      title={theme === 'dark' ? 'Tema claro' : 'Tema oscuro'}
+    >
+      {theme === 'dark' ? <Sun size={16}/> : <Moon size={16}/>}
+      <span className="hidden sm:inline">{theme === 'dark' ? 'Claro' : 'Oscuro'}</span>
+    </button>
+  );
+}
 
 function useMe() {
   const [me, setMe] = useState<Me['user'] | null>(null);
@@ -77,7 +128,6 @@ function Shell() {
   const doGlobalSearch = () => {
     const q = globalQ.trim();
     if (!q) return;
-    // navega pasando la query — la página autocargará resultados
     nav(`/coordinator/students?q=${encodeURIComponent(q)}`);
   };
 
@@ -85,23 +135,21 @@ function Shell() {
     const items: { to:string; label:string; icon:any; show:boolean }[] = [
       { to: '/', label: 'Dashboard', icon: LayoutDashboard, show: true },
       { to: '/coordinator/courses', label: 'Cursos', icon: BookOpen, show: me?.role === 'coordinator' || me?.role === 'admin' },
-      // 🔻 quitamos "Estudiantes" del sidebar como pediste
-      // { to: '/coordinator/students', label: 'Estudiantes', icon: Users, show: me?.role === 'coordinator' || me?.role === 'admin' },
       { to: '/coordinator/users', label: 'Personas', icon: Users, show: me?.role === 'coordinator' || me?.role === 'admin' },
       { to: '/teacher/courses', label: 'Mis cursos', icon: ClipboardList, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
-      /* ➕ NUEVO: alumnos del docente */
       { to: '/teacher/students', label: 'Alumnos', icon: Users, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
-      /* ➕ NUEVO: comunicaciones visible para teacher/coord/admin */
+      /* ➕ NUEVO: Crear Sets (visible para teacher/coord/admin) */
+      { to: '/coordinator/practice/sets', label: 'Crear sets', icon: Settings, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
       { to: '/communications', label: 'Comunicaciones', icon: Mail, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
-      /* ➕ NUEVO: Casos (coord/admin) */
       { to: '/staff/cases', label: 'Casos', icon: ClipboardList, show: me?.role === 'coordinator' || me?.role === 'admin' },
       { to: '/me', label: 'Mi perfil', icon: UserCog, show: !!me },
-      /* ➕ NUEVO: comunicaciones para alumnos en el sidebar */
       { to: '/student/communications', label: 'Comunicaciones', icon: Mail, show: me?.role === 'student' },
       { to: '/student/partials', label: 'Informes parciales', icon: FileText, show: me?.role === 'student' },
       { to: '/student/finals', label: 'Boletín', icon: BarChart3, show: me?.role === 'student' },
-      { to: '/student/british', label: 'Británico', icon: GraduationCap, show: me?.role === 'student' }, // NUEVO
+      { to: '/student/british', label: 'Británico', icon: GraduationCap, show: me?.role === 'student' },
       { to: '/student/practice', label: 'Práctica', icon: Settings, show: me?.role === 'student' },
+      /* ➕ agregado: Materiales (alumnos) en el sidebar del alumno */
+      { to: '/student/materials', label: 'Materiales', icon: BookOpen, show: me?.role === 'student' },
     ];
     return items.filter(i => i.show);
   }, [me]);
@@ -109,7 +157,7 @@ function Shell() {
   return (
     <div className="min-h-screen grid grid-rows-[auto,1fr]">
       {/* Topbar */}
-      <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white">
+      <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white dark:bg-slate-900 dark:border-slate-800">
         <div className="mx-auto max-w-7xl px-3 md:px-6 h-14 flex items-center gap-3">
           <button aria-label="Abrir menú" className="md:hidden btn btn-secondary !px-2 !py-2" onClick={()=>setOpen(s=>!s)}>
             <Menu size={20}/>
@@ -141,7 +189,13 @@ function Shell() {
           )}
 
           <div className="ml-auto flex items-center gap-2">
-            <button className="btn btn-secondary !px-3 !py-2" aria-label="Notificaciones"><Bell size={18}/></button>
+            {/* ⬇️ Toggle de tema global */}
+            <ThemeToggle />
+            {/* ⬇️ Campanita con contador */}
+            <NotifBell onClick={() => {
+              if (me?.role === 'student') nav('/student/communications');
+              else nav('/communications');
+            }} />
             {loading ? (
               <div className="h-8 w-24 skeleton" />
             ) : me ? (
@@ -172,7 +226,10 @@ function Shell() {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  className={'flex items-center gap-2 rounded-xl px-3 py-2 hover:bg-neutral-50 ' + (active ? 'bg-neutral-50 font-medium' : '')}
+                  className={
+                    'flex items-center gap-2 rounded-xl px-3 py-2 hover:bg-neutral-50 dark:hover:bg-slate-800 ' +
+                    (active ? 'bg-neutral-50 dark:bg-slate-800 font-medium' : '')
+                  }
                 >
                   <Icon size={18}/><span>{item.label}</span>
                 </NavLink>
@@ -196,6 +253,8 @@ function Home() {
   const [loading, setLoading] = useState(true);
 
   // "Mis cursos" del backend
+  the: {
+  }
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [rows, setRows] = useState<MyCourseRow[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
@@ -254,16 +313,21 @@ function Home() {
               {(me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/coordinator/courses">Cursos (coord)</Link>}
               {(me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/coordinator/students">Buscar alumno</Link>}
               {(me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/coordinator/users">Personas</Link>}
-              {(me.role === 'teacher' || me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/teacher/courses">Mis cursos</Link>}
-              {/* ➕ NUEVO: acceso rápido Alumnos (docente) */}
-              {(me.role === 'teacher' || me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/teacher/students">Alumnos</Link>}
-              {(me.role === 'teacher' || me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/communications">Comunicaciones</Link>}
+              {(me.role === 'teacher' || me.role === 'coordinator' || me?.role === 'admin') && <Link className="btn btn-secondary" to="/teacher/courses">Mis cursos</Link>}
+              {(me.role === 'teacher' || me.role === 'coordinator' || me?.role === 'admin') && <Link className="btn btn-secondary" to="/teacher/students">Alumnos</Link>}
+              {(me.role === 'teacher' || me.role === 'coordinator' || me?.role === 'admin') && <Link className="btn btn-secondary" to="/communications">Comunicaciones</Link>}
+              {/* ➕ NUEVO: Acceso rápido Crear Sets para docentes */}
+              {(me.role === 'teacher' || me.role === 'coordinator' || me?.role === 'admin') && (
+                <Link className="btn btn-secondary" to="/coordinator/practice/sets">Crear sets</Link>
+              )}
               {me && <Link className="btn btn-secondary" to="/me">Mi perfil</Link>}
               {me?.role === 'student' && <Link className="btn btn-secondary" to="/student/communications">Comunicaciones</Link>}
               {me?.role === 'student' && <Link className="btn btn-secondary" to="/student/partials">Informes parciales</Link>}
               {me?.role === 'student' && <Link className="btn btn-secondary" to="/student/finals">Boletín</Link>}
               {me?.role === 'student' && <Link className="btn btn-secondary" to="/student/british">Británico</Link>}
               {me?.role === 'student' && <Link className="btn btn-secondary" to="/student/practice">Práctica</Link>}
+              {/* ➕ NUEVO: acceso rápido a Materiales (alumnos) */}
+              {me?.role === 'student' && <Link className="btn btn-secondary" to="/student/materials">Materiales</Link>}
             </div>
           </div>
         )}
@@ -285,7 +349,8 @@ function Home() {
                     <b>{course.name}</b> —{' '}
                     {Array.isArray(schedule) && schedule.length
                       ? schedule.map(it => fmtItem(it)).join(' · ')
-                      : 'Sin horarios'}
+                      : 'Sin horarios'}{' '}
+                    · <Link to={`/student/course/${course._id}/board`} className="text-brand-primary underline">MURO DEL CURSO</Link>
                   </li>
                 ))}
               </ul>
@@ -293,10 +358,19 @@ function Home() {
           )}
         </div>
       )}
+
+      {/* ➕ NUEVO: Sección Asistencias para el alumno */}
+      {me?.role === 'student' && (
+        <div className="mt-4">
+          <div id="asistencias" />
+          <StudentAttendanceCard />
+        </div>
+      )}
     </div>
   );
 }
 
+/* ===== Login inline (se mantiene la lógica original + fondo imagen) ===== */
 function Login() {
   const nav = useNavigate();
   const [email, setEmail] = useState('profe@inst.test');
@@ -304,25 +378,61 @@ function Login() {
   const [err, setErr] = useState<string | null>(null);
 
   return (
-    <div className="max-w-md mx-auto p-4">
-      <div className="card p-4">
-        <h1 className="font-heading text-xl mb-2">Login</h1>
-        <div className="flex flex-col gap-3">
-          <input className="input" placeholder="email" value={email} onChange={e => setEmail(e.target.value)} />
-          <input className="input" type="password" placeholder="password" value={password} onChange={e => setPassword(e.target.value)} />
-          <button
-            className="btn btn-primary"
-            onClick={async () => {
-              try { setErr(null); await api.login(email, password); nav('/'); }
-              catch (e:any) { setErr(e.message); }
-            }}>
-            Entrar
-          </button>
-          {err && <div className="text-danger">{err}</div>}
-          <small className="text-neutral-700">Usuarios seed: admin/coord/profe/alumno @inst.test con clave *123.</small>
+    <main className="relative min-h-screen grid place-items-center px-4 overflow-hidden">
+      {/* Fondo imagen a pantalla completa */}
+      <img
+        src={hero}
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none select-none absolute inset-0 w-full h-full object-cover"
+      />
+      {/* Overlay para legibilidad (claro/oscuro) */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0
+                   bg-gradient-to-br from-[#0b1025]/70 via-[#0b1025]/40 to-fuchsia-700/25
+                   dark:from-black/70 dark:via-black/55 dark:to-black/35"
+      />
+
+      {/* Card original */}
+      <div className="relative z-10 max-w-md w-full">
+        <div className="card p-4">
+          {/* Branding arriba del login */}
+          <div
+            className="mb-4 rounded-xl px-4 py-3 text-white shadow-sm"
+            style={{ background: 'var(--grad-primary)' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-6 w-6 rounded-lg" style={{ background: 'var(--grad-brand)' }} />
+              <div className="leading-tight">
+                <div className="text-xs font-medium opacity-90 tracking-wide">GLOBAL-T</div>
+                <div className="text-sm font-semibold">CAMPUS INGLÉS</div>
+              </div>
+            </div>
+          </div>
+
+          {/* título + toggle visible */}
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h1 className="font-heading text-xl">Login</h1>
+            <ThemeToggle />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <input className="input" placeholder="email" value={email} onChange={e => setEmail(e.target.value)} />
+            <input className="input" type="password" placeholder="password" value={password} onChange={e => setPassword(e.target.value)} />
+            <button
+              className="btn btn-primary"
+              onClick={async () => {
+                try { setErr(null); await api.login(email, password); nav('/'); }
+                catch (e:any) { setErr(e.message); }
+              }}>
+              Entrar
+            </button>
+            {err && <div className="text-danger">{err}</div>}
+          </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 
@@ -345,6 +455,8 @@ export default function App() {
           <Route path="/coordinator/course/:id/schedule" element={<CoordinatorCourseSchedule />} />
           <Route path="/coordinator/students" element={<CoordinatorStudentSearch />} />
           <Route path="/coordinator/users" element={<CoordinatorUsers />} />
+          {/* ➕ NUEVO: Sets de práctica */}
+          <Route path="/coordinator/practice/sets" element={<CoordinatorPracticeSets />} />
           {/* Alias operativos */}
           <Route path="/coordinator/course/:id/attendance" element={<AttendancePage />} />
           <Route path="/coordinator/course/:id/partials" element={<TeacherCoursePartials />} />
@@ -352,8 +464,12 @@ export default function App() {
           <Route path="/coordinator/course/:id/report" element={<TeacherCourseReport />} />
           <Route path="/coordinator/course/:id/topics" element={<CourseTopicsPage />} />
           <Route path="/coordinator/course/:id/materials" element={<CourseMaterialsPage />} />
+          {/* ➕ NUEVO: Material alumnos (edición) */}
+          <Route path="/coordinator/course/:id/student-materials" element={<CourseStudentMaterials />} />
           {/* ➕ NUEVO: Británico (edición) */}
           <Route path="/coordinator/course/:id/british" element={<CoordinatorBritishCourse mode="edit" />} />
+          {/* ➕ NUEVO: Tablón (coordinador) */}
+          <Route path="/coordinator/course/:id/board" element={<CourseBoardPage />} />
 
           {/* Profesor */}
           <Route path="/teacher/courses" element={<TeacherCourses />} />
@@ -369,6 +485,8 @@ export default function App() {
           <Route path="/teacher/course/:id/materials" element={<CourseMaterialsPage />} />
           {/* ➕ NUEVO: Británico (solo lectura para el profe) */}
           <Route path="/teacher/course/:id/british" element={<CoordinatorBritishCourse mode="view" />} />
+          {/* ➕ NUEVO: Tablón (docente) */}
+          <Route path="/teacher/course/:id/board" element={<CourseBoardPage />} />
 
           {/* ➕ NUEVO: Comunicaciones unificada */}
           <Route path="/communications" element={<Communications />} />
@@ -386,6 +504,10 @@ export default function App() {
           <Route path="/student/finals" element={<StudentFinalCards />} />
           <Route path="/student/british" element={<StudentBritishExam />} /> {/* NUEVO */}
           <Route path="/student/practice" element={<StudentPractice />} />
+          {/* ➕ NUEVO: Material alumnos (vista) */}
+          <Route path="/student/materials" element={<StudentMaterials />} />
+          {/* ➕ NUEVO: Tablón (alumno) */}
+          <Route path="/student/course/:id/board" element={<CourseBoardPage />} />
 
           {/* Imprimible A4 específico */}
           <Route path="/print/final/:courseId/:studentId" element={<PrintFinalReport />} />

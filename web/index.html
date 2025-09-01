@@ -2,11 +2,28 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Global-T</title>
+    <meta name="color-scheme" content="light dark" />
+
+    <!-- Evita parpadeo y respeta preferencia del SO/localStorage -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('theme');
+          var prefersDark =
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if ((saved === null && prefersDark) || saved === 'dark') {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <noscript>Necesitas habilitar JavaScript para usar esta app.</noscript>
   </body>
 </html>

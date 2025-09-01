@@ -1,8 +1,11 @@
-
 import { Router } from 'express';
 import { z } from 'zod';
 import { allowRoles, requireAuth } from '../middlewares/rbac';
 import { User } from '../models/user';
+
+/* ➕ NUEVO: para el endpoint enriquecido */
+import { Course } from '../models/course';
+import { Enrollment } from '../models/enrollment';
 
 const router = Router();
 
@@ -34,7 +37,107 @@ function toStudentPublic(u: any) {
   };
 }
 
-/* ========= NUEVO: endpoints basados en User (role=student) ========= */
+/* ========= NUEVO: endpoint enriquecido para “Buscar alumno” ========= */
+/**
+ * GET /students/courses?q=&year=&campus=
+ * Devuelve alumnos con sus cursos del año y el DOCENTE (con photoUrl).
+ * No reemplaza nada existente: es un agregado seguro.
+ */
+router.get(
+  '/students/courses',
+  requireAuth,
+  allowRoles('coordinator', 'admin', 'teacher'),
+  async (req, res, next) => {
+    try {
+      const q = (req.query.q as string | undefined)?.trim().toLowerCase() || '';
+      const year = Number(req.query.year) || new Date().getFullYear();
+      const campus = (req.query.campus as 'DERQUI' | 'JOSE_C_PAZ' | undefined) || undefined;
+
+      // 1) Cursos del año (+ campus si vino), con docente poblado (name + photoUrl)
+      const cWhere: any = { year };
+      if (campus) cWhere.campus = campus;
+
+      const courses = await Course.find(cWhere)
+        .select('_id name year campus teacher')
+        .populate('teacher', 'name photoUrl')
+        .lean();
+
+      const courseIds = courses.map(c => c._id);
+      const courseMap = new Map<string, any>(
+        courses.map(c => [
+          String(c._id),
+          {
+            _id: String(c._id),
+            name: c.name,
+            year: c.year,
+            campus: c.campus,
+            teacher: c.teacher
+              ? {
+                  _id: String((c.teacher as any)._id),
+                  name: (c.teacher as any).name,
+                  photoUrl: (c.teacher as any).photoUrl || null,
+                }
+              : null,
+          },
+        ])
+      );
+
+      // 2) Inscripciones activas, con datos básicos del alumno
+      const enrolls = await Enrollment.find({
+        course: { $in: courseIds },
+        status: 'active',
+      })
+        .populate('student', 'name email photoUrl dob phone tutor tutorPhone guardianPhone campus')
+        .select('course student')
+        .lean();
+
+      // 3) Agrupamos por alumno + filtro q si vino
+      const byStudent = new Map<string, any>();
+      for (const e of enrolls) {
+        const s = e.student as any;
+        if (!s?._id) continue;
+
+        if (
+          q &&
+          !(`${s.name || ''} ${s.email || ''}`.toLowerCase().includes(q))
+        ) {
+          continue;
+        }
+
+        const sid = String(s._id);
+        if (!byStudent.has(sid)) {
+          byStudent.set(sid, {
+            _id: sid,
+            name: s.name,
+            email: s.email || '',
+            photoUrl: s.photoUrl || null,
+            dob: s.dob ?? null,
+            phone: s.phone || '',
+            tutor: s.tutor || '',
+            tutorPhone: s.tutorPhone || s.guardianPhone || '',
+            campus: s.campus,
+            courses: [] as any[],
+          });
+        }
+        const row = byStudent.get(sid);
+        const cinfo = courseMap.get(String(e.course));
+        if (cinfo && !row.courses.find((x: any) => x._id === cinfo._id)) {
+          row.courses.push(cinfo);
+        }
+      }
+
+      const rows = Array.from(byStudent.values()).sort((a, b) =>
+        String(a.name).localeCompare(String(b.name), 'es', { sensitivity: 'base' })
+      );
+
+      res.json({ year, rows });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/* ========= Endpoints ya existentes (se mantienen igual) ========= */
 
 /** GET /students/search?q=  -> para autocompletes del modal */
 router.get(
@@ -49,8 +152,7 @@ router.get(
         const rx = new RegExp(q, 'i');
         where.$or = [{ name: rx }, { email: rx }];
       }
-      // Si querés solo activos, descomenta:
-      // where.active = true;
+      // where.active = true; // si quisieras solo activos
 
       const rows = await User.find(where, { passwordHash: 0 })
         .sort({ name: 1 })
@@ -58,7 +160,6 @@ router.get(
         .lean();
 
       const payload = rows.map(toStudentPublic);
-      // devolvemos ambas keys por compatibilidad con UIs antiguas
       res.json({ rows: payload, students: payload });
     } catch (e) {
       next(e);
@@ -79,7 +180,6 @@ router.get(
         const rx = new RegExp(q.trim(), 'i');
         where.$or = [{ name: rx }, { email: rx }];
       }
-      // where.active = true; // opcional
 
       const [rows, total] = await Promise.all([
         User.find(where, { passwordHash: 0 })
@@ -153,7 +253,7 @@ router.get(
   }
 );
 
-// PUT por id (coordinador/admin editan cualquier campo básico + campus)
+// PUT por id (coordinador/admin)
 const adminUpdateSchema = updateMeSchema.extend({
   campus: z.enum(['DERQUI', 'JOSE_C_PAZ']).optional(),
 });
@@ -166,7 +266,11 @@ router.put(
       const data = adminUpdateSchema.parse(req.body);
       const $set: any = { ...data };
       if (data.birthDate) $set.birthDate = new Date(data.birthDate);
-      const u = await User.findByIdAndUpdate(req.params.id, { $set }, { new: true, projection: { passwordHash: 0 } }).lean();
+      const u = await User.findByIdAndUpdate(
+        req.params.id,
+        { $set },
+        { new: true, projection: { passwordHash: 0 } }
+      ).lean();
       res.json({ ok: true, student: u ? toStudentPublic(u) : null });
     } catch (e) {
       next(e);

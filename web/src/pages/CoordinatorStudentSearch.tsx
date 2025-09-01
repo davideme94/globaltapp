@@ -6,6 +6,9 @@ import { api, type Course } from '../lib/api';
 /* ----------------- helpers ----------------- */
 type Campus = 'DERQUI' | 'JOSE_C_PAZ' | string;
 
+type TeacherMini = { _id: string; name: string; photoUrl?: string | null };
+type CourseMini = { _id: string; name: string; year: number; campus: Campus; teacher?: TeacherMini | null };
+
 type Row = {
   _id: string;
   name: string;
@@ -15,8 +18,8 @@ type Row = {
   phone?: string;
   tutor?: string;
   tutorPhone?: string;
-  campuses: Campus[];
-  courses: { _id: string; name: string; year: number; campus: Campus }[];
+  campus?: Campus;
+  courses: CourseMini[];
 };
 
 function calcAge(dob?: string | null) {
@@ -44,33 +47,25 @@ function initialsFromName(name: string) {
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
-    .map(p => p[0]?.toUpperCase() || '')
+    .map((p) => p[0]?.toUpperCase() || '')
     .join('') || '??';
 }
 
-function Avatar({ name, photoUrl }: { name: string; photoUrl?: string }) {
+function Avatar({ name, photoUrl, size = 36 }: { name: string; photoUrl?: string | null; size?: number }) {
   const src = resolveUploadUrl(photoUrl);
-  const fallback = `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(
-    initialsFromName(name)
-  )}`;
+  const fallback = `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(initialsFromName(name))}`;
   return (
-    <div className="flex items-center gap-3">
-      <div className="h-9 w-9 rounded-full overflow-hidden bg-neutral-200 flex items-center justify-center">
-        {/* eslint-disable-next-line jsx-a11y/img-redundant-alt */}
-        <img
-          src={src || fallback}
-          alt={`Foto de ${name}`}
-          className="h-9 w-9 object-cover"
-          onError={(e) => {
-            const el = e.currentTarget as HTMLImageElement;
-            if (el.src !== fallback) el.src = fallback;
-          }}
-        />
-      </div>
-      <div className="min-w-0">
-        <div className="font-medium truncate">{name}</div>
-      </div>
-    </div>
+    // eslint-disable-next-line jsx-a11y/img-redundant-alt
+    <img
+      src={src || fallback}
+      alt={`Foto de ${name}`}
+      className="rounded-full object-cover bg-neutral-200"
+      style={{ width: size, height: size }}
+      onError={(e) => {
+        const el = e.currentTarget as HTMLImageElement;
+        if (el.src !== fallback) el.src = fallback;
+      }}
+    />
   );
 }
 
@@ -95,67 +90,124 @@ export default function CoordinatorStudentSearch() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // una vez
 
+  /** 🔹 Fallback a tu método anterior (cursos+roster) por compatibilidad */
+  async function buildFromRoster(): Promise<Row[]> {
+    const list = await api.courses.list({
+      year,
+      campus: campus === 'ALL' ? (undefined as any) : (campus as any),
+    });
+    const courses = (list.courses || []) as Course[];
+
+    const map = new Map<string, Row>();
+    for (const c of courses) {
+      try {
+        const r = await api.courses.roster(c._id);
+        for (const it of r.roster || []) {
+          const s: any = it?.student || {};
+          if (!s?._id) continue;
+
+          // filtro por q
+          if (q.trim()) {
+            const hay = (`${s.name || ''} ${s.email || ''}`)
+              .toLowerCase()
+              .includes(q.trim().toLowerCase());
+            if (!hay) continue;
+          }
+
+          if (!map.has(s._id)) {
+            map.set(s._id, {
+              _id: s._id,
+              name: s.name,
+              email: s.email,
+              photoUrl: s.photoUrl,
+              dob: s.dob,
+              phone: s.phone,
+              tutor: s.tutor || s.tutorName,
+              tutorPhone: s.tutorPhone,
+              courses: [
+                {
+                  _id: c._id,
+                  name: c.name,
+                  year: c.year,
+                  campus: c.campus as Campus,
+                  // teacher puede venir poblado en /courses si lo tenés así
+                  // @ts-ignore
+                  teacher: (c as any).teacher
+                    ? {
+                        // @ts-ignore
+                        _id: String((c as any).teacher._id),
+                        // @ts-ignore
+                        name: (c as any).teacher.name,
+                        // @ts-ignore
+                        photoUrl: (c as any).teacher.photoUrl || null,
+                      }
+                    : null,
+                },
+              ],
+            });
+          } else {
+            const row = map.get(s._id)!;
+            if (!row.courses.some((x) => x._id === c._id)) {
+              row.courses.push({
+                _id: c._id,
+                name: c.name,
+                year: c.year,
+                campus: c.campus as Campus,
+                // @ts-ignore
+                teacher: (c as any).teacher
+                  ? {
+                      // @ts-ignore
+                      _id: String((c as any).teacher._id),
+                      // @ts-ignore
+                      name: (c as any).teacher.name,
+                      // @ts-ignore
+                      photoUrl: (c as any).teacher.photoUrl || null,
+                    }
+                  : null,
+              });
+            }
+          }
+        }
+      } catch {
+        // si el roster falla, seguimos con el resto
+      }
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+    );
+  }
+
   async function onSearch() {
     setLoading(true);
     setError(null);
     try {
-      // 1) cursos del año (y opcional sede)
-      const list = await api.courses.list({ year, campus: campus === 'ALL' ? undefined as any : (campus as any) });
-      const courses = (list.courses || []) as Course[];
+      // 🔸 Primero intento el endpoint nuevo (más eficiente y ya trae teacher+foto)
+      const params = new URLSearchParams();
+      if (q.trim()) params.set('q', q.trim());
+      params.set('year', String(year));
+      if (campus !== 'ALL') params.set('campus', String(campus));
 
-      // 2) recorro rosters y armo mapa por alumno
-      const map = new Map<string, Row>();
+      const resp = await fetch(`/api/students/courses?${params.toString()}`, {
+        credentials: 'include',
+      });
 
-      for (const c of courses) {
-        try {
-          const r = await api.courses.roster(c._id);
-          for (const it of r.roster || []) {
-            const s: any = it?.student || {};
-            if (!s?._id) continue;
-
-            // si hay texto, filtro por nombre/email (case-insensitive)
-            const hayTexto = q.trim().length > 0;
-            if (hayTexto) {
-              const hay = (`${s.name || ''} ${s.email || ''}`).toLowerCase().includes(q.trim().toLowerCase());
-              if (!hay) continue;
-            }
-
-            if (!map.has(s._id)) {
-              map.set(s._id, {
-                _id: s._id,
-                name: s.name,
-                email: s.email,
-                photoUrl: s.photoUrl,
-                dob: s.dob,
-                phone: s.phone,
-                tutor: s.tutor || s.tutorName,
-                tutorPhone: s.tutorPhone,
-                campuses: [c.campus as Campus],
-                courses: [{ _id: c._id, name: c.name, year: c.year, campus: c.campus as Campus }],
-              });
-            } else {
-              const row = map.get(s._id)!;
-              // campus único
-              if (!row.campuses.includes(c.campus as Campus)) row.campuses.push(c.campus as Campus);
-              // curso
-              if (!row.courses.some(x => x._id === c._id)) {
-                row.courses.push({ _id: c._id, name: c.name, year: c.year, campus: c.campus as Campus });
-              }
-            }
-          }
-        } catch {
-          // si el roster falla, sigo con el resto
-        }
+      if (resp.ok) {
+        const data = await resp.json();
+        setRows((data.rows || []) as Row[]);
+      } else {
+        // Fallback silencioso a método anterior
+        const fallbackRows = await buildFromRoster();
+        setRows(fallbackRows);
       }
-
-      const listRows = Array.from(map.values()).sort((a, b) =>
-        a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
-      );
-
-      setRows(listRows);
-    } catch (e: any) {
-      setError(e?.message || 'Error al buscar alumnos');
-      setRows([]);
+    } catch {
+      // Fallback si hubo error de red
+      try {
+        const fallbackRows = await buildFromRoster();
+        setRows(fallbackRows);
+      } catch (e: any) {
+        setError(e?.message || 'Error al buscar alumnos');
+        setRows([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -176,20 +228,26 @@ export default function CoordinatorStudentSearch() {
           className="input w-full md:w-[420px]"
           placeholder="Nombre o email del alumno"
           value={q}
-          onChange={e => setQ(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') onSearch(); }}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onSearch();
+          }}
         />
         <select
           className="input w-full md:w-[120px]"
           value={year}
-          onChange={e => setYear(Number(e.target.value))}
+          onChange={(e) => setYear(Number(e.target.value))}
         >
-          {yearOpts.map(y => <option key={y} value={y}>{y}</option>)}
+          {yearOpts.map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
         </select>
         <select
           className="input w-full md:w-[180px]"
           value={campus}
-          onChange={e => setCampus(e.target.value as any)}
+          onChange={(e) => setCampus(e.target.value as any)}
         >
           <option value="ALL">Todas las sedes</option>
           <option value="DERQUI">DERQUI</option>
@@ -209,7 +267,7 @@ export default function CoordinatorStudentSearch() {
           <thead className="sticky top-0 bg-white">
             <tr className="text-left text-neutral-700">
               <th className="px-3 py-2 border-b">Alumno</th>
-              <th className="px-3 py-2 border-b">Curso(s)</th>
+              <th className="px-3 py-2 border-b">Curso(s) y Docente</th>
               <th className="px-3 py-2 border-b">Edad</th>
               <th className="px-3 py-2 border-b">Tel.</th>
               <th className="px-3 py-2 border-b">Tutor</th>
@@ -219,78 +277,103 @@ export default function CoordinatorStudentSearch() {
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={7} className="px-3 py-6"><div className="h-16 skeleton" /></td></tr>
+              <tr>
+                <td colSpan={7} className="px-3 py-6">
+                  <div className="h-16 skeleton" />
+                </td>
+              </tr>
             )}
 
             {!loading && rows.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-3 py-6 text-neutral-700">
-                  Sin resultados. Probá escribir al menos 3 letras del nombre o email y presioná “Buscar”.
+                  Sin resultados. Escribí al menos 3 letras del nombre o email y presioná “Buscar”.
                 </td>
               </tr>
             )}
 
-            {!loading && rows.map(s => {
-              const c0 = s.courses[0];
-              const coursesLabel = s.courses
-                .map(c => `${c.name} ${c.year ? `(${c.year})` : ''} — ${c.campus}`)
-                .join(' · ');
+            {!loading &&
+              rows.map((s) => {
+                const c0 = s.courses[0];
 
-              return (
-                <tr key={s._id} className="border-t">
-                  {/* Alumno */}
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={s.name} photoUrl={s.photoUrl} />
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{s.name}</div>
-                        <div className="text-xs text-neutral-600 truncate">{s.email || '—'}</div>
+                return (
+                  <tr key={s._id} className="border-t align-top">
+                    {/* Alumno */}
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={s.name} photoUrl={s.photoUrl} />
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{s.name}</div>
+                          <div className="text-xs text-neutral-600 truncate">{s.email || '—'}</div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
+                    </td>
 
-                  {/* Cursos */}
-                  <td className="px-3 py-2 whitespace-pre-wrap">{coursesLabel || '—'}</td>
-
-                  {/* Edad */}
-                  <td className="px-3 py-2">{calcAge(s.dob) || '—'}</td>
-
-                  {/* Tel alumno */}
-                  <td className="px-3 py-2">{s.phone || '—'}</td>
-
-                  {/* Tutor */}
-                  <td className="px-3 py-2">{s.tutor || '—'}</td>
-
-                  {/* Tel tutor */}
-                  <td className="px-3 py-2">{s.tutorPhone || '—'}</td>
-
-                  {/* Acciones */}
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    {c0 ? (
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <Link to={`/coordinator/course/${c0._id}/boletin`} className="text-brand-primary underline">
-                          Boletín
-                        </Link>
-                        <span>·</span>
-                        <Link to={`/coordinator/course/${c0._id}/partials`} className="text-brand-primary underline">
-                          Reporte parcial
-                        </Link>
-                        <span>·</span>
-                        <Link to={`/coordinator/course/${c0._id}/british`} className="text-brand-primary underline">
-                          Británico
-                        </Link>
-                        <span>·</span>
-                        <Link to={`/communications`} className="text-brand-primary underline">
-                          Comunicaciones
-                        </Link>
+                    {/* Cursos + Docente */}
+                    <td className="px-3 py-2">
+                      <div className="flex flex-col gap-2">
+                        {s.courses && s.courses.length ? (
+                          s.courses.map((c) => (
+                            <div key={c._id} className="flex items-center gap-2">
+                              <span className="inline-flex items-center rounded-lg bg-neutral-50 px-2 py-1">
+                                <span className="font-medium">{c.name}</span>
+                                <span className="mx-1 text-neutral-600">—</span>
+                                <span className="text-neutral-700">{c.campus}</span>
+                                {c.year ? <span className="ml-1 text-neutral-600">({c.year})</span> : null}
+                              </span>
+                              {c.teacher && (
+                                <span className="inline-flex items-center gap-2">
+                                  <Avatar name={c.teacher.name} photoUrl={c.teacher.photoUrl} size={20} />
+                                  <span className="text-neutral-800">{c.teacher.name}</span>
+                                </span>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <span>—</span>
+                        )}
                       </div>
-                    ) : (
-                      <span className="text-neutral-500">—</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
+                    </td>
+
+                    {/* Edad */}
+                    <td className="px-3 py-2">{calcAge(s.dob) || '—'}</td>
+
+                    {/* Tel alumno */}
+                    <td className="px-3 py-2">{s.phone || '—'}</td>
+
+                    {/* Tutor */}
+                    <td className="px-3 py-2">{s.tutor || '—'}</td>
+
+                    {/* Tel tutor */}
+                    <td className="px-3 py-2">{s.tutorPhone || '—'}</td>
+
+                    {/* Acciones */}
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {c0 ? (
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <Link to={`/coordinator/course/${c0._id}/boletin`} className="text-brand-primary underline">
+                            Boletín
+                          </Link>
+                          <span>·</span>
+                          <Link to={`/coordinator/course/${c0._id}/partials`} className="text-brand-primary underline">
+                            Reporte parcial
+                          </Link>
+                          <span>·</span>
+                          <Link to={`/coordinator/course/${c0._id}/british`} className="text-brand-primary underline">
+                            Británico
+                          </Link>
+                          <span>·</span>
+                          <Link to={`/communications`} className="text-brand-primary underline">
+                            Comunicaciones
+                          </Link>
+                        </div>
+                      ) : (
+                        <span className="text-neutral-500">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
           </tbody>
         </table>
       </div>

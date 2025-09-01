@@ -11,7 +11,9 @@
     "start": "node dist/src/index.js",
     "seed": "tsx scripts/seed.ts",
     "seed:force": "SEED_FORCE=1 tsx scripts/seed.ts",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "fix-indexes": "node -r dotenv/config fix-indexes.js"
+    
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

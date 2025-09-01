@@ -54,6 +54,10 @@ function Item({
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
 
+  // 👇 NUEVO: título solo = categoría; cuerpo = body || title (compat)
+  const displayTitle = tag.name;
+  const bodyText = (c.body && c.body.trim().length ? c.body : (c.title || '')).trim();
+
   return (
     <div
       style={{
@@ -86,7 +90,8 @@ function Item({
           >
             {tag.name}
           </span>
-          <b>{c.title || '(Sin asunto)'}</b>
+          {/* 👇 Antes estaba c.title; ahora solo mostramos la categoría como título */}
+          <b>{displayTitle || '(Sin asunto)'}</b>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <small>
@@ -105,7 +110,10 @@ function Item({
         </div>
       </div>
 
-      <div style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>{c.body || ''}</div>
+      {/* 👇 Contenido: mensaje (body) o, si no hay, title. Ya no se duplica */}
+      {bodyText && (
+        <div style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>{bodyText}</div>
+      )}
 
       <div style={{ marginTop: 6, fontSize: 12, color: '#64748b' }}>
         {courseName ? <>Curso: {courseName} — </> : null}

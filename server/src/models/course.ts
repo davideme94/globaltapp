@@ -12,6 +12,14 @@ export interface ICourse extends Document<Types.ObjectId> {
   // ⬇⬇ IMPORTANTE: cada item incluye 'day'
   schedule: { day?: 'MON'|'TUE'|'WED'|'THU'|'FRI'|'SAT'; start: string; end: string }[];
   links?: { syllabusUrl?: string; materialsUrl?: string } | null;
+
+  /** ➕ NUEVO: materiales visibles para alumnos */
+  studentMaterials?: {
+    studentBook?: string;
+    workbook?: string;
+    reader?: string;
+  } | null;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,6 +30,16 @@ const scheduleItemSchema = new Schema(
     day:   { type: String, enum: ['MON','TUE','WED','THU','FRI','SAT'], required: false },
     start: { type: String, required: true }, // HH:MM
     end:   { type: String, required: true }, // HH:MM
+  },
+  { _id: false }
+);
+
+/** ➕ NUEVO: subdocumento con los 3 links para alumnos */
+const studentMaterialsSchema = new Schema(
+  {
+    studentBook: { type: String, default: '' },
+    workbook:    { type: String, default: '' },
+    reader:      { type: String, default: '' },
   },
   { _id: false }
 );
@@ -38,6 +56,9 @@ const courseSchema = new Schema<ICourse>(
     schedule: { type: [scheduleItemSchema], default: [] },
 
     links:   { type: Object, default: null },
+
+    /** ➕ NUEVO: donde se guardan los 3 links */
+    studentMaterials: { type: studentMaterialsSchema, default: {} },
   },
   { timestamps: true }
 );

@@ -44,6 +44,7 @@ import meRoutes from './routes/me';
 /** 👇👇👇  NUEVO: montar las rutas de Casos y de Alertas  */
 import casesRoute from './routes/cases';
 import alertsRoute from './routes/alerts';
+import boardRouter from './routes/board';
 /** ☝☝☝  (asegurate de tener export default router en esos archivos) */
 
 const app = express();
@@ -105,6 +106,7 @@ app.use('/api', meRoutes);
 /** 👇👇👇  NUEVO: activar endpoints de Casos y Alertas  */
 app.use('/api', casesRoute);
 app.use('/api', alertsRoute);
+app.use('/api', boardRouter);
 /** ☝☝☝ */
 
 /** Errores */

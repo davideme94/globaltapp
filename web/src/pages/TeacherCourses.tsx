@@ -196,6 +196,10 @@ export default function TeacherCourses() {
                 </Link>{' '}{'·'}{' '}
                 <Link to={`/teacher/course/${c._id}/materials`} className="text-brand-primary underline">
                   Material del curso
+                </Link>{' '}{'·'}{' '}
+                {/* ➕ NUEVO: Tablón */}
+                <Link to={`/teacher/course/${c._id}/board`} className="text-brand-primary underline">
+                  MURO
                 </Link>
               </div>
             </div>

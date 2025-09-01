@@ -206,7 +206,7 @@ router.post(
   }
 );
 
-/** DELETE /users/:id  (seguro con chequeos) */
+/** DELETE /users/:id  (permite borrar alumno si NO tiene inscripciones ACTIVAS) */
 router.delete(
   '/users/:id',
   requireAuth,
@@ -218,9 +218,16 @@ router.delete(
       if (!u) return res.status(404).json({ error: 'Usuario no encontrado' });
 
       if (u.role === 'student') {
-        const cnt = await Enrollment.countDocuments({ student: id });
-        if (cnt > 0) return res.status(409).json({ error: 'No se puede borrar: alumno con inscripciones' });
+        // ✅ Solo bloquea si hay inscripciones ACTIVAS
+        const activeCount = await Enrollment.countDocuments({ student: id, status: 'active' });
+        if (activeCount > 0) {
+          return res.status(409).json({ error: 'No se puede borrar: alumno con inscripciones ACTIVAS' });
+        }
+
+        // Limpieza opcional: purgar inscripciones históricas (no activas)
+        await Enrollment.deleteMany({ student: id, status: { $ne: 'active' } });
       }
+
       if (u.role === 'teacher') {
         const cnt = await Course.countDocuments({ teacher: id });
         if (cnt > 0) return res.status(409).json({ error: 'No se puede borrar: docente asignado a cursos' });
