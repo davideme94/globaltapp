@@ -41,11 +41,10 @@ import usersRoute from './routes/users';
 import uploadsRoute from './routes/uploads';
 import meRoutes from './routes/me';
 
-/** 👇👇👇  NUEVO: montar las rutas de Casos y de Alertas  */
+/** 👇👇👇 NUEVO: Casos y Alertas  */
 import casesRoute from './routes/cases';
 import alertsRoute from './routes/alerts';
 import boardRouter from './routes/board';
-/** ☝☝☝  (asegurate de tener export default router en esos archivos) */
 
 const app = express();
 app.set('trust proxy', 1);
@@ -68,18 +67,12 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
-
-/** Static para avatares/archivos subidos */
 app.use('/uploads', express.static(path.resolve('uploads')));
 
-/** Rutas API base */
+/** Rutas API */
 app.use('/api', healthRoute);
 app.use('/api', authRoute);
-
-/** Primero: manage (inscripción con year) */
 app.use('/api', courseManageRoute);
-
-/** Luego el resto */
 app.use('/api', coursesRoute);
 app.use('/api', studentsRoute);
 app.use('/api', communicationsRoute);
@@ -92,22 +85,14 @@ app.use('/api', courseLinksRoute);
 app.use('/api', practiceRoute);
 app.use('/api', scheduleRoute);
 app.use('/api', britishRoutes);
-
-/** Mis inscripciones + compat cursos/míos */
 app.use('/api', enrollmentsRoute);
 app.use('/api', coursesMineRoute);
-
-/** utilitarios */
 app.use('/api', usersRoute);
-// app.use('/api', profileRoute);
 app.use('/api', uploadsRoute);
 app.use('/api', meRoutes);
-
-/** 👇👇👇  NUEVO: activar endpoints de Casos y Alertas  */
 app.use('/api', casesRoute);
 app.use('/api', alertsRoute);
 app.use('/api', boardRouter);
-/** ☝☝☝ */
 
 /** Errores */
 app.use(errorHandler);
@@ -115,8 +100,12 @@ app.use(errorHandler);
 /** Bootstrap */
 async function bootstrap() {
   await connectDB();
-  app.listen(env.PORT, env.HOST, () => {
-    console.log(`[server] ${env.NODE_ENV} - http://${env.HOST}:${env.PORT}`);
+
+  const PORT = Number(process.env.PORT ?? env.PORT ?? 4000);
+  const HOST = env.HOST || '0.0.0.0';
+
+  app.listen(PORT, HOST, () => {
+    console.log(`[server] ${env.NODE_ENV} - http://${HOST}:${PORT}`);
     console.log(`[server] CORS allowed origins: ${env.CLIENT_ORIGINS.join(', ')}`);
   });
 }
