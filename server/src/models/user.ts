@@ -12,6 +12,7 @@ export interface IUser extends Document<Types.ObjectId> {
   role: Role;
   campus: Campus;
   phone?: string;
+  avatarUrl?: string;  // 👈 agregar este campo opcional
   guardianPhone?: string;
   address?: string;
   photoUrl?: string;
