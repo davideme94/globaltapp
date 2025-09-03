@@ -194,3 +194,26 @@ h1,h2,h3,h4 { @apply font-heading text-neutral-900; }
 @media print {
   html { color-scheme: light; }
 }
+
+/* === Helpers de scroll horizontal para tablas === */
+.scroll-x {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch; /* swipe suave en móviles */
+}
+
+/* sticky header opcional */
+.sticky-thead thead th {
+  position: sticky;
+  top: 0;
+  background: #fff;            /* ajustá si usás dark */
+  z-index: 1;
+}
+
+/* utilidades para controlar cortes de texto */
+.nowrap { white-space: nowrap; }
+.wrap   { white-space: normal; word-break: break-word; }
+
+html.dark .sticky-thead thead th { background: #0f172a; /* slate-900, por ejemplo */ }
+
