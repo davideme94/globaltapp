@@ -173,7 +173,7 @@ function TermCard({
         {TERM_LABEL[term]}
       </div>
 
-      {/* padding-top extra para que el badge no tape la primera fila */}
+      {/* padding-top extra para que el badge no tape la primera filaa */}
       <div className="p-4 pt-10 md:pt-12 space-y-3">
         {!report ? (
           <div className="text-neutral-700">Sin datos</div>
