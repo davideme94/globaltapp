@@ -5,7 +5,7 @@ import mongoose, { type Types } from 'mongoose';
 import { requireAuth, allowRoles } from '../middlewares/rbac';
 import { ExamModel } from '../models/examModel';
 import { ExamGrade } from '../models/examGrade';
-import { Enrollment } from '../models/enrollment';
+// import { Enrollment } from '../models/enrollment'; // (no se usa aquí)
 
 const r = Router();
 
@@ -20,7 +20,7 @@ function baseModels() {
   ];
 }
 
-/* Seed: crea 6 modelos por curso (solo coord/admin) */
+/* ========= Semilla manual (permanece igual) ========= */
 r.post(
   '/courses/:courseId/exam-models/seed',
   requireAuth, allowRoles('coordinator', 'admin'),
@@ -39,11 +39,11 @@ r.post(
   }
 );
 
-/* GET listado:
-   - SIN sesión → SOLO visibles (myGrade = null)
-   - Con sesión alumno → visibles + myGrade
-   - Con sesión teacher/coord/admin → TODOS + gradesCount
-   Nota: NO usamos requireAuth para no disparar 401 (logout) si la cookie no viaja.
+/* ========= Listado público con AUTOSEED =========
+   - Si el curso no tiene modelos, los crea automáticamente (sin sesión) y devuelve los 6.
+   - Si hay sesión y es alumno → devuelve solo visibles + su myGrade.
+   - Si hay sesión y es staff → devuelve todos + gradesCount.
+   - Si NO hay sesión → devuelve solo visibles (myGrade=null).
 */
 r.get('/courses/:courseId/exam-models', async (req, res, next) => {
   try {
@@ -52,13 +52,22 @@ r.get('/courses/:courseId/exam-models', async (req, res, next) => {
       | undefined;
 
     const course = new mongoose.Types.ObjectId(req.params.courseId);
-    const models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
 
-    // Sin user ⇒ devolver solo visibles
+    // Traer existentes
+    let models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
+
+    // AUTOSEED si no hay ninguno (sin exigir sesión)
+    if (!models.length) {
+      await ExamModel.insertMany(baseModels().map(b => ({ ...b, course })), { ordered: false });
+      models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
+    }
+
+    // Sin user → visibles sin myGrade
     if (!user?.role) {
       return res.json(models.filter(m => m.visible).map(m => ({ ...m, myGrade: null })));
     }
 
+    // Alumno → visibles + su myGrade
     if (user.role === 'student') {
       const visibles = models.filter(m => m.visible);
       const ids = visibles.map(m => m._id);
@@ -68,7 +77,7 @@ r.get('/courses/:courseId/exam-models', async (req, res, next) => {
       return res.json(visibles.map(m => ({ ...m, myGrade: map.get(String(m._id)) || null })));
     }
 
-    // Staff
+    // Staff → todos + count de calificaciones
     const ids = models.map(m => m._id);
     const agg = await ExamGrade.aggregate([
       { $match: { exam: { $in: ids } } },
@@ -79,7 +88,7 @@ r.get('/courses/:courseId/exam-models', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-/* Editar link/visibilidad */
+/* ========= Editar link/visibilidad (protegido) ========= */
 const editSchema = z.object({
   driveUrl: z.string().url().optional().or(z.literal('')),
   visible: z.boolean().optional(),
@@ -95,7 +104,7 @@ r.put(
 
       const body = editSchema.parse(req.body);
 
-      // Docente NO puede actualizar driveUrl (solo coord/admin)
+      // Docente NO puede modificar el link; sí puede visible
       if (user.role === 'teacher' && Object.prototype.hasOwnProperty.call(body, 'driveUrl')) {
         return res.status(403).json({ error: 'Solo coordinador/administrativo puede editar el link.' });
       }
@@ -110,7 +119,7 @@ r.put(
   }
 );
 
-/* Cargar nota de un alumno (teacher/coord/admin) */
+/* ========= Cargar nota (protegido) ========= */
 const gradeSchema = z.object({
   studentId: z.string(),
   resultPass3: z.enum(['PASS', 'BARELY_PASS', 'FAILED']).optional(),
@@ -146,3 +155,4 @@ r.put(
 );
 
 export default r;
+
