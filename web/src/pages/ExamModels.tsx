@@ -21,24 +21,51 @@ export default function ExamModels() {
 
   useEffect(() => {
     if (!me) return;
+
+    // Helper: verifica si el curso pertenece al docente actual
+    const isCourseAssignedToMe = async (cId: string): Promise<boolean> => {
+      try {
+        // Preferido: endpoint que confirma si este docente es el del curso
+        const t = await api.courses.teacher(cId); // debería 200 solo si pertenece
+        // Intentamos detectar id del teacher retornado (si lo expone)
+        const teacherId =
+          (t && (t.teacher?._id || t.teacherId || t.teacher?._id?.toString?.())) || null;
+        if (teacherId && me?._id && String(teacherId) === String(me._id)) return true;
+        // Si no expone teacher o devuelve 200 para todos, caemos al roster
+      } catch {
+        // 403/404 ≙ no pertenece → seguimos a roster para doble chequeo por si la API varía
+      }
+      try {
+        const r = await api.courses.roster(cId);
+        // muchas APIs devuelven course con teacher, o un array con role
+        const courseTeacherId =
+          (r && (r.course?.teacher?._id || r.course?.teacherId)) || null;
+        if (courseTeacherId && me?._id && String(courseTeacherId) === String(me._id)) return true;
+
+        // Fallback extra: a veces en roster viene un array "staff" con roles
+        const staffArr: any[] = (r && (r.staff || r.assistants || [])) || [];
+        if (me?._id && staffArr.some(s => String(s?._id || s?.userId) === String(me._id))) {
+          return true;
+        }
+      } catch {
+        // si falla roster, consideramos que no pertenece
+      }
+      return false;
+    };
+
     if (['coordinator','admin'].includes(me.role)) {
       api.courses.list().then(r => setCourses(r.courses || [])).catch(()=>setCourses([]));
     } else if (me.role === 'teacher') {
-      // 👉 Docente: mostrar SOLO cursos en los que está asignado
+      // Docente: mostrar SOLO cursos asignados
       api.courses.list()
         .then(async (r) => {
           const all: CourseOpt[] = r.courses || [];
-          // Para cada curso, consultamos api.courses.teacher(courseId).
-          // Si NO está asignado, ese endpoint debería fallar (403/404), por lo que lo filtramos.
           const checks = await Promise.all(all.map(async (c) => {
-            try {
-              await api.courses.teacher(c._id);
-              return c; // pertenece
-            } catch {
-              return null; // no pertenece
-            }
+            const ok = await isCourseAssignedToMe(c._id);
+            return ok ? c : null;
           }));
-          setCourses(checks.filter(Boolean) as CourseOpt[]);
+          const own = checks.filter(Boolean) as CourseOpt[];
+          setCourses(own);
         })
         .catch(()=>setCourses([]));
     } else {
@@ -279,4 +306,3 @@ function GradeBox({ row }: { row: ExamModelRow }) {
     </div>
   );
 }
-
