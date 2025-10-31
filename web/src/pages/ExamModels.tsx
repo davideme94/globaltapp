@@ -3,7 +3,7 @@ import { api, type ExamModelRow, type Pass3 } from '../lib/api';
 import { useSearchParams } from 'react-router-dom';
 import { ExternalLink, Check } from 'lucide-react';
 
-type CourseOpt = { _id: string; name: string };
+type CourseOpt = { _id: string; name: string; campus?: 'DERQUI'|'JCP'|string };
 
 /** Igual que en TeacherCourses.tsx */
 function isMine(c: any, myId: string): boolean {
@@ -14,6 +14,15 @@ function isMine(c: any, myId: string): boolean {
     if (t?._id) return String(t._id) === String(myId);
   }
   return false;
+}
+
+/** Formateo legible de la sede */
+function fmtCampus(c?: string) {
+  if (!c) return 'Sin sede';
+  const v = String(c).toUpperCase();
+  if (v === 'DERQUI') return 'Derqui';
+  if (v === 'JCP' || v === 'JOSÉ C. PAZ' || v === 'JOSE C. PAZ') return 'José C. Paz';
+  return c;
 }
 
 export default function ExamModels() {
@@ -130,7 +139,8 @@ export default function ExamModels() {
     }
   };
 
-  const showSaved = savedAt && Date.now() - savedAt < 3000;
+  // ✅ booleano: evita que React renderice "0"
+  const showSaved = savedAt > 0 && (Date.now() - savedAt < 3000);
 
   return (
     <div className="space-y-4">
@@ -145,8 +155,20 @@ export default function ExamModels() {
               value={courseId}
               onChange={e=>setParams({ course: e.target.value })}
             >
-              {courses.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+              {courses.map(c => (
+                <option key={c._id} value={c._id}>
+                  {c.name} — {fmtCampus(c.campus)}
+                </option>
+              ))}
             </select>
+            {courseId && (
+              <div className="mt-1 text-xs text-neutral-700">
+                Sede:{' '}
+                <span className="px-2 py-0.5 rounded-full border bg-neutral-50">
+                  {fmtCampus(courses.find(x=>x._id===courseId)?.campus)}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -357,4 +379,5 @@ function GradeBox({ row }: { row: ExamModelRow }) {
     </div>
   );
 }
+
 
