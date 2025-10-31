@@ -1,4 +1,3 @@
-// web/src/pages/ExamModels.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { api, type ExamModelRow, type Pass3 } from '../lib/api';
 import { useSearchParams } from 'react-router-dom';
@@ -25,12 +24,15 @@ export default function ExamModels() {
     if (['teacher','coordinator','admin'].includes(me.role)) {
       api.courses.list().then(r => setCourses(r.courses || [])).catch(()=>setCourses([]));
     } else {
-      api.courses.mine().then(r => setCourses(r.rows.map((x:any)=>x.course))).catch(()=>setCourses([]));
+      api.courses.mine().then(r => setCourses((r.rows||[]).map((x:any)=>x.course))).catch(()=>setCourses([]));
     }
   }, [me]);
 
   useEffect(() => { if (courseId) reload(); }, [courseId]);
-  const reload = () => api.exams.listModels(courseId).then(setRows).catch(()=>setRows([]));
+  const reload = () =>
+    api.exams.listModels(courseId)
+      .then(setRows)
+      .catch((e:any)=>{ console.error(e); setRows([]); });
 
   useEffect(() => { if (!courseId && courses.length) setParams({ course: courses[0]._id }); }, [courses, courseId, setParams]);
 
@@ -192,12 +194,12 @@ function ExamRow({
       )}
 
       {/* Alumno: muestra su resultado si viene en myGrade */}
-      {!canToggleVisibility && row.myGrade && (
+      {!canToggleVisibility && (row as any).myGrade && (
         <div className="mt-2">
           <span className="badge">
             {row.gradeType === 'PASS3'
-              ? (row.myGrade.resultPass3 ?? 'Sin registro')
-              : (row.myGrade.resultNumeric ?? 'Sin registro')}
+              ? ((row as any).myGrade.resultPass3 ?? 'Sin registro')
+              : ((row as any).myGrade.resultNumeric ?? 'Sin registro')}
           </span>
         </div>
       )}
@@ -211,9 +213,9 @@ function GradeBox({ row }: { row: ExamModelRow }) {
   const [num, setNum] = useState<string>('');
 
   useEffect(() => {
-    // roster del curso del modelo
+    // roster del curso del modelo (para validar permisos)
     api.courses.teacher(String((row as any).course?._id || (row as any).course))
-      .catch(()=>({ teacher:null })); // no usada acá, solo para asegurar permisos
+      .catch(()=>({ teacher:null }));
     const courseId = String((row as any).course?._id || (row as any).course);
     if (!courseId) return;
     api.courses.roster(courseId)
@@ -259,3 +261,4 @@ function GradeBox({ row }: { row: ExamModelRow }) {
     </div>
   );
 }
+
