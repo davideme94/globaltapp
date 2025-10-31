@@ -19,7 +19,7 @@ function baseModels() {
   ];
 }
 
-/* Opcional: seed manual (coord/admin) */
+/* (opcional) seed manual */
 r.post(
   '/courses/:courseId/exam-models/seed',
   requireAuth, allowRoles('coordinator', 'admin'),
@@ -27,6 +27,7 @@ r.post(
     try {
       const user = (req as any).user as { _id?: Types.ObjectId } | undefined;
       if (!user?._id) return res.status(401).json({ error: 'Unauthorized' });
+
       const course = new mongoose.Types.ObjectId(req.params.courseId);
       const docs = await ExamModel.insertMany(
         baseModels().map(b => ({ ...b, course, updatedBy: user._id })),
@@ -37,7 +38,14 @@ r.post(
   }
 );
 
-/* Listado público + AUTOSEED si no hay modelos */
+/* ===== GET público SIEMPRE CON TARJETAS =====
+   - Autoseed si el curso no tiene modelos.
+   - Si NO hay sesión o es alumno:
+       * devolvemos TODOS los modelos para que existan las tarjetas,
+         pero los NO visibles vienen con driveUrl = '' (no se filtra el link).
+       * myGrade solo para visibles.
+   - Si es teacher/coord/admin: devolvemos TODO + gradesCount.
+*/
 r.get('/courses/:courseId/exam-models', async (req, res, next) => {
   try {
     const user = (req as any).user as
@@ -46,28 +54,38 @@ r.get('/courses/:courseId/exam-models', async (req, res, next) => {
 
     const course = new mongoose.Types.ObjectId(req.params.courseId);
 
+    // Traer o crear 6 modelos base
     let models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
     if (!models.length) {
       await ExamModel.insertMany(baseModels().map(b => ({ ...b, course })), { ordered: false });
       models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
     }
 
-    if (!user?.role) {
-      return res.json(models.filter(m => m.visible).map(m => ({ ...m, myGrade: null })));
+    // Sin sesión o alumno → devolver todas las tarjetas pero
+    // ocultar link de las NO visibles (driveUrl = '')
+    if (!user?.role || user.role === 'student') {
+      // si hay alumno, armamos myGrade solo de visibles
+      let gradeMap = new Map<string, any>();
+      if (user?.role === 'student' && user._id) {
+        const visIds = models.filter(m => m.visible).map(m => m._id);
+        const grades = await ExamGrade
+          .find({ exam: { $in: visIds }, student: user._id })
+          .select('exam resultPass3 resultNumeric').lean();
+        gradeMap = new Map(grades.map(g => [String(g.exam), g]));
+      }
+
+      return res.json(
+        models.map(m => ({
+          ...m,
+          driveUrl: m.visible ? (m as any).driveUrl || '' : '',
+          myGrade: user?.role === 'student'
+            ? (m.visible ? (gradeMap.get(String(m._id)) || null) : null)
+            : null,
+        }))
+      );
     }
 
-    if (user.role === 'student') {
-      const visibles = models.filter(m => m.visible);
-      const ids = visibles.map(m => m._id);
-      const grades = await ExamGrade
-        .find({ exam: { $in: ids }, student: user._id })
-        .select('exam resultPass3 resultNumeric')
-        .lean();
-      const map = new Map(grades.map(g => [String(g.exam), g]));
-      return res.json(visibles.map(m => ({ ...m, myGrade: map.get(String(m._id)) || null })));
-    }
-
-    // staff
+    // Staff → todos + count de calificaciones
     const ids = models.map(m => m._id);
     const agg = await ExamGrade.aggregate([
       { $match: { exam: { $in: ids } } },
@@ -78,7 +96,7 @@ r.get('/courses/:courseId/exam-models', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-/* Editar link/visibilidad (docente no toca link) */
+/* Editar link/visibilidad */
 const editSchema = z.object({
   driveUrl: z.string().url().optional().or(z.literal('')),
   visible: z.boolean().optional(),
@@ -93,6 +111,8 @@ r.put(
       if (!user?._id || !user?.role) return res.status(401).json({ error: 'Unauthorized' });
 
       const body = editSchema.parse(req.body);
+
+      // Docente NO puede tocar el link
       if (user.role === 'teacher' && Object.prototype.hasOwnProperty.call(body, 'driveUrl')) {
         return res.status(403).json({ error: 'Solo coordinador/administrativo puede editar el link.' });
       }
