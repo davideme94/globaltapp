@@ -37,28 +37,38 @@ r.post(
   }
 );
 
-/* Listado (staff ve todo; alumno solo visibles + su nota) */
+/* Listado:
+   - sin user o alumno → SOLO visibles (+ myGrade si hay user)
+   - teacher/coord/admin → todos + gradesCount
+*/
 r.get(
   '/courses/:courseId/exam-models',
   requireAuth,
   async (req, res, next) => {
     try {
-      const user = (req as any).user as { _id?: Types.ObjectId; role?: 'student'|'teacher'|'coordinator'|'admin' } | undefined;
-      if (!user?._id || !user?.role) return res.status(401).json({ error: 'Unauthorized' });
+      const user = (req as any).user as
+        | { _id?: Types.ObjectId; role?: 'student'|'teacher'|'coordinator'|'admin' }
+        | undefined;
 
       const course = new mongoose.Types.ObjectId(req.params.courseId);
       const models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
 
-      if (user.role === 'student') {
-        const ids = models.filter(m => m.visible).map(m => m._id);
-        const grades = await ExamGrade.find({ exam: { $in: ids }, student: user._id })
-          .select('exam resultPass3 resultNumeric').lean();
-        const map = new Map(grades.map(g => [String(g.exam), g]));
-        return res.json(
-          models.filter(m => m.visible).map(m => ({ ...m, myGrade: map.get(String(m._id)) || null }))
-        );
+      // Sin user o alumno: devolver solo visibles (no disparar logout)
+      if (!user?.role || user.role === 'student') {
+        const visible = models.filter(m => m.visible);
+        if (user?._id) {
+          const ids = visible.map(m => m._id);
+          const grades = await ExamGrade
+            .find({ exam: { $in: ids }, student: user._id })
+            .select('exam resultPass3 resultNumeric')
+            .lean();
+          const map = new Map(grades.map(g => [String(g.exam), g]));
+          return res.json(visible.map(m => ({ ...m, myGrade: map.get(String(m._id)) || null })));
+        }
+        return res.json(visible.map(m => ({ ...m, myGrade: null })));
       }
 
+      // Staff: todos + count de calificaciones registradas
       const ids = models.map(m => m._id);
       const agg = await ExamGrade.aggregate([
         { $match: { exam: { $in: ids } } },
@@ -137,3 +147,4 @@ r.put(
 );
 
 export default r;
+
