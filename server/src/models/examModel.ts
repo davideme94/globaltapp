@@ -1,4 +1,3 @@
-// server/src/models/examModel.ts
 import { Schema, model, type Document, type Types } from 'mongoose';
 
 export const ExamCategories = ['MID_YEAR','END_YEAR'] as const;
@@ -13,7 +12,7 @@ export interface IExamModel extends Document<Types.ObjectId> {
   gradeType: GradeType;   // PASS3 o NUMERIC
   driveUrl?: string;      // link de Google Drive
   visible: boolean;       // habilitado para alumnos
-  updatedBy: Types.ObjectId;
+  updatedBy: Types.ObjectId; // dejamos requerido, lo seteamos en autoseed
   createdAt: Date;
   updatedAt: Date;
 }
