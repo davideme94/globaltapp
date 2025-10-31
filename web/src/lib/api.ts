@@ -198,6 +198,25 @@ export type BritishResult = {
 };
 export type BritishMine = { results: BritishResult[] };
 
+/* ============ NUEVO: Tipos de Exámenes Modelos (no rompe nada) ============ */
+export type ExamCategory = 'MID_YEAR' | 'END_YEAR';
+export type GradeType = 'PASS3' | 'NUMERIC';
+export type Pass3 = 'PASS' | 'BARELY_PASS' | 'FAILED';
+export type ExamModelRow = {
+  _id: string;
+  course: string;
+  category: ExamCategory; // MID_YEAR / END_YEAR
+  number: number;         // 1..2 (mid) / 1..4 (end)
+  gradeType: GradeType;   // PASS3 o NUMERIC
+  driveUrl?: string;
+  visible: boolean;
+  // alumno:
+  myGrade?: { resultPass3?: Pass3 | null; resultNumeric?: number | null } | null;
+  // staff:
+  gradesCount?: number;
+};
+/* ========================================================================== */
+
 // --- NUEVO: Tipos de Casos (staff) ---
 export type CaseCategory = 'ACADEMIC_DIFFICULTY'|'BEHAVIOR'|'ATTENDANCE'|'ADMIN'|'OTHER';
 export type CaseSeverity  = 'LOW'|'MEDIUM'|'HIGH';
@@ -554,7 +573,6 @@ progressByCourseSet: (courseId: string, setId: string, goal = 10) =>
       ),
   },
 
-
   // BRITISH
   british: {
     mine: () => request<BritishMine>('/british/mine'),
@@ -616,6 +634,38 @@ progressByCourseSet: (courseId: string, setId: string, goal = 10) =>
         { method:'POST' }
       ),
   },
+
+  /* ===================== NUEVO: EXÁMENES MODELOS ===================== */
+  exams: {
+    // Lista modelos del curso (alumno recibe solo visibles + su nota)
+    listModels: (courseId: string) =>
+      request<ExamModelRow[]>(`/courses/${courseId}/exam-models`),
+
+    // Crea los 6 modelos por defecto (coord/admin)
+    seedModels: (courseId: string) =>
+      request<{ ok: true; created: number }>(
+        `/courses/${courseId}/exam-models/seed`,
+        { method: 'POST' }
+      ),
+
+    // Actualiza link de Drive y/o visibilidad (teacher/coordinator/admin)
+    updateModel: (
+      id: string,
+      patch: Partial<Pick<ExamModelRow, 'driveUrl' | 'visible'>>
+    ) =>
+      request<ExamModelRow>(
+        `/exam-models/${id}`,
+        { method: 'PUT', body: JSON.stringify(patch) }
+      ),
+
+    // Setea la calificación de un alumno para un modelo
+    setGrade: (id: string, payload: { studentId: string; resultPass3?: Pass3; resultNumeric?: number }) =>
+      request<{ ok?: true; _id?: string }>(
+        `/exam-models/${id}/grade`,
+        { method: 'PUT', body: JSON.stringify(payload) }
+      ),
+  },
+  /* =================================================================== */
 
   /* ========= NUEVO: Agregador para NOTIFICACIONES (front-only) =========
      - NO cambia tu backend.
