@@ -21,8 +21,26 @@ export default function ExamModels() {
 
   useEffect(() => {
     if (!me) return;
-    if (['teacher','coordinator','admin'].includes(me.role)) {
+    if (['coordinator','admin'].includes(me.role)) {
       api.courses.list().then(r => setCourses(r.courses || [])).catch(()=>setCourses([]));
+    } else if (me.role === 'teacher') {
+      // 👉 Docente: mostrar SOLO cursos en los que está asignado
+      api.courses.list()
+        .then(async (r) => {
+          const all: CourseOpt[] = r.courses || [];
+          // Para cada curso, consultamos api.courses.teacher(courseId).
+          // Si NO está asignado, ese endpoint debería fallar (403/404), por lo que lo filtramos.
+          const checks = await Promise.all(all.map(async (c) => {
+            try {
+              await api.courses.teacher(c._id);
+              return c; // pertenece
+            } catch {
+              return null; // no pertenece
+            }
+          }));
+          setCourses(checks.filter(Boolean) as CourseOpt[]);
+        })
+        .catch(()=>setCourses([]));
     } else {
       api.courses.mine().then(r => setCourses((r.rows||[]).map((x:any)=>x.course))).catch(()=>setCourses([]));
     }
