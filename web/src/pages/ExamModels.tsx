@@ -22,52 +22,60 @@ export default function ExamModels() {
   useEffect(() => {
     if (!me) return;
 
-    // Helper: verifica si el curso pertenece al docente actual
+    // Helper para fallback: verifica si el curso pertenece al docente actual
     const isCourseAssignedToMe = async (cId: string): Promise<boolean> => {
       try {
-        // Preferido: endpoint que confirma si este docente es el del curso
-        const t = await api.courses.teacher(cId); // debería 200 solo si pertenece
-        // Intentamos detectar id del teacher retornado (si lo expone)
+        const t = await api.courses.teacher(cId); // debería 200 si pertenece
         const teacherId =
           (t && (t.teacher?._id || t.teacherId || t.teacher?._id?.toString?.())) || null;
         if (teacherId && me?._id && String(teacherId) === String(me._id)) return true;
-        // Si no expone teacher o devuelve 200 para todos, caemos al roster
-      } catch {
-        // 403/404 ≙ no pertenece → seguimos a roster para doble chequeo por si la API varía
-      }
+      } catch {/* 403/404: no pertenece, seguimos */}
       try {
         const r = await api.courses.roster(cId);
-        // muchas APIs devuelven course con teacher, o un array con role
         const courseTeacherId =
           (r && (r.course?.teacher?._id || r.course?.teacherId)) || null;
         if (courseTeacherId && me?._id && String(courseTeacherId) === String(me._id)) return true;
-
-        // Fallback extra: a veces en roster viene un array "staff" con roles
         const staffArr: any[] = (r && (r.staff || r.assistants || [])) || [];
         if (me?._id && staffArr.some(s => String(s?._id || s?.userId) === String(me._id))) {
           return true;
         }
-      } catch {
-        // si falla roster, consideramos que no pertenece
-      }
+      } catch {/* ignorar */}
       return false;
     };
 
     if (['coordinator','admin'].includes(me.role)) {
       api.courses.list().then(r => setCourses(r.courses || [])).catch(()=>setCourses([]));
     } else if (me.role === 'teacher') {
-      // Docente: mostrar SOLO cursos asignados
-      api.courses.list()
-        .then(async (r) => {
-          const all: CourseOpt[] = r.courses || [];
-          const checks = await Promise.all(all.map(async (c) => {
-            const ok = await isCourseAssignedToMe(c._id);
-            return ok ? c : null;
-          }));
-          const own = checks.filter(Boolean) as CourseOpt[];
-          setCourses(own);
-        })
-        .catch(()=>setCourses([]));
+      // 👉 Docente: 1) intento directo con /courses/mine
+      (async () => {
+        let own: CourseOpt[] = [];
+        try {
+          const mine = await api.courses.mine();
+          if (Array.isArray(mine?.courses) && mine.courses.length) {
+            own = mine.courses;
+          } else if (Array.isArray(mine?.rows) && mine.rows.length) {
+            own = mine.rows.map((x:any)=>x.course);
+          } else if (Array.isArray(mine) && mine.length) {
+            own = mine as CourseOpt[];
+          }
+        } catch {/* seguimos a fallback */}
+
+        // 2) Fallback si vino vacío: filtrar todos por pertenencia real
+        if (!own.length) {
+          try {
+            const r = await api.courses.list();
+            const all: CourseOpt[] = r.courses || [];
+            const checks = await Promise.all(all.map(async (c) => {
+              const ok = await isCourseAssignedToMe(c._id);
+              return ok ? c : null;
+            }));
+            own = checks.filter(Boolean) as CourseOpt[];
+          } catch {
+            own = [];
+          }
+        }
+        setCourses(own);
+      })();
     } else {
       api.courses.mine().then(r => setCourses((r.rows||[]).map((x:any)=>x.course))).catch(()=>setCourses([]));
     }
