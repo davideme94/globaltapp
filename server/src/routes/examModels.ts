@@ -5,7 +5,6 @@ import mongoose, { type Types } from 'mongoose';
 import { requireAuth, allowRoles } from '../middlewares/rbac';
 import { ExamModel } from '../models/examModel';
 import { ExamGrade } from '../models/examGrade';
-// import { Enrollment } from '../models/enrollment'; // (no se usa aquí)
 
 const r = Router();
 
@@ -20,7 +19,7 @@ function baseModels() {
   ];
 }
 
-/* ========= Semilla manual (permanece igual) ========= */
+/* Opcional: seed manual (coord/admin) */
 r.post(
   '/courses/:courseId/exam-models/seed',
   requireAuth, allowRoles('coordinator', 'admin'),
@@ -28,7 +27,6 @@ r.post(
     try {
       const user = (req as any).user as { _id?: Types.ObjectId } | undefined;
       if (!user?._id) return res.status(401).json({ error: 'Unauthorized' });
-
       const course = new mongoose.Types.ObjectId(req.params.courseId);
       const docs = await ExamModel.insertMany(
         baseModels().map(b => ({ ...b, course, updatedBy: user._id })),
@@ -39,12 +37,7 @@ r.post(
   }
 );
 
-/* ========= Listado público con AUTOSEED =========
-   - Si el curso no tiene modelos, los crea automáticamente (sin sesión) y devuelve los 6.
-   - Si hay sesión y es alumno → devuelve solo visibles + su myGrade.
-   - Si hay sesión y es staff → devuelve todos + gradesCount.
-   - Si NO hay sesión → devuelve solo visibles (myGrade=null).
-*/
+/* Listado público + AUTOSEED si no hay modelos */
 r.get('/courses/:courseId/exam-models', async (req, res, next) => {
   try {
     const user = (req as any).user as
@@ -53,31 +46,28 @@ r.get('/courses/:courseId/exam-models', async (req, res, next) => {
 
     const course = new mongoose.Types.ObjectId(req.params.courseId);
 
-    // Traer existentes
     let models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
-
-    // AUTOSEED si no hay ninguno (sin exigir sesión)
     if (!models.length) {
       await ExamModel.insertMany(baseModels().map(b => ({ ...b, course })), { ordered: false });
       models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
     }
 
-    // Sin user → visibles sin myGrade
     if (!user?.role) {
       return res.json(models.filter(m => m.visible).map(m => ({ ...m, myGrade: null })));
     }
 
-    // Alumno → visibles + su myGrade
     if (user.role === 'student') {
       const visibles = models.filter(m => m.visible);
       const ids = visibles.map(m => m._id);
-      const grades = await ExamGrade.find({ exam: { $in: ids }, student: user._id })
-        .select('exam resultPass3 resultNumeric').lean();
+      const grades = await ExamGrade
+        .find({ exam: { $in: ids }, student: user._id })
+        .select('exam resultPass3 resultNumeric')
+        .lean();
       const map = new Map(grades.map(g => [String(g.exam), g]));
       return res.json(visibles.map(m => ({ ...m, myGrade: map.get(String(m._id)) || null })));
     }
 
-    // Staff → todos + count de calificaciones
+    // staff
     const ids = models.map(m => m._id);
     const agg = await ExamGrade.aggregate([
       { $match: { exam: { $in: ids } } },
@@ -88,7 +78,7 @@ r.get('/courses/:courseId/exam-models', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-/* ========= Editar link/visibilidad (protegido) ========= */
+/* Editar link/visibilidad (docente no toca link) */
 const editSchema = z.object({
   driveUrl: z.string().url().optional().or(z.literal('')),
   visible: z.boolean().optional(),
@@ -103,8 +93,6 @@ r.put(
       if (!user?._id || !user?.role) return res.status(401).json({ error: 'Unauthorized' });
 
       const body = editSchema.parse(req.body);
-
-      // Docente NO puede modificar el link; sí puede visible
       if (user.role === 'teacher' && Object.prototype.hasOwnProperty.call(body, 'driveUrl')) {
         return res.status(403).json({ error: 'Solo coordinador/administrativo puede editar el link.' });
       }
@@ -119,7 +107,7 @@ r.put(
   }
 );
 
-/* ========= Cargar nota (protegido) ========= */
+/* Cargar nota (teacher/coord/admin) */
 const gradeSchema = z.object({
   studentId: z.string(),
   resultPass3: z.enum(['PASS', 'BARELY_PASS', 'FAILED']).optional(),
@@ -155,4 +143,3 @@ r.put(
 );
 
 export default r;
-
