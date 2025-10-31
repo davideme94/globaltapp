@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, type ExamModelRow, type Pass3 } from '../lib/api';
 import { useSearchParams } from 'react-router-dom';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Check } from 'lucide-react';
 
 type CourseOpt = { _id: string; name: string };
 
@@ -23,6 +23,7 @@ export default function ExamModels() {
   const [courses, setCourses] = useState<CourseOpt[]>([]);
   const [rows, setRows] = useState<ExamModelRow[]>([]);
   const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number>(0); // ← para "Guardado ✓" 3s
 
   const isStaff = me && ['teacher', 'coordinator', 'admin'].includes(me.role);
   const canEditLinks = me && ['coordinator', 'admin'].includes(me.role);
@@ -35,7 +36,6 @@ export default function ExamModels() {
 
     const myId = String(me.id || me._id || '');
     const normalizeMine = (r: any): CourseOpt[] => {
-      // soporta { rows: [{course}] } | { courses: [] } | [] directo
       if (Array.isArray(r?.rows) && r.rows.length) {
         return r.rows.map((it: any) => it?.course ? it.course : it) as CourseOpt[];
       }
@@ -122,13 +122,15 @@ export default function ExamModels() {
       }
       await Promise.all(updates);
       await reload();
-      alert('Guardado.');
+      setSavedAt(Date.now()); // ← mostrar "Guardado ✓"
     } catch (e:any) {
-      alert(e?.message || 'Error al guardar');
+      window.alert(e?.message || 'Error al guardar'); // mantenemos alerta solo en error
     } finally {
       setSaving(false);
     }
   };
+
+  const showSaved = savedAt && Date.now() - savedAt < 3000;
 
   return (
     <div className="space-y-4">
@@ -149,10 +151,15 @@ export default function ExamModels() {
         )}
 
         {isStaff && (
-          <div className="mt-4">
+          <div className="mt-4 flex items-center gap-3">
             <button className="btn btn-primary" onClick={onSave} disabled={saving}>
               {saving ? 'Guardando…' : 'Guardar'}
             </button>
+            {showSaved && (
+              <span className="inline-flex items-center gap-1 text-green-700 text-sm">
+                <Check size={16}/> Guardado
+              </span>
+            )}
             <div className="text-xs mt-2 text-neutral-600">
               {canEditLinks
                 ? 'Solo coordinador/administrativo pueden editar los links. Docentes pueden habilitar la vista y cargar nota.'
@@ -269,6 +276,8 @@ function GradeBox({ row }: { row: ExamModelRow }) {
   const [studentId, setStudentId] = useState('');
   const [students, setStudents] = useState<{ _id:string; name:string }[]>([]);
   const [num, setNum] = useState<string>('');
+  const [saved, setSaved] = useState(false); // ← para mensaje "Guardado" en la tarjeta
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     // roster del curso del modelo (para validar permisos)
@@ -281,23 +290,50 @@ function GradeBox({ row }: { row: ExamModelRow }) {
       .catch(()=>setStudents([]));
   }, [row]);
 
+  const flashSaved = () => {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
+
   const savePass3 = async (v: Pass3) => {
     if (!studentId) return;
-    await api.exams.setGrade(row._id, { studentId, resultPass3: v });
-    alert('Guardado.');
+    setSaving(true);
+    try {
+      await api.exams.setGrade(row._id, { studentId, resultPass3: v });
+      flashSaved();
+    } catch (e:any) {
+      window.alert(e?.message || 'Error al guardar');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const saveNum = async () => {
     const n = Number(num);
     if (!studentId || !(n>=1 && n<=10)) return;
-    await api.exams.setGrade(row._id, { studentId, resultNumeric: n });
-    alert('Guardado.');
-    setNum('');
+    setSaving(true);
+    try {
+      await api.exams.setGrade(row._id, { studentId, resultNumeric: n });
+      setNum('');
+      flashSaved();
+    } catch (e:any) {
+      window.alert(e?.message || 'Error al guardar');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="mt-3 rounded-lg bg-neutral-50 p-2">
-      <label className="block text-sm mb-1">Alumno</label>
+      <div className="flex items-center justify-between">
+        <label className="block text-sm mb-1">Alumno</label>
+        {saved && (
+          <span className="inline-flex items-center gap-1 text-green-700 text-xs">
+            <Check size={14}/> Guardado
+          </span>
+        )}
+      </div>
+
       <select className="input mb-2" value={studentId} onChange={e=>setStudentId(e.target.value)}>
         <option value="">Seleccionar…</option>
         {students.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
@@ -306,14 +342,16 @@ function GradeBox({ row }: { row: ExamModelRow }) {
       {row.gradeType === 'PASS3' ? (
         <div className="flex gap-2 flex-wrap">
           {(['PASS','BARELY_PASS','FAILED'] as Pass3[]).map(v=>(
-            <button key={v} className="btn btn-secondary" onClick={()=>savePass3(v)}>{v}</button>
+            <button key={v} className="btn btn-secondary" onClick={()=>savePass3(v)} disabled={saving}>{v}</button>
           ))}
         </div>
       ) : (
         <div className="flex items-center gap-2">
           <input className="input w-24" type="number" min={1} max={10}
-            value={num} onChange={e=>setNum(e.target.value)} placeholder="1-10"/>
-          <button className="btn btn-secondary" onClick={saveNum}>Guardar</button>
+            value={num} onChange={e=>setNum(e.target.value)} placeholder="1-10" />
+          <button className="btn btn-secondary" onClick={saveNum} disabled={saving}>
+            Guardar
+          </button>
         </div>
       )}
     </div>
