@@ -39,59 +39,45 @@ r.post(
   }
 );
 
-/* Listado:
-   - sin user o alumno → SOLO visibles (+ myGrade si hay user)
-   - teacher/coord/admin → si no hay modelos, AUTOCREA; luego devuelve todos + gradesCount
+/* GET listado:
+   - SIN sesión → SOLO visibles (myGrade = null)
+   - Con sesión alumno → visibles + myGrade
+   - Con sesión teacher/coord/admin → TODOS + gradesCount
+   Nota: NO usamos requireAuth para no disparar 401 (logout) si la cookie no viaja.
 */
-r.get(
-  '/courses/:courseId/exam-models',
-  requireAuth,
-  async (req, res, next) => {
-    try {
-      const user = (req as any).user as
-        | { _id?: Types.ObjectId; role?: 'student'|'teacher'|'coordinator'|'admin' }
-        | undefined;
+r.get('/courses/:courseId/exam-models', async (req, res, next) => {
+  try {
+    const user = (req as any).user as
+      | { _id?: Types.ObjectId; role?: 'student'|'teacher'|'coordinator'|'admin' }
+      | undefined;
 
-      const course = new mongoose.Types.ObjectId(req.params.courseId);
+    const course = new mongoose.Types.ObjectId(req.params.courseId);
+    const models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
 
-      // Traemos modelos existentes
-      let models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
+    // Sin user ⇒ devolver solo visibles
+    if (!user?.role) {
+      return res.json(models.filter(m => m.visible).map(m => ({ ...m, myGrade: null })));
+    }
 
-      // Si es coord/admin y no hay modelos -> AUTOCREA (evita depender del botón)
-      if (user?.role && (user.role === 'coordinator' || user.role === 'admin') && models.length === 0) {
-        await ExamModel.insertMany(
-          baseModels().map(b => ({ ...b, course, updatedBy: user._id })),
-          { ordered: false }
-        );
-        models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
-      }
+    if (user.role === 'student') {
+      const visibles = models.filter(m => m.visible);
+      const ids = visibles.map(m => m._id);
+      const grades = await ExamGrade.find({ exam: { $in: ids }, student: user._id })
+        .select('exam resultPass3 resultNumeric').lean();
+      const map = new Map(grades.map(g => [String(g.exam), g]));
+      return res.json(visibles.map(m => ({ ...m, myGrade: map.get(String(m._id)) || null })));
+    }
 
-      // Sin user o alumno: devolver solo visibles (y mi nota si hay user)
-      if (!user?.role || user.role === 'student') {
-        const visible = models.filter(m => m.visible);
-        if (user?._id) {
-          const ids = visible.map(m => m._id);
-          const grades = await ExamGrade
-            .find({ exam: { $in: ids }, student: user._id })
-            .select('exam resultPass3 resultNumeric')
-            .lean();
-          const map = new Map(grades.map(g => [String(g.exam), g]));
-          return res.json(visible.map(m => ({ ...m, myGrade: map.get(String(m._id)) || null })));
-        }
-        return res.json(visible.map(m => ({ ...m, myGrade: null })));
-      }
-
-      // Staff: todos + count de calificaciones registradas
-      const ids = models.map(m => m._id);
-      const agg = await ExamGrade.aggregate([
-        { $match: { exam: { $in: ids } } },
-        { $group: { _id: '$exam', count: { $sum: 1 } } }
-      ]);
-      const counts = new Map(agg.map(a => [String(a._id), a.count]));
-      res.json(models.map(m => ({ ...m, gradesCount: counts.get(String(m._id)) || 0 })));
-    } catch (err) { next(err); }
-  }
-);
+    // Staff
+    const ids = models.map(m => m._id);
+    const agg = await ExamGrade.aggregate([
+      { $match: { exam: { $in: ids } } },
+      { $group: { _id: '$exam', count: { $sum: 1 } } },
+    ]);
+    const counts = new Map(agg.map(a => [String(a._id), a.count]));
+    res.json(models.map(m => ({ ...m, gradesCount: counts.get(String(m._id)) || 0 })));
+  } catch (err) { next(err); }
+});
 
 /* Editar link/visibilidad */
 const editSchema = z.object({
@@ -150,7 +136,7 @@ r.put(
           course: m.course,
           resultPass3: resultPass3 ?? null,
           resultNumeric: resultNumeric ?? null,
-          updatedBy: user._id
+          updatedBy: user._id,
         },
         { upsert: true, new: true }
       );
