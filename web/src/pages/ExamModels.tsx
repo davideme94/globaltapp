@@ -41,9 +41,10 @@ export default function ExamModels() {
   const isStaffSimple = isTeacher || isAdmin;           // docentes y admin usan vista simple
   const isStudent = role === 'student';
 
-  // ⚙️ permisos: solo coordinador edita links
-  const canEditLinks = isCoordinator;
+  // ⚙️ permisos
+  const canEditLinks = isCoordinator; // Solo coordinador edita links
   const canToggleVisibility = !!role && ['teacher','coordinator','admin'].includes(role);
+  const allowGrade = isCoordinator || isTeacher;        // ✅ Solo docente + coordinador cargan notas (admin NO)
 
   useEffect(() => { api.me().then(r => setMe(r.user)).catch(()=>setMe(null)); }, []);
 
@@ -62,7 +63,7 @@ export default function ExamModels() {
 
     (async () => {
       try {
-        // ✅ FIX: admin ahora ve TODOS los cursos (igual que coordinador).
+        // Admin ve TODOS los cursos (igual que coordinador), pero sin poder cargar notas
         if (isCoordinator || isAdmin) {
           const r = await api.courses.list();
           setCourses(r.courses || []);
@@ -70,7 +71,7 @@ export default function ExamModels() {
         }
 
         if (isTeacher) {
-          // 1) Intento principal: cursos asignados (como alumnos)
+          // 1) Intento principal: cursos asignados
           let mine: CourseOpt[] = [];
           try {
             const r = await api.courses.mine();
@@ -192,7 +193,9 @@ export default function ExamModels() {
             <div className="text-xs mt-2 text-neutral-600">
               {isCoordinator
                 ? 'Podés editar links, habilitar la vista y cargar notas.'
-                : 'Como docente/admin podés habilitar la vista y cargar nota.'}
+                : (isTeacher
+                    ? 'Como docente podés habilitar la vista y cargar nota.'
+                    : 'Como admin podés habilitar la vista.')}
             </div>
           </div>
         )}
@@ -205,10 +208,9 @@ export default function ExamModels() {
             row={m}
             form={form[m._id] || {driveUrl:'',visible:false}}
             setForm={(patch)=>setForm(s=>({ ...s, [m._id]: { ...(s[m._id]||{driveUrl:'',visible:false}), ...patch } }))}
-            mode={
-              isCoordinator ? 'coord' : isStaffSimple ? 'staffSimple' : 'student'
-            }
+            mode={ isCoordinator ? 'coord' : isStaffSimple ? 'staffSimple' : 'student' }
             canToggleVisibility={!!canToggleVisibility}
+            allowGrade={allowGrade}
           />
         )}
       </Section>
@@ -220,10 +222,9 @@ export default function ExamModels() {
             row={m}
             form={form[m._id] || {driveUrl:'',visible:false}}
             setForm={(patch)=>setForm(s=>({ ...s, [m._id]: { ...(s[m._id]||{driveUrl:'',visible:false}), ...patch } }))}
-            mode={
-              isCoordinator ? 'coord' : isStaffSimple ? 'staffSimple' : 'student'
-            }
+            mode={ isCoordinator ? 'coord' : isStaffSimple ? 'staffSimple' : 'student' }
             canToggleVisibility={!!canToggleVisibility}
+            allowGrade={allowGrade}
           />
         )}
       </Section>
@@ -241,27 +242,28 @@ function Section({ title, children }: { title:string; children:any }) {
 }
 
 function ExamRow({
-  row, form, setForm, mode, canToggleVisibility
+  row, form, setForm, mode, canToggleVisibility, allowGrade
 }: {
   row: ExamModelRow;
   form: { driveUrl: string; visible: boolean };
   setForm: (patch: Partial<{driveUrl:string;visible:boolean}>) => void;
   mode: 'coord'|'staffSimple'|'student';
   canToggleVisibility: boolean;
+  allowGrade: boolean; // ✅ solo docente+coordinador
 }) {
   const title = `${row.category === 'MID_YEAR' ? 'Mitad' : 'Final'} – Modelo ${row.number}`;
   const canOpen =
     mode === 'coord' ? !!form.driveUrl : !!(form.driveUrl); // server ya limpia link p/ alumno si no visible
 
   return (
-    <div className="rounded-2xl border p-3 shadow-sm hover:shadow transition">
-      {/* Header pill + botón */}
+    <div className="rounded-2xl border p-4 shadow-sm hover:shadow-md transition group bg-white">
+      {/* Header */}
       <div className="flex items-center justify-between gap-3 mb-2">
         <div className="inline-flex items-center gap-2">
-          <span className="px-2 py-1 text-xs rounded-full border bg-neutral-50">
-            {row.category === 'MID_YEAR' ? 'Mitad de año' : 'Fin de año'}
+          <span className="px-2 py-1 text-[11px] rounded-full border bg-neutral-50 tracking-wide">
+            {row.category === 'MID_YEAR' ? 'MITAD DE AÑO' : 'FIN DE AÑO'}
           </span>
-          <span className="font-medium">{title}</span>
+          <span className="font-medium text-neutral-800">{title}</span>
         </div>
         <a
           className={
@@ -278,6 +280,9 @@ function ExamRow({
         </a>
       </div>
 
+      {/* Divider suave */}
+      <div className="h-px bg-neutral-100 my-2" />
+
       {/* Subtítulo tipo de calificación */}
       <div className="text-xs text-neutral-600 mb-3">
         {row.gradeType === 'PASS3'
@@ -291,7 +296,7 @@ function ExamRow({
           {/* Link de Drive (solo coordinador) */}
           <label className="block text-sm mb-1">URL del examen (Drive)</label>
           <input
-            className="input mb-2"
+            className="input mb-3"
             placeholder="https://drive.google.com/..."
             value={form.driveUrl}
             onChange={e=>setForm({ driveUrl: e.target.value })}
@@ -310,16 +315,28 @@ function ExamRow({
 
       {mode === 'staffSimple' && (
         <>
-          {/* Sin URL. Solo toggle + notas */}
+          {/* Toggle siempre disponible para doc/admin */}
           {canToggleVisibility && (
             <label className="inline-flex items-center gap-2 mb-3">
-              <input type="checkbox" checked={form.visible} onChange={e=>setForm({ visible: e.target.checked })}/>
+              <input
+                type="checkbox"
+                checked={form.visible}
+                onChange={e=>setForm({ visible: e.target.checked })}
+              />
               <span>Habilitar vista para alumnos</span>
             </label>
           )}
-          <div className="rounded-xl border bg-neutral-50 p-3">
-            <GradeBox row={row} />
-          </div>
+
+          {/* Notas: solo si allowGrade (docente). Admin NO ve el cargador */}
+          {allowGrade ? (
+            <div className="rounded-xl border bg-neutral-50 p-3">
+              <GradeBox row={row} />
+            </div>
+          ) : (
+            <div className="text-xs text-neutral-500">
+              Solo docentes pueden cargar notas.
+            </div>
+          )}
         </>
       )}
 
@@ -432,6 +449,4 @@ function GradeBox({ row }: { row: ExamModelRow }) {
     </div>
   );
 }
-
-
 
