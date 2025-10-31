@@ -12,23 +12,25 @@ export default function ExamModels() {
   const [me, setMe] = useState<any>(null);
   const [courses, setCourses] = useState<CourseOpt[]>([]);
   const [rows, setRows] = useState<ExamModelRow[]>([]);
-  const isStaff = me && ['teacher', 'coordinator', 'admin'].includes(me.role);
+
+  const role = me?.role as ('student'|'teacher'|'coordinator'|'admin'|undefined);
+  const isTeacher = role === 'teacher';
+  const isCoordOrAdmin = role === 'coordinator' || role === 'admin';
+  const isStaff = !!(isTeacher || isCoordOrAdmin);
+  const canSeed = isCoordOrAdmin; // solo coord/admin crean los 6 modelos
 
   useEffect(() => {
     api.me().then(r => setMe(r.user)).catch(() => setMe(null));
   }, []);
 
   useEffect(() => {
-    // cursos del usuario (alumno o staff)
     if (!me) return;
-    if (['teacher', 'coordinator', 'admin'].includes(me.role)) {
-      // Para staff, podemos reutilizar list y/o tus vistas existentes.
-      // Si ya tenés un endpoint específico, cambialo aquí.
+    if (isStaff) {
       api.courses.list().then(r => setCourses(r.courses || [])).catch(() => setCourses([]));
     } else {
-      api.courses.mine().then(r => setCourses(r.rows.map(x => x.course))).catch(() => setCourses([]));
+      api.courses.mine().then(r => setCourses(r.rows.map((x:any) => x.course))).catch(() => setCourses([]));
     }
-  }, [me]);
+  }, [me, isStaff]);
 
   useEffect(() => {
     if (!courseId) return;
@@ -62,10 +64,14 @@ export default function ExamModels() {
         </div>
       )}
 
-      {isStaff && courseId && rows.length === 0 && (
+      {canSeed && courseId && rows.length === 0 && (
         <button
           className="btn"
-          onClick={() => api.exams.seedModels(courseId).then(() => api.exams.listModels(courseId).then(setRows))}
+          onClick={() =>
+            api.exams.seedModels(courseId)
+              .then(() => api.exams.listModels(courseId).then(setRows))
+              .catch((e:any) => alert(e?.message || 'No se pudo crear los modelos'))
+          }
         >
           Crear modelos por defecto (6)
         </button>
@@ -76,6 +82,8 @@ export default function ExamModels() {
           <ExamCard
             key={m._id}
             row={m}
+            isTeacher={isTeacher}
+            isCoordOrAdmin={isCoordOrAdmin}
             isStaff={isStaff}
             courseId={courseId}
             onChange={() => api.exams.listModels(courseId).then(setRows)}
@@ -88,6 +96,8 @@ export default function ExamModels() {
           <ExamCard
             key={m._id}
             row={m}
+            isTeacher={isTeacher}
+            isCoordOrAdmin={isCoordOrAdmin}
             isStaff={isStaff}
             courseId={courseId}
             onChange={() => api.exams.listModels(courseId).then(setRows)}
@@ -107,8 +117,8 @@ function Section({ title, children }: { title: string; children: any }) {
   );
 }
 
-function ExamCard({ row, isStaff, courseId, onChange }: {
-  row: ExamModelRow; isStaff: boolean; courseId: string; onChange: () => void;
+function ExamCard({ row, isTeacher, isCoordOrAdmin, isStaff, courseId, onChange }: {
+  row: ExamModelRow; isTeacher: boolean; isCoordOrAdmin: boolean; isStaff: boolean; courseId: string; onChange: () => void;
 }) {
   const [studentId, setStudentId] = useState<string>('');
   const [students, setStudents] = useState<{ _id: string; name: string }[]>([]);
@@ -120,7 +130,6 @@ function ExamCard({ row, isStaff, courseId, onChange }: {
 
   useEffect(() => {
     if (!isStaff || !courseId) return;
-    // Reutilizamos roster del curso y mapeamos a alumnos
     api.courses.roster(courseId)
       .then(r => setStudents((r.roster || []).map((it: any) => ({ _id: it.student?._id, name: it.student?.name }))))
       .catch(() => setStudents([]));
@@ -146,7 +155,7 @@ function ExamCard({ row, isStaff, courseId, onChange }: {
 
       <p className="muted">Tipo: {row.gradeType === 'PASS3' ? 'PASS / BARELY_PASS / FAILED' : '1–10'}</p>
 
-      {/* Vista Alumno: muestra su resultado si existe */}
+      {/* Alumno: si hay resultado */}
       {!isStaff && row.myGrade && (
         <div className="badge mt-2">
           {row.gradeType === 'PASS3'
@@ -155,30 +164,50 @@ function ExamCard({ row, isStaff, courseId, onChange }: {
         </div>
       )}
 
-      {/* Vista Staff: controles */}
+      {/* Staff */}
       {isStaff && (
         <>
+          {/* Link de Drive: SOLO coord/admin edita; docentes lo ven en readonly */}
           <div className="mt-3 flex gap-2 items-center">
-            <input
-              className="input flex-1"
-              placeholder="Link de Google Drive"
-              value={driveUrl}
-              onChange={e => setDriveUrl(e.target.value)}
-              onBlur={() => {
-                if (driveUrl !== (row.driveUrl || '')) {
-                  api.exams.updateModel(row._id, { driveUrl }).then(onChange).catch(() => {});
-                }
-              }}
-            />
+            {isCoordOrAdmin ? (
+              <input
+                className="input flex-1"
+                placeholder="Link de Google Drive"
+                value={driveUrl}
+                onChange={e => setDriveUrl(e.target.value)}
+                onBlur={() => {
+                  if (driveUrl !== (row.driveUrl || '')) {
+                    api.exams.updateModel(row._id, { driveUrl })
+                      .then(onChange)
+                      .catch((e:any)=>alert(e?.message||'Error al guardar link'));
+                  }
+                }}
+              />
+            ) : (
+              <input
+                className="input flex-1"
+                value={row.driveUrl || ''}
+                readOnly
+                placeholder="(Sin link todavía)"
+                title={row.driveUrl ? 'Link de Drive (solo coord/admin edita)' : 'Sin link (coord/admin debe cargarlo)'}
+              />
+            )}
+
+            {/* Toggle Visible: docente y coord/admin pueden habilitar/ocultar */}
             <button
               className="btn"
-              onClick={() => api.exams.updateModel(row._id, { visible: !row.visible }).then(onChange)}
+              onClick={() =>
+                api.exams.updateModel(row._id, { visible: !row.visible })
+                  .then(onChange)
+                  .catch((e:any)=>alert(e?.message||'Error al cambiar visibilidad'))
+              }
               title={row.visible ? 'Ocultar a alumnos' : 'Habilitar para alumnos'}
             >
               {row.visible ? <ToggleRight /> : <ToggleLeft />} {row.visible ? 'Visible' : 'Oculto'}
             </button>
           </div>
 
+          {/* Carga de notas: docente y coord/admin */}
           <div className="mt-3">
             <label className="block text-sm mb-1">Asignar nota a un alumno</label>
             <select className="select" value={studentId} onChange={e => setStudentId(e.target.value)}>
@@ -192,7 +221,12 @@ function ExamCard({ row, isStaff, courseId, onChange }: {
                   <button
                     key={v}
                     className="btn"
-                    onClick={() => studentId && api.exams.setGrade(row._id, { studentId, resultPass3: v }).then(onChange)}
+                    onClick={() =>
+                      studentId &&
+                      api.exams.setGrade(row._id, { studentId, resultPass3: v })
+                        .then(onChange)
+                        .catch((e:any)=>alert(e?.message||'Error al guardar'))
+                    }
                   >
                     {v}
                   </button>
@@ -201,7 +235,9 @@ function ExamCard({ row, isStaff, courseId, onChange }: {
             ) : (
               <NumericGrade onSave={(n) => {
                 if (!studentId) return;
-                api.exams.setGrade(row._id, { studentId, resultNumeric: n }).then(onChange);
+                api.exams.setGrade(row._id, { studentId, resultNumeric: n })
+                  .then(onChange)
+                  .catch((e:any)=>alert(e?.message||'Error al guardar'));
               }}/>
             )}
           </div>
@@ -234,4 +270,3 @@ function NumericGrade({ onSave }: { onSave: (n: number) => void }) {
     </div>
   );
 }
-
