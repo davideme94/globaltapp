@@ -1,8 +1,7 @@
-// server/src/routes/examModels.ts
 import { Router } from 'express';
 import { z } from 'zod';
 import mongoose, { type Types } from 'mongoose';
-import { requireAuth, allowRoles } from '../middlewares/rbac';
+import { requireAuth, allowRoles, maybeAuth } from '../middlewares/rbac';
 import { ExamModel } from '../models/examModel';
 import { ExamGrade } from '../models/examGrade';
 
@@ -25,12 +24,12 @@ r.post(
   requireAuth, allowRoles('coordinator', 'admin'),
   async (req, res, next) => {
     try {
-      const user = (req as any).user as { _id?: Types.ObjectId } | undefined;
-      if (!user?._id) return res.status(401).json({ error: 'Unauthorized' });
+      const userId = (req as any).userId as string | undefined;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
       const course = new mongoose.Types.ObjectId(req.params.courseId);
       const docs = await ExamModel.insertMany(
-        baseModels().map(b => ({ ...b, course, updatedBy: user._id })),
+        baseModels().map(b => ({ ...b, course, updatedBy: new mongoose.Types.ObjectId(userId) })),
         { ordered: false }
       );
       res.json({ ok: true, created: docs.length });
@@ -46,30 +45,34 @@ r.post(
        * myGrade solo para visibles.
    - Si es teacher/coord/admin: devolvemos TODO + gradesCount.
 */
-r.get('/courses/:courseId/exam-models', async (req, res, next) => {
+r.get('/courses/:courseId/exam-models', maybeAuth, async (req, res, next) => {
   try {
-    const user = (req as any).user as
-      | { _id?: Types.ObjectId; role?: 'student'|'teacher'|'coordinator'|'admin' }
-      | undefined;
+    const userId = (req as any).userId as string | undefined;
+    const userRole = (req as any).userRole as ('student'|'teacher'|'coordinator'|'admin'|undefined);
 
     const course = new mongoose.Types.ObjectId(req.params.courseId);
 
-    // Traer o crear 6 modelos base
+    // Traer o crear 6 modelos base (autoseed con SYSTEM_ID si no hay user)
     let models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
     if (!models.length) {
-      await ExamModel.insertMany(baseModels().map(b => ({ ...b, course })), { ordered: false });
+      const SYSTEM_ID = new mongoose.Types.ObjectId('000000000000000000000000');
+      const updatedBy = userId ? new mongoose.Types.ObjectId(userId) : SYSTEM_ID;
+      await ExamModel.insertMany(
+        baseModels().map(b => ({ ...b, course, updatedBy })),
+        { ordered: false }
+      );
       models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
     }
 
     // Sin sesión o alumno → devolver todas las tarjetas pero
     // ocultar link de las NO visibles (driveUrl = '')
-    if (!user?.role || user.role === 'student') {
+    if (!userRole || userRole === 'student') {
       // si hay alumno, armamos myGrade solo de visibles
       let gradeMap = new Map<string, any>();
-      if (user?.role === 'student' && user._id) {
+      if (userRole === 'student' && userId) {
         const visIds = models.filter(m => m.visible).map(m => m._id);
         const grades = await ExamGrade
-          .find({ exam: { $in: visIds }, student: user._id })
+          .find({ exam: { $in: visIds }, student: new mongoose.Types.ObjectId(userId) })
           .select('exam resultPass3 resultNumeric').lean();
         gradeMap = new Map(grades.map(g => [String(g.exam), g]));
       }
@@ -78,7 +81,7 @@ r.get('/courses/:courseId/exam-models', async (req, res, next) => {
         models.map(m => ({
           ...m,
           driveUrl: m.visible ? (m as any).driveUrl || '' : '',
-          myGrade: user?.role === 'student'
+          myGrade: userRole === 'student'
             ? (m.visible ? (gradeMap.get(String(m._id)) || null) : null)
             : null,
         }))
@@ -107,19 +110,20 @@ r.put(
   requireAuth, allowRoles('coordinator', 'admin', 'teacher'),
   async (req, res, next) => {
     try {
-      const user = (req as any).user as { _id?: Types.ObjectId; role?: 'student'|'teacher'|'coordinator'|'admin' } | undefined;
-      if (!user?._id || !user?.role) return res.status(401).json({ error: 'Unauthorized' });
+      const userId = (req as any).userId as string | undefined;
+      const userRole = (req as any).userRole as ('student'|'teacher'|'coordinator'|'admin'|undefined);
+      if (!userId || !userRole) return res.status(401).json({ error: 'Unauthorized' });
 
       const body = editSchema.parse(req.body);
 
       // Docente NO puede tocar el link
-      if (user.role === 'teacher' && Object.prototype.hasOwnProperty.call(body, 'driveUrl')) {
+      if (userRole === 'teacher' && Object.prototype.hasOwnProperty.call(body, 'driveUrl')) {
         return res.status(403).json({ error: 'Solo coordinador/administrativo puede editar el link.' });
       }
 
       const doc = await ExamModel.findByIdAndUpdate(
         req.params.id,
-        { ...body, updatedBy: user._id },
+        { ...body, updatedBy: new mongoose.Types.ObjectId(userId) },
         { new: true }
       );
       res.json(doc);
@@ -139,8 +143,8 @@ r.put(
   requireAuth, allowRoles('teacher', 'coordinator', 'admin'),
   async (req, res, next) => {
     try {
-      const user = (req as any).user as { _id?: Types.ObjectId } | undefined;
-      if (!user?._id) return res.status(401).json({ error: 'Unauthorized' });
+      const userId = (req as any).userId as string | undefined;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
       const { studentId, resultPass3, resultNumeric } = gradeSchema.parse(req.body);
       const examId = new mongoose.Types.ObjectId(req.params.id);
@@ -153,7 +157,7 @@ r.put(
           course: m.course,
           resultPass3: resultPass3 ?? null,
           resultNumeric: resultNumeric ?? null,
-          updatedBy: user._id,
+          updatedBy: new mongoose.Types.ObjectId(userId),
         },
         { upsert: true, new: true }
       );
