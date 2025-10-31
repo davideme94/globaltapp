@@ -36,3 +36,17 @@ export function allowRoles(...roles: string[]) {
     next();
   };
 }
+
+/** Autenticación opcional: si hay token válido setea userId/userRole; si no, sigue */
+export function maybeAuth(req: Request, _res: Response, next: NextFunction) {
+  const token = getTokenFromCookies(req);
+  if (!token) return next();
+  try {
+    const payload = jwt.verify(token, env.JWT_SECRET) as any;
+    const userId = payload?.sub ?? payload?.uid;
+    const role = payload?.role as string | undefined;
+    if (userId) (req as any).userId = userId;
+    if (role) (req as any).userRole = role;
+  } catch { /* ignorar */ }
+  next();
+}
