@@ -15,7 +15,9 @@ r.post(
   requireAuth, allowRoles('coordinator', 'admin'),
   async (req, res, next) => {
     try {
-      const user = (req as any).user as { _id: Types.ObjectId };
+      // ⚠️ Fix: req.user podría venir undefined si algo falló en auth → usar opcional
+      const user = (req as any).user as { _id?: Types.ObjectId } | undefined;
+
       const course = new mongoose.Types.ObjectId(req.params.courseId);
       const base = [
         { category: 'MID_YEAR', number: 1, gradeType: 'PASS3' as const },
@@ -26,7 +28,7 @@ r.post(
         { category: 'END_YEAR', number: 4, gradeType: 'NUMERIC' as const },
       ];
       const docs = await ExamModel.insertMany(
-        base.map(b => ({ ...b, course, updatedBy: user._id })),
+        base.map(b => ({ ...b, course, updatedBy: user?._id })), // ✅ no rompe si no hay user
         { ordered: false }
       );
       res.json({ ok: true, created: docs.length });
