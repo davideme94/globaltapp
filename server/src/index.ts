@@ -28,6 +28,7 @@ import rosterRoute from './routes/roster';
 import topicsRoute from './routes/topics';
 import courseLinksRoute from './routes/courseLinks';
 import practiceRoute from './routes/practice';
+import examModelsRoutes from './routes/examModels';
 import scheduleRoute from './routes/schedule';
 import britishRoutes from './routes/british';
 
@@ -93,6 +94,7 @@ app.use('/api', meRoutes);
 app.use('/api', casesRoute);
 app.use('/api', alertsRoute);
 app.use('/api', boardRouter);
+app.use('/api', examModelsRoutes);
 
 /** Errores */
 app.use(errorHandler);
