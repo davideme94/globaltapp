@@ -15,9 +15,7 @@ r.post(
   requireAuth, allowRoles('coordinator', 'admin'),
   async (req, res, next) => {
     try {
-      // cast local para tipos (no cambia la lógica)
-      const user = (req as any).user as { _id: Types.ObjectId; role: 'student' | 'teacher' | 'coordinator' | 'admin' };
-
+      const user = (req as any).user as { _id: Types.ObjectId };
       const course = new mongoose.Types.ObjectId(req.params.courseId);
       const base = [
         { category: 'MID_YEAR', number: 1, gradeType: 'PASS3' as const },
@@ -42,22 +40,22 @@ r.get(
   requireAuth,
   async (req, res, next) => {
     try {
-      // cast local para tipos (no cambia la lógica)
-      const user = (req as any).user as { _id: Types.ObjectId; role: 'student' | 'teacher' | 'coordinator' | 'admin' };
-
+      const user = (req as any).user as { _id: Types.ObjectId; role: 'student'|'teacher'|'coordinator'|'admin' };
       const course = new mongoose.Types.ObjectId(req.params.courseId);
       const models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
 
-      // Si es alumno: filtrar visibles y agregar su grade
+      // Alumno: filtra visibles y trae su grade
       if (user.role === 'student') {
         const ids = models.filter(m => m.visible).map(m => m._id);
         const grades = await ExamGrade.find({ exam: { $in: ids }, student: user._id })
           .select('exam resultPass3 resultNumeric').lean();
         const map = new Map(grades.map(g => [String(g.exam), g]));
-        return res.json(models.filter(m => m.visible).map(m => ({ ...m, myGrade: map.get(String(m._id)) || null })));
+        return res.json(
+          models.filter(m => m.visible).map(m => ({ ...m, myGrade: map.get(String(m._id)) || null }))
+        );
       }
 
-      // Staff: devuelve todas + conteo de grades por estado
+      // Staff: cuenta grades por examen
       const ids = models.map(m => m._id);
       const agg = await ExamGrade.aggregate([
         { $match: { exam: { $in: ids } } },
@@ -74,16 +72,19 @@ const editSchema = z.object({
   driveUrl: z.string().url().optional().or(z.literal('')),
   visible: z.boolean().optional(),
 });
-
 r.put(
   '/exam-models/:id',
   requireAuth, allowRoles('coordinator', 'admin', 'teacher'),
   async (req, res, next) => {
     try {
-      // cast local para tipos (no cambia la lógica)
-      const user = (req as any).user as { _id: Types.ObjectId };
-
+      const user = (req as any).user as { _id: Types.ObjectId; role: 'student'|'teacher'|'coordinator'|'admin' };
       const body = editSchema.parse(req.body);
+
+      // 🔒 Docente NO puede actualizar driveUrl (solo coord/admin)
+      if (user.role === 'teacher' && Object.prototype.hasOwnProperty.call(body, 'driveUrl')) {
+        return res.status(403).json({ error: 'Solo coordinador/administrativo puede editar el link.' });
+      }
+
       const doc = await ExamModel.findByIdAndUpdate(
         req.params.id,
         { ...body, updatedBy: user._id },
@@ -100,23 +101,21 @@ const gradeSchema = z.object({
   resultPass3: z.enum(['PASS', 'BARELY_PASS', 'FAILED']).optional(),
   resultNumeric: z.number().int().min(1).max(10).optional(),
 });
-
 r.put(
   '/exam-models/:id/grade',
   requireAuth, allowRoles('teacher', 'coordinator', 'admin'),
   async (req, res, next) => {
     try {
-      // cast local para tipos (no cambia la lógica)
       const user = (req as any).user as { _id: Types.ObjectId };
-
       const { studentId, resultPass3, resultNumeric } = gradeSchema.parse(req.body);
       const examId = new mongoose.Types.ObjectId(req.params.id);
-      const courseId = (await ExamModel.findById(examId).select('course')).course;
+      const m = await ExamModel.findById(examId).select('course').lean();
+      if (!m) return res.status(404).json({ error: 'Exam model not found' });
 
       const up = await ExamGrade.findOneAndUpdate(
         { exam: examId, student: new mongoose.Types.ObjectId(studentId) },
         {
-          course: courseId,
+          course: m.course,
           resultPass3: resultPass3 ?? null,
           resultNumeric: resultNumeric ?? null,
           updatedBy: user._id
