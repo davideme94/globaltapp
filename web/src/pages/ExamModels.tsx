@@ -5,6 +5,17 @@ import { ExternalLink } from 'lucide-react';
 
 type CourseOpt = { _id: string; name: string };
 
+/** Igual que en TeacherCourses.tsx */
+function isMine(c: any, myId: string): boolean {
+  const t = c?.teacher;
+  if (!t) return false;
+  if (typeof t === 'string') return String(t) === String(myId);
+  if (typeof t === 'object') {
+    if (t?._id) return String(t._id) === String(myId);
+  }
+  return false;
+}
+
 export default function ExamModels() {
   const [params, setParams] = useSearchParams();
   const courseId = params.get('course') || '';
@@ -22,33 +33,55 @@ export default function ExamModels() {
   useEffect(() => {
     if (!me) return;
 
-    // ⚠️ Regla solicitada:
-    // - coordinator/admin → TODOS los cursos
-    // - teacher → SOLO sus cursos (igual que alumnos) usando courses.mine()
-    // - student → sus cursos (ya existía)
-    if (['coordinator','admin'].includes(me.role)) {
-      api.courses.list()
-        .then(r => setCourses(r.courses || []))
-        .catch(()=>setCourses([]));
-    } else if (me.role === 'teacher') {
-      api.courses.mine()
-        .then(r => {
-          // Soportamos distintos shapes de respuesta:
-          //  - { rows: [{ course }] }
-          //  - { courses: [course] }
-          //  - [course]
-          let list: CourseOpt[] = [];
-          if (Array.isArray(r?.rows)) list = r.rows.map((x:any)=>x.course);
-          else if (Array.isArray(r?.courses)) list = r.courses;
-          else if (Array.isArray(r)) list = r as CourseOpt[];
-          setCourses(list || []);
-        })
-        .catch(()=>setCourses([]));
-    } else {
-      api.courses.mine()
-        .then(r => setCourses((r.rows||[]).map((x:any)=>x.course)))
-        .catch(()=>setCourses([]));
-    }
+    const myId = String(me.id || me._id || '');
+    const normalizeMine = (r: any): CourseOpt[] => {
+      // soporta { rows: [{course}] } | { courses: [] } | [] directo
+      if (Array.isArray(r?.rows) && r.rows.length) {
+        return r.rows.map((it: any) => it?.course ? it.course : it) as CourseOpt[];
+      }
+      if (Array.isArray(r?.courses) && r.courses.length) return r.courses as CourseOpt[];
+      if (Array.isArray(r) && r.length) return r as CourseOpt[];
+      return [];
+    };
+
+    (async () => {
+      try {
+        if (['coordinator','admin'].includes(me.role)) {
+          const r = await api.courses.list();
+          setCourses(r.courses || []);
+          return;
+        }
+
+        if (me.role === 'teacher') {
+          // 1) Intento principal: cursos del docente (igual que alumnos)
+          let mine: CourseOpt[] = [];
+          try {
+            const r = await api.courses.mine();
+            mine = normalizeMine(r);
+          } catch {/* seguimos */}
+
+          // 2) Fallback si vino vacío: listar todos y filtrar por pertenencia del profe
+          if (!mine.length) {
+            try {
+              const all = await api.courses.list();
+              const allCourses: CourseOpt[] = all.courses || [];
+              mine = allCourses.filter((c: any) => isMine(c, myId));
+            } catch {
+              mine = [];
+            }
+          }
+
+          setCourses(mine);
+          return;
+        }
+
+        // student (sin cambios)
+        const r = await api.courses.mine();
+        setCourses((r.rows || []).map((x: any) => x.course));
+      } catch {
+        setCourses([]);
+      }
+    })();
   }, [me]);
 
   useEffect(() => { if (courseId) reload(); }, [courseId]);
@@ -286,3 +319,4 @@ function GradeBox({ row }: { row: ExamModelRow }) {
     </div>
   );
 }
+
