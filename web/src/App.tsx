@@ -67,6 +67,9 @@ import CourseBoardPage from './pages/CourseBoardPage';
 /* ➕ NUEVO: Sets de práctica (coord/admin/teacher) */
 import CoordinatorPracticeSets from './pages/CoordinatorPracticeSets';
 
+/* ➕ NUEVO: Exámenes modelos */
+import ExamModels from './pages/ExamModels';
+
 /* ------- Utiles ------- */
 const L: Record<DayCode, string> = { MON:'Lun', TUE:'Mar', WED:'Mié', THU:'Jue', FRI:'Vie', SAT:'Sáb' };
 
@@ -95,7 +98,7 @@ function ThemeToggle() {
       aria-label="Cambiar tema"
       title={theme === 'dark' ? 'Tema claro' : 'Tema oscuro'}
     >
-      {theme === 'dark' ? <Sun size={16}/> : <Moon size={16}/>}
+      {theme === 'dark' ? <Sun size={16}/> : <Moon size={16}/> }
       <span className="hidden sm:inline">{theme === 'dark' ? 'Claro' : 'Oscuro'}</span>
     </button>
   );
@@ -140,6 +143,8 @@ function Shell() {
       { to: '/teacher/students', label: 'Alumnos', icon: Users, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
       /* ➕ NUEVO: Crear Sets (visible para teacher/coord/admin) */
       { to: '/coordinator/practice/sets', label: 'Crear sets', icon: Settings, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
+      /* ➕ NUEVO: Exámenes modelos (visible para TODOS los roles logueados) */
+      { to: '/exam-models', label: 'Exámenes modelos', icon: ClipboardList, show: !!me },
       { to: '/communications', label: 'Comunicaciones', icon: Mail, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
       { to: '/staff/cases', label: 'Casos', icon: ClipboardList, show: me?.role === 'coordinator' || me?.role === 'admin' },
       { to: '/me', label: 'Mi perfil', icon: UserCog, show: !!me },
@@ -509,6 +514,9 @@ export default function App() {
           {/* ➕ NUEVO: Tablón (alumno) */}
           <Route path="/student/course/:id/board" element={<CourseBoardPage />} />
 
+          {/* ➕ NUEVO: Exámenes modelos (TODOS los roles) */}
+          <Route path="/exam-models" element={<ExamModels />} />
+
           {/* Imprimible A4 específico */}
           <Route path="/print/final/:courseId/:studentId" element={<PrintFinalReport />} />
         </Route>
@@ -516,3 +524,4 @@ export default function App() {
     </BrowserRouter>
   );
 }
+
