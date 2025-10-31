@@ -32,13 +32,14 @@ export default function ExamModels() {
   const [courses, setCourses] = useState<CourseOpt[]>([]);
   const [rows, setRows] = useState<ExamModelRow[]>([]);
   const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number>(0); // para "Guardado ✓" 3s
+  const [savedAt, setSavedAt] = useState<number>(0); // “Guardado ✓” 3s
 
   const role: 'student'|'teacher'|'coordinator'|'admin'|undefined = me?.role;
   const isCoordinator = role === 'coordinator';
-  const isStaffSimple = role === 'teacher' || role === 'admin'; // docentes y admin con vista simple
+  const isAdmin = role === 'admin';
+  const isTeacher = role === 'teacher';
+  const isStaffSimple = isTeacher || isAdmin;           // docentes y admin usan vista simple
   const isStudent = role === 'student';
-  const isStaffAny = !!role && ['teacher','coordinator','admin'].includes(role);
 
   // ⚙️ permisos: solo coordinador edita links
   const canEditLinks = isCoordinator;
@@ -61,14 +62,15 @@ export default function ExamModels() {
 
     (async () => {
       try {
-        if (isCoordinator) {
+        // ✅ FIX: admin ahora ve TODOS los cursos (igual que coordinador).
+        if (isCoordinator || isAdmin) {
           const r = await api.courses.list();
           setCourses(r.courses || []);
           return;
         }
 
-        if (role === 'teacher' || role === 'admin') {
-          // 1) Intento principal: cursos asignados
+        if (isTeacher) {
+          // 1) Intento principal: cursos asignados (como alumnos)
           let mine: CourseOpt[] = [];
           try {
             const r = await api.courses.mine();
@@ -97,7 +99,7 @@ export default function ExamModels() {
         setCourses([]);
       }
     })();
-  }, [me, isCoordinator, role]);
+  }, [me, isCoordinator, isAdmin, isTeacher, role]);
 
   useEffect(() => { if (courseId) reload(); }, [courseId]);
   const reload = () =>
@@ -109,7 +111,7 @@ export default function ExamModels() {
     if (!courseId && courses.length) setParams({ course: courses[0]._id });
   }, [courses, courseId, setParams]);
 
-  // estados editables
+  // estados editables (link/visible por tarjeta)
   const [form, setForm] = useState<Record<string,{driveUrl:string;visible:boolean}>>({});
   useEffect(() => {
     const m: Record<string,{driveUrl:string;visible:boolean}> = {};
@@ -249,13 +251,18 @@ function ExamRow({
 }) {
   const title = `${row.category === 'MID_YEAR' ? 'Mitad' : 'Final'} – Modelo ${row.number}`;
   const canOpen =
-    mode === 'coord' ? !!form.driveUrl : !!(form.driveUrl); // server ya limpia link para alumno si no visible
+    mode === 'coord' ? !!form.driveUrl : !!(form.driveUrl); // server ya limpia link p/ alumno si no visible
 
   return (
-    <div className="rounded-xl border p-3">
-      {/* Header con botón principal */}
+    <div className="rounded-2xl border p-3 shadow-sm hover:shadow transition">
+      {/* Header pill + botón */}
       <div className="flex items-center justify-between gap-3 mb-2">
-        <div className="font-medium">{title}</div>
+        <div className="inline-flex items-center gap-2">
+          <span className="px-2 py-1 text-xs rounded-full border bg-neutral-50">
+            {row.category === 'MID_YEAR' ? 'Mitad de año' : 'Fin de año'}
+          </span>
+          <span className="font-medium">{title}</span>
+        </div>
         <a
           className={
             'inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm ' +
@@ -272,8 +279,10 @@ function ExamRow({
       </div>
 
       {/* Subtítulo tipo de calificación */}
-      <div className="text-xs text-neutral-600 mb-2">
-        {row.gradeType === 'PASS3' ? 'Evaluación: PASS / BARELY_PASS / FAILED' : 'Evaluación: Nota 1–10'}
+      <div className="text-xs text-neutral-600 mb-3">
+        {row.gradeType === 'PASS3'
+          ? 'Evaluación: PASS / BARELY_PASS / FAILED'
+          : 'Evaluación: Nota 1–10'}
       </div>
 
       {/* Vista por rol */}
@@ -288,12 +297,14 @@ function ExamRow({
             onChange={e=>setForm({ driveUrl: e.target.value })}
           />
           {/* Visible */}
-          <label className="inline-flex items-center gap-2 mb-2">
+          <label className="inline-flex items-center gap-2 mb-3">
             <input type="checkbox" checked={form.visible} onChange={e=>setForm({ visible: e.target.checked })}/>
             <span>Habilitar vista para alumnos</span>
           </label>
           {/* Notas */}
-          <GradeBox row={row} />
+          <div className="rounded-xl border bg-neutral-50 p-3">
+            <GradeBox row={row} />
+          </div>
         </>
       )}
 
@@ -301,32 +312,35 @@ function ExamRow({
         <>
           {/* Sin URL. Solo toggle + notas */}
           {canToggleVisibility && (
-            <label className="inline-flex items-center gap-2 mb-2">
+            <label className="inline-flex items-center gap-2 mb-3">
               <input type="checkbox" checked={form.visible} onChange={e=>setForm({ visible: e.target.checked })}/>
               <span>Habilitar vista para alumnos</span>
             </label>
           )}
-          <GradeBox row={row} />
+          <div className="rounded-xl border bg-neutral-50 p-3">
+            <GradeBox row={row} />
+          </div>
         </>
       )}
 
       {mode === 'student' && (
         <>
-          {/* Solo su resultado si está disponible */}
-          {(row as any).myGrade ? (
-            <div className="mt-2">
-              <div className="text-sm text-neutral-700">Tu resultado</div>
-              <div className="mt-1">
-                <span className="badge">
-                  {row.gradeType === 'PASS3'
-                    ? ((row as any).myGrade.resultPass3 ?? 'Sin registro')
-                    : ((row as any).myGrade.resultNumeric ?? 'Sin registro')}
-                </span>
+          <div className="rounded-xl border bg-neutral-50 p-3">
+            {(row as any).myGrade ? (
+              <div>
+                <div className="text-sm text-neutral-700">Tu resultado</div>
+                <div className="mt-1">
+                  <span className="badge">
+                    {row.gradeType === 'PASS3'
+                      ? ((row as any).myGrade.resultPass3 ?? 'Sin registro')
+                      : ((row as any).myGrade.resultNumeric ?? 'Sin registro')}
+                  </span>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="text-xs text-neutral-500">Aún no tenés resultado cargado.</div>
-          )}
+            ) : (
+              <div className="text-xs text-neutral-500">Aún no tenés resultado cargado.</div>
+            )}
+          </div>
         </>
       )}
     </div>
@@ -385,7 +399,7 @@ function GradeBox({ row }: { row: ExamModelRow }) {
   };
 
   return (
-    <div className="mt-3 rounded-lg bg-neutral-50 p-2">
+    <div className="mt-1">
       <div className="flex items-center justify-between">
         <label className="block text-sm mb-1">Alumno</label>
         {saved && (
@@ -418,5 +432,6 @@ function GradeBox({ row }: { row: ExamModelRow }) {
     </div>
   );
 }
+
 
 
