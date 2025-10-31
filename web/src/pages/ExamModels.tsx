@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, type ExamModelRow, type Pass3 } from '../lib/api';
 import { useSearchParams } from 'react-router-dom';
-import { ToggleLeft, ToggleRight, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 
 type CourseOpt = { _id: string; name: string };
 
@@ -12,95 +12,116 @@ export default function ExamModels() {
   const [me, setMe] = useState<any>(null);
   const [courses, setCourses] = useState<CourseOpt[]>([]);
   const [rows, setRows] = useState<ExamModelRow[]>([]);
+  const [saving, setSaving] = useState(false);
 
-  const role = me?.role as ('student'|'teacher'|'coordinator'|'admin'|undefined);
-  const isTeacher = role === 'teacher';
-  const isCoordOrAdmin = role === 'coordinator' || role === 'admin';
-  const isStaff = !!(isTeacher || isCoordOrAdmin);
-  const canSeed = isCoordOrAdmin; // solo coord/admin crean los 6 modelos
+  const isStaff = me && ['teacher', 'coordinator', 'admin'].includes(me.role);
+  const canEditLinks = me && ['coordinator', 'admin'].includes(me.role);
+  const canToggleVisibility = me && ['teacher', 'coordinator', 'admin'].includes(me.role);
 
-  useEffect(() => {
-    api.me().then(r => setMe(r.user)).catch(() => setMe(null));
-  }, []);
+  useEffect(() => { api.me().then(r => setMe(r.user)).catch(()=>setMe(null)); }, []);
 
   useEffect(() => {
     if (!me) return;
-    if (isStaff) {
-      api.courses.list().then(r => setCourses(r.courses || [])).catch(() => setCourses([]));
+    if (['teacher','coordinator','admin'].includes(me.role)) {
+      api.courses.list().then(r => setCourses(r.courses || [])).catch(()=>setCourses([]));
     } else {
-      api.courses.mine().then(r => setCourses(r.rows.map((x:any) => x.course))).catch(() => setCourses([]));
+      api.courses.mine().then(r => setCourses(r.rows.map((x:any)=>x.course))).catch(()=>setCourses([]));
     }
-  }, [me, isStaff]);
+  }, [me]);
 
-  useEffect(() => {
-    if (!courseId) return;
-    api.exams.listModels(courseId).then(setRows).catch(() => setRows([]));
-  }, [courseId]);
+  useEffect(() => { if (courseId) reload(); }, [courseId]);
+  const reload = () => api.exams.listModels(courseId).then(setRows).catch(()=>setRows([]));
 
-  // si no hay curso en query, seleccionamos el primero disponible
+  useEffect(() => { if (!courseId && courses.length) setParams({ course: courses[0]._id }); }, [courses, courseId, setParams]);
+
+  // estados editables
+  const [form, setForm] = useState<Record<string,{driveUrl:string;visible:boolean}>>({});
   useEffect(() => {
-    if (!courseId && courses.length) setParams({ course: courses[0]._id });
-  }, [courses, courseId, setParams]);
+    const m: Record<string,{driveUrl:string;visible:boolean}> = {};
+    rows.forEach(r => m[r._id] = { driveUrl: r.driveUrl || '', visible: !!r.visible });
+    setForm(m);
+  }, [rows]);
 
   const grouped = useMemo(() => ({
-    mid: rows.filter(r => r.category === 'MID_YEAR').sort((a, b) => a.number - b.number),
-    end: rows.filter(r => r.category === 'END_YEAR').sort((a, b) => a.number - b.number),
+    mid: rows.filter(r => r.category === 'MID_YEAR').sort((a,b)=>a.number-b.number),
+    end: rows.filter(r => r.category === 'END_YEAR').sort((a,b)=>a.number-b.number),
   }), [rows]);
 
+  const onSave = async () => {
+    if (!courseId) return;
+    setSaving(true);
+    try {
+      const updates: Promise<any>[] = [];
+      for (const r of rows) {
+        const f = form[r._id];
+        if (!f) continue;
+        const patch: any = {};
+        if (canEditLinks && (f.driveUrl || '') !== (r.driveUrl || '')) patch.driveUrl = f.driveUrl;
+        if (canToggleVisibility && !!f.visible !== !!r.visible) patch.visible = f.visible;
+        if (Object.keys(patch).length) updates.push(api.exams.updateModel(r._id, patch));
+      }
+      await Promise.all(updates);
+      await reload();
+      alert('Guardado.');
+    } catch (e:any) {
+      alert(e?.message || 'Error al guardar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="title">Exámenes modelos</h1>
+    <div className="space-y-4">
+      <div className="card p-4">
+        <h1 className="font-heading text-xl">Exámenes modelos</h1>
 
-      {courses.length > 0 && (
-        <div className="mb-4">
-          <label className="block text-sm mb-1">Curso</label>
-          <select
-            value={courseId}
-            onChange={e => setParams({ course: e.target.value })}
-            className="select"
-          >
-            {courses.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
-          </select>
-        </div>
-      )}
+        {courses.length > 0 && (
+          <div className="mt-3">
+            <label className="block text-sm mb-1">Curso</label>
+            <select
+              className="input"
+              value={courseId}
+              onChange={e=>setParams({ course: e.target.value })}
+            >
+              {courses.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
 
-      {canSeed && courseId && rows.length === 0 && (
-        <button
-          className="btn"
-          onClick={() =>
-            api.exams.seedModels(courseId)
-              .then(() => api.exams.listModels(courseId).then(setRows))
-              .catch((e:any) => alert(e?.message || 'No se pudo crear los modelos'))
-          }
-        >
-          Crear modelos por defecto (6)
-        </button>
-      )}
+        {isStaff && (
+          <div className="mt-4">
+            <button className="btn btn-primary" onClick={onSave} disabled={saving}>
+              {saving ? 'Guardando…' : 'Guardar'}
+            </button>
+            <div className="text-xs mt-2 text-neutral-600">
+              {canEditLinks
+                ? 'Solo coordinador/administrativo pueden editar los links. Docentes pueden habilitar la vista y cargar nota.'
+                : 'Como docente podés habilitar la vista y cargar nota; los links los carga coordinación.'}
+            </div>
+          </div>
+        )}
+      </div>
 
       <Section title="Exámenes modelos - Mitad de año">
         {grouped.mid.map(m =>
-          <ExamCard
-            key={m._id}
-            row={m}
-            isTeacher={isTeacher}
-            isCoordOrAdmin={isCoordOrAdmin}
-            isStaff={isStaff}
-            courseId={courseId}
-            onChange={() => api.exams.listModels(courseId).then(setRows)}
+          <ExamRow key={m._id}
+                   row={m}
+                   form={form[m._id] || {driveUrl:'',visible:false}}
+                   setForm={(patch)=>setForm(s=>({ ...s, [m._id]: { ...(s[m._id]||{driveUrl:'',visible:false}), ...patch } }))}
+                   canEditLinks={!!canEditLinks}
+                   canToggleVisibility={!!canToggleVisibility}
           />
         )}
       </Section>
 
       <Section title="Exámenes modelos - Fin de año">
         {grouped.end.map(m =>
-          <ExamCard
-            key={m._id}
-            row={m}
-            isTeacher={isTeacher}
-            isCoordOrAdmin={isCoordOrAdmin}
-            isStaff={isStaff}
-            courseId={courseId}
-            onChange={() => api.exams.listModels(courseId).then(setRows)}
+          <ExamRow key={m._id}
+                   row={m}
+                   form={form[m._id] || {driveUrl:'',visible:false}}
+                   setForm={(patch)=>setForm(s=>({ ...s, [m._id]: { ...(s[m._id]||{driveUrl:'',visible:false}), ...patch } }))}
+                   canEditLinks={!!canEditLinks}
+                   canToggleVisibility={!!canToggleVisibility}
           />
         )}
       </Section>
@@ -108,165 +129,133 @@ export default function ExamModels() {
   );
 }
 
-function Section({ title, children }: { title: string; children: any }) {
+function Section({ title, children }: { title:string; children:any }) {
   return (
-    <div className="mt-6">
-      <h2 className="subtitle">{title}</h2>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{children}</div>
+    <div className="card p-4">
+      <h2 className="font-heading text-lg mb-3">{title}</h2>
+      <div className="grid gap-4 md:grid-cols-2">{children}</div>
     </div>
   );
 }
 
-function ExamCard({ row, isTeacher, isCoordOrAdmin, isStaff, courseId, onChange }: {
-  row: ExamModelRow; isTeacher: boolean; isCoordOrAdmin: boolean; isStaff: boolean; courseId: string; onChange: () => void;
+function ExamRow({
+  row, form, setForm, canEditLinks, canToggleVisibility
+}: {
+  row: ExamModelRow;
+  form: { driveUrl: string; visible: boolean };
+  setForm: (patch: Partial<{driveUrl:string;visible:boolean}>) => void;
+  canEditLinks: boolean;
+  canToggleVisibility: boolean;
 }) {
-  const [studentId, setStudentId] = useState<string>('');
-  const [students, setStudents] = useState<{ _id: string; name: string }[]>([]);
-  const [driveUrl, setDriveUrl] = useState<string>(row.driveUrl || '');
-
-  useEffect(() => {
-    setDriveUrl(row.driveUrl || '');
-  }, [row.driveUrl]);
-
-  useEffect(() => {
-    if (!isStaff || !courseId) return;
-    api.courses.roster(courseId)
-      .then(r => setStudents((r.roster || []).map((it: any) => ({ _id: it.student?._id, name: it.student?.name }))))
-      .catch(() => setStudents([]));
-  }, [isStaff, courseId]);
-
-  const title = `${row.category === 'MID_YEAR' ? 'Mitad' : 'Final'} - Modelo ${row.number}`;
-  const canOpen = !!row.driveUrl;
+  const title = `${row.category === 'MID_YEAR' ? 'Mitad' : 'Final'} – Modelo ${row.number}`;
+  const canOpen = !!form.driveUrl;
 
   return (
-    <div className="card">
-      <div className="flex justify-between items-center">
-        <h3 className="card-title">{title}</h3>
+    <div className="rounded-xl border p-3">
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="font-medium">{title}</div>
         <a
-          href={canOpen ? row.driveUrl : undefined}
-          target="_blank"
-          rel="noreferrer"
           className={`link inline-flex items-center gap-1 ${canOpen ? '' : 'opacity-40 pointer-events-none'}`}
+          href={canOpen ? form.driveUrl : undefined}
+          target="_blank" rel="noreferrer"
           title={canOpen ? 'Abrir en Google Drive' : 'Sin link de Drive'}
         >
-          Ver en Drive <ExternalLink size={16} />
+          Ver en Drive <ExternalLink size={16}/>
         </a>
       </div>
 
-      <p className="muted">Tipo: {row.gradeType === 'PASS3' ? 'PASS / BARELY_PASS / FAILED' : '1–10'}</p>
+      <div className="text-xs text-neutral-600 mb-2">
+        Tipo: {row.gradeType === 'PASS3' ? 'PASS / BARELY_PASS / FAILED' : 'Nota 1–10'}
+      </div>
 
-      {/* Alumno: si hay resultado */}
-      {!isStaff && row.myGrade && (
-        <div className="badge mt-2">
-          {row.gradeType === 'PASS3'
-            ? (row.myGrade.resultPass3 ?? 'Sin registro')
-            : (row.myGrade.resultNumeric ?? 'Sin registro')}
-        </div>
+      {/* Link de Drive */}
+      <label className="block text-sm mb-1">URL del examen (Drive)</label>
+      <input
+        className="input mb-2"
+        placeholder="https://drive.google.com/..."
+        value={form.driveUrl}
+        onChange={e=>setForm({ driveUrl: e.target.value })}
+        disabled={!canEditLinks}
+      />
+
+      {/* Visible */}
+      {canToggleVisibility && (
+        <label className="inline-flex items-center gap-2 mb-2">
+          <input type="checkbox" checked={form.visible} onChange={e=>setForm({ visible: e.target.checked })}/>
+          <span>Habilitar vista para alumnos</span>
+        </label>
       )}
 
-      {/* Staff */}
-      {isStaff && (
-        <>
-          {/* Link de Drive: SOLO coord/admin edita; docentes lo ven en readonly */}
-          <div className="mt-3 flex gap-2 items-center">
-            {isCoordOrAdmin ? (
-              <input
-                className="input flex-1"
-                placeholder="Link de Google Drive"
-                value={driveUrl}
-                onChange={e => setDriveUrl(e.target.value)}
-                onBlur={() => {
-                  if (driveUrl !== (row.driveUrl || '')) {
-                    api.exams.updateModel(row._id, { driveUrl })
-                      .then(onChange)
-                      .catch((e:any)=>alert(e?.message||'Error al guardar link'));
-                  }
-                }}
-              />
-            ) : (
-              <input
-                className="input flex-1"
-                value={row.driveUrl || ''}
-                readOnly
-                placeholder="(Sin link todavía)"
-                title={row.driveUrl ? 'Link de Drive (solo coord/admin edita)' : 'Sin link (coord/admin debe cargarlo)'}
-              />
-            )}
+      {/* Nota (staff) */}
+      {canToggleVisibility && (
+        <GradeBox row={row} />
+      )}
 
-            {/* Toggle Visible: docente y coord/admin pueden habilitar/ocultar */}
-            <button
-              className="btn"
-              onClick={() =>
-                api.exams.updateModel(row._id, { visible: !row.visible })
-                  .then(onChange)
-                  .catch((e:any)=>alert(e?.message||'Error al cambiar visibilidad'))
-              }
-              title={row.visible ? 'Ocultar a alumnos' : 'Habilitar para alumnos'}
-            >
-              {row.visible ? <ToggleRight /> : <ToggleLeft />} {row.visible ? 'Visible' : 'Oculto'}
-            </button>
-          </div>
-
-          {/* Carga de notas: docente y coord/admin */}
-          <div className="mt-3">
-            <label className="block text-sm mb-1">Asignar nota a un alumno</label>
-            <select className="select" value={studentId} onChange={e => setStudentId(e.target.value)}>
-              <option value="">Seleccionar alumno…</option>
-              {students.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
-            </select>
-
-            {row.gradeType === 'PASS3' ? (
-              <div className="mt-2 flex gap-2 flex-wrap">
-                {(['PASS', 'BARELY_PASS', 'FAILED'] as Pass3[]).map(v => (
-                  <button
-                    key={v}
-                    className="btn"
-                    onClick={() =>
-                      studentId &&
-                      api.exams.setGrade(row._id, { studentId, resultPass3: v })
-                        .then(onChange)
-                        .catch((e:any)=>alert(e?.message||'Error al guardar'))
-                    }
-                  >
-                    {v}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <NumericGrade onSave={(n) => {
-                if (!studentId) return;
-                api.exams.setGrade(row._id, { studentId, resultNumeric: n })
-                  .then(onChange)
-                  .catch((e:any)=>alert(e?.message||'Error al guardar'));
-              }}/>
-            )}
-          </div>
-        </>
+      {/* Alumno: muestra su resultado si viene en myGrade */}
+      {!canToggleVisibility && row.myGrade && (
+        <div className="mt-2">
+          <span className="badge">
+            {row.gradeType === 'PASS3'
+              ? (row.myGrade.resultPass3 ?? 'Sin registro')
+              : (row.myGrade.resultNumeric ?? 'Sin registro')}
+          </span>
+        </div>
       )}
     </div>
   );
 }
 
-function NumericGrade({ onSave }: { onSave: (n: number) => void }) {
-  const [val, setVal] = useState<string>('');
+function GradeBox({ row }: { row: ExamModelRow }) {
+  const [studentId, setStudentId] = useState('');
+  const [students, setStudents] = useState<{ _id:string; name:string }[]>([]);
+  const [num, setNum] = useState<string>('');
+
+  useEffect(() => {
+    // roster del curso del modelo
+    api.courses.teacher(String((row as any).course?._id || (row as any).course))
+      .catch(()=>({ teacher:null })); // no usada acá, solo para asegurar permisos
+    const courseId = String((row as any).course?._id || (row as any).course);
+    if (!courseId) return;
+    api.courses.roster(courseId)
+      .then(r => setStudents((r.roster||[]).map((it:any)=>({ _id: it.student?._id, name: it.student?.name }))))
+      .catch(()=>setStudents([]));
+  }, [row]);
+
+  const savePass3 = async (v: Pass3) => {
+    if (!studentId) return;
+    await api.exams.setGrade(row._id, { studentId, resultPass3: v });
+    alert('Guardado.');
+  };
+
+  const saveNum = async () => {
+    const n = Number(num);
+    if (!studentId || !(n>=1 && n<=10)) return;
+    await api.exams.setGrade(row._id, { studentId, resultNumeric: n });
+    alert('Guardado.');
+    setNum('');
+  };
+
   return (
-    <div className="mt-2 flex gap-2 items-center">
-      <input
-        type="number"
-        min={1}
-        max={10}
-        className="input w-24"
-        placeholder="1-10"
-        value={val}
-        onChange={e => setVal(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') { const n = Number(val); if (n >= 1 && n <= 10) onSave(n); } }}
-      />
-      <button
-        className="btn"
-        onClick={() => { const n = Number(val); if (n >= 1 && n <= 10) onSave(n); }}
-      >
-        Guardar
-      </button>
+    <div className="mt-3 rounded-lg bg-neutral-50 p-2">
+      <label className="block text-sm mb-1">Alumno</label>
+      <select className="input mb-2" value={studentId} onChange={e=>setStudentId(e.target.value)}>
+        <option value="">Seleccionar…</option>
+        {students.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+      </select>
+
+      {row.gradeType === 'PASS3' ? (
+        <div className="flex gap-2 flex-wrap">
+          {(['PASS','BARELY_PASS','FAILED'] as Pass3[]).map(v=>(
+            <button key={v} className="btn btn-secondary" onClick={()=>savePass3(v)}>{v}</button>
+          ))}
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <input className="input w-24" type="number" min={1} max={10}
+            value={num} onChange={e=>setNum(e.target.value)} placeholder="1-10"/>
+          <button className="btn btn-secondary" onClick={saveNum}>Guardar</button>
+        </div>
+      )}
     </div>
   );
 }
