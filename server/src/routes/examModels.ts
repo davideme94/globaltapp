@@ -9,6 +9,17 @@ import { Enrollment } from '../models/enrollment';
 
 const r = Router();
 
+function baseModels() {
+  return [
+    { category: 'MID_YEAR', number: 1 as const, gradeType: 'PASS3' as const },
+    { category: 'MID_YEAR', number: 2 as const, gradeType: 'NUMERIC' as const },
+    { category: 'END_YEAR', number: 1 as const, gradeType: 'PASS3' as const },
+    { category: 'END_YEAR', number: 2 as const, gradeType: 'PASS3' as const },
+    { category: 'END_YEAR', number: 3 as const, gradeType: 'NUMERIC' as const },
+    { category: 'END_YEAR', number: 4 as const, gradeType: 'NUMERIC' as const },
+  ];
+}
+
 /* Seed: crea 6 modelos por curso (solo coord/admin) */
 r.post(
   '/courses/:courseId/exam-models/seed',
@@ -19,17 +30,8 @@ r.post(
       if (!user?._id) return res.status(401).json({ error: 'Unauthorized' });
 
       const course = new mongoose.Types.ObjectId(req.params.courseId);
-      const base = [
-        { category: 'MID_YEAR', number: 1, gradeType: 'PASS3' as const },
-        { category: 'MID_YEAR', number: 2, gradeType: 'NUMERIC' as const },
-        { category: 'END_YEAR', number: 1, gradeType: 'PASS3' as const },
-        { category: 'END_YEAR', number: 2, gradeType: 'PASS3' as const },
-        { category: 'END_YEAR', number: 3, gradeType: 'NUMERIC' as const },
-        { category: 'END_YEAR', number: 4, gradeType: 'NUMERIC' as const },
-      ];
-
       const docs = await ExamModel.insertMany(
-        base.map(b => ({ ...b, course, updatedBy: user._id })),
+        baseModels().map(b => ({ ...b, course, updatedBy: user._id })),
         { ordered: false }
       );
       res.json({ ok: true, created: docs.length });
@@ -39,7 +41,7 @@ r.post(
 
 /* Listado:
    - sin user o alumno → SOLO visibles (+ myGrade si hay user)
-   - teacher/coord/admin → todos + gradesCount
+   - teacher/coord/admin → si no hay modelos, AUTOCREA; luego devuelve todos + gradesCount
 */
 r.get(
   '/courses/:courseId/exam-models',
@@ -51,9 +53,20 @@ r.get(
         | undefined;
 
       const course = new mongoose.Types.ObjectId(req.params.courseId);
-      const models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
 
-      // Sin user o alumno: devolver solo visibles (no disparar logout)
+      // Traemos modelos existentes
+      let models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
+
+      // Si es coord/admin y no hay modelos -> AUTOCREA (evita depender del botón)
+      if (user?.role && (user.role === 'coordinator' || user.role === 'admin') && models.length === 0) {
+        await ExamModel.insertMany(
+          baseModels().map(b => ({ ...b, course, updatedBy: user._id })),
+          { ordered: false }
+        );
+        models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
+      }
+
+      // Sin user o alumno: devolver solo visibles (y mi nota si hay user)
       if (!user?.role || user.role === 'student') {
         const visible = models.filter(m => m.visible);
         if (user?._id) {
@@ -147,4 +160,3 @@ r.put(
 );
 
 export default r;
-
