@@ -9,14 +9,14 @@ import { Enrollment } from '../models/enrollment';
 
 const r = Router();
 
-/* Seed: crea 6 modelos por curso */
+/* Seed: crea 6 modelos por curso (solo coord/admin) */
 r.post(
   '/courses/:courseId/exam-models/seed',
   requireAuth, allowRoles('coordinator', 'admin'),
   async (req, res, next) => {
     try {
-      // ⚠️ Fix: req.user podría venir undefined si algo falló en auth → usar opcional
       const user = (req as any).user as { _id?: Types.ObjectId } | undefined;
+      if (!user?._id) return res.status(401).json({ error: 'Unauthorized' });
 
       const course = new mongoose.Types.ObjectId(req.params.courseId);
       const base = [
@@ -27,8 +27,9 @@ r.post(
         { category: 'END_YEAR', number: 3, gradeType: 'NUMERIC' as const },
         { category: 'END_YEAR', number: 4, gradeType: 'NUMERIC' as const },
       ];
+
       const docs = await ExamModel.insertMany(
-        base.map(b => ({ ...b, course, updatedBy: user?._id })), // ✅ no rompe si no hay user
+        base.map(b => ({ ...b, course, updatedBy: user._id })),
         { ordered: false }
       );
       res.json({ ok: true, created: docs.length });
@@ -36,17 +37,18 @@ r.post(
   }
 );
 
-/* Listado (staff ve todo; alumnos solo visibles + su nota) */
+/* Listado (staff ve todo; alumno solo visibles + su nota) */
 r.get(
   '/courses/:courseId/exam-models',
   requireAuth,
   async (req, res, next) => {
     try {
-      const user = (req as any).user as { _id: Types.ObjectId; role: 'student'|'teacher'|'coordinator'|'admin' };
+      const user = (req as any).user as { _id?: Types.ObjectId; role?: 'student'|'teacher'|'coordinator'|'admin' } | undefined;
+      if (!user?._id || !user?.role) return res.status(401).json({ error: 'Unauthorized' });
+
       const course = new mongoose.Types.ObjectId(req.params.courseId);
       const models = await ExamModel.find({ course }).sort({ category: 1, number: 1 }).lean();
 
-      // Alumno: filtra visibles y trae su grade
       if (user.role === 'student') {
         const ids = models.filter(m => m.visible).map(m => m._id);
         const grades = await ExamGrade.find({ exam: { $in: ids }, student: user._id })
@@ -57,7 +59,6 @@ r.get(
         );
       }
 
-      // Staff: cuenta grades por examen
       const ids = models.map(m => m._id);
       const agg = await ExamGrade.aggregate([
         { $match: { exam: { $in: ids } } },
@@ -74,15 +75,18 @@ const editSchema = z.object({
   driveUrl: z.string().url().optional().or(z.literal('')),
   visible: z.boolean().optional(),
 });
+
 r.put(
   '/exam-models/:id',
   requireAuth, allowRoles('coordinator', 'admin', 'teacher'),
   async (req, res, next) => {
     try {
-      const user = (req as any).user as { _id: Types.ObjectId; role: 'student'|'teacher'|'coordinator'|'admin' };
+      const user = (req as any).user as { _id?: Types.ObjectId; role?: 'student'|'teacher'|'coordinator'|'admin' } | undefined;
+      if (!user?._id || !user?.role) return res.status(401).json({ error: 'Unauthorized' });
+
       const body = editSchema.parse(req.body);
 
-      // 🔒 Docente NO puede actualizar driveUrl (solo coord/admin)
+      // Docente NO puede actualizar driveUrl (solo coord/admin)
       if (user.role === 'teacher' && Object.prototype.hasOwnProperty.call(body, 'driveUrl')) {
         return res.status(403).json({ error: 'Solo coordinador/administrativo puede editar el link.' });
       }
@@ -97,18 +101,21 @@ r.put(
   }
 );
 
-/* Cargar nota de un alumno */
+/* Cargar nota de un alumno (teacher/coord/admin) */
 const gradeSchema = z.object({
   studentId: z.string(),
   resultPass3: z.enum(['PASS', 'BARELY_PASS', 'FAILED']).optional(),
   resultNumeric: z.number().int().min(1).max(10).optional(),
 });
+
 r.put(
   '/exam-models/:id/grade',
   requireAuth, allowRoles('teacher', 'coordinator', 'admin'),
   async (req, res, next) => {
     try {
-      const user = (req as any).user as { _id: Types.ObjectId };
+      const user = (req as any).user as { _id?: Types.ObjectId } | undefined;
+      if (!user?._id) return res.status(401).json({ error: 'Unauthorized' });
+
       const { studentId, resultPass3, resultNumeric } = gradeSchema.parse(req.body);
       const examId = new mongoose.Types.ObjectId(req.params.id);
       const m = await ExamModel.findById(examId).select('course').lean();
