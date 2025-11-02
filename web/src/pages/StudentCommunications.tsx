@@ -1,3 +1,4 @@
+// web/src/pages/StudentCommunications.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { api, type Communication } from '../lib/api';
 
@@ -25,8 +26,14 @@ function ReplyItem({ r }: { r: NonNullable<Communication['replies']>[number] }) 
   const who = typeof r.user === 'string' ? '' : (r.user?.name || '');
   const when = r.createdAt ? new Date(r.createdAt) : null;
   return (
-    <div style={{ borderLeft: '3px solid #e5e7eb', paddingLeft: 10, marginTop: 6 }}>
-      <div style={{ fontSize: 12, color: '#64748b' }}>
+    <div
+      style={{
+        borderLeft: '3px solid var(--border)',
+        paddingLeft: 10,
+        marginTop: 6,
+      }}
+    >
+      <div style={{ fontSize: 12, color: 'var(--muted)' }}>
         {who ? `${who} • ` : ''}{r.role} • {when ? when.toLocaleString() : ''}
       </div>
       <div style={{ whiteSpace: 'pre-wrap', marginTop: 2 }}>{r.body}</div>
@@ -60,11 +67,13 @@ function Item({
 
   return (
     <div
+      className="comm-card"
       style={{
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
         borderRadius: 12,
         padding: 12,
-        background: '#fff',
+        background: 'var(--card)',
+        color: 'var(--text)',
         boxShadow: '0 2px 8px rgba(0,0,0,.04)',
       }}
     >
@@ -94,7 +103,7 @@ function Item({
           <b>{displayTitle || '(Sin asunto)'}</b>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <small>
+          <small style={{ color: 'var(--muted)' }}>
             {created
               ? `${created.toLocaleDateString()} ${created.toLocaleTimeString([], {
                   hour: '2-digit',
@@ -115,7 +124,7 @@ function Item({
         <div style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>{bodyText}</div>
       )}
 
-      <div style={{ marginTop: 6, fontSize: 12, color: '#64748b' }}>
+      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--muted)' }}>
         {courseName ? <>Curso: {courseName} — </> : null}
         {senderName ? <>Enviado por: {senderName}</> : null}
       </div>
@@ -133,7 +142,15 @@ function Item({
           placeholder="Escribí tu respuesta (opcional)…"
           value={reply}
           onChange={(e) => setReply(e.target.value)}
-          style={{ width: '100%', minHeight: 70, padding: 8, borderRadius: 8, border: '1px solid #e5e7eb' }}
+          style={{
+            width: '100%',
+            minHeight: 70,
+            padding: 8,
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            background: 'var(--soft)',
+            color: 'var(--text)',
+          }}
         />
         <div style={{ marginTop: 6, display: 'flex', gap: 8 }}>
           <button
@@ -200,7 +217,10 @@ export default function StudentCommunications() {
   if (loading) return <div style={{ padding: 16 }}>Cargando…</div>;
 
   return (
-    <div style={{ padding: 16, display: 'grid', gap: 12, maxWidth: 900 }}>
+    <div
+      className="student-communications"
+      style={{ padding: 16, display: 'grid', gap: 12, maxWidth: 900 }}
+    >
       <h1>
         Libro de comunicaciones{' '}
         {unread ? <small style={{ color: '#ef4444' }}>({unread} sin leer)</small> : null}
