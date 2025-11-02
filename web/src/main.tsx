@@ -4,11 +4,15 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 
 // 👇 Tus estilos globales
-import './index.css';            // carga Tailwind y estilos base
-import './styles/dark-fixes.css'; // <- agregado: fixes para modo oscuro (dejar último)
+import './index.css';              // carga Tailwind y estilos base
+import './styles/dark-fixes.css';  // fixes para modo oscuro (dejarlo después de index.css)
 
 // ⬇️ React Query
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// 👇 Inicializa el tema en <html> al arrancar (oscuro/claro)
+import { initTheme } from './theme';
+initTheme(); // <- importante para que en móvil el fondo no quede claro
 
 // Cliente global de React Query (no cambia tu lógica de datos)
 const queryClient = new QueryClient({
