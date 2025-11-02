@@ -309,3 +309,12 @@ hr, .border-t, .border-b, .divide-y > * + * {
     opacity: .9;
   }
 }
+/* Indica al navegador qué esquema usa la página en cada modo */
+:root { color-scheme: light; }
+html.dark, body.dark { color-scheme: dark; }  /* por si .dark está en html o body */
+
+/* Fondo/texto explícitos en la raíz (evita auto-dark de Chrome) */
+html, body { background: var(--bg); color: var(--text); }
+
+/* Nitidez en Android */
+html { -webkit-text-size-adjust: 100%; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
