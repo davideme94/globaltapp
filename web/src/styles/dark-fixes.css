@@ -1,128 +1,176 @@
-/* === Paleta base (claro/oscuro) sin tocar tu código JSX === */
-:root{
-  --bg: #ffffff;
-  --card: #ffffff;
-  --soft: #f8fafc;           /* superficies suaves: inputs/pastillas */
-  --text: #111827;           /* gris-900 */
-  --muted: #6b7280;          /* gris-500 */
-  --border: #e5e7eb;         /* gris-200 */
-  --chip-bg: #f3f4f6;        /* gris-100 */
-  --chip-text: #374151;      /* gris-700 */
-  --link: #a21caf;           /* magenta de tu marca */
-}
+/* -----------------------------------------------------------
+   Dark Fixes — refuerzo para inputs/cards/tablas/pills en oscuro
+   Se aplica si usás body.dark o data-theme="dark" o el media query
+------------------------------------------------------------ */
+@media (prefers-color-scheme: dark) {
+  :root, body, [data-theme="dark"], body.dark {
+    /* --- Colores base de UI oscura (no rompen tu paleta) --- */
+    --dfx-bg-surface: #111827;    /* paneles / cards */
+    --dfx-bg-subtle:  #1f2937;    /* bloques internos (chips/boxes) */
+    --dfx-bg-input:   #2b3442;    /* inputs/selects/textarea */
+    --dfx-txt-high:   #e6eaf2;    /* texto principal */
+    --dfx-txt-med:    #cbd5e1;    /* texto medio */
+    --dfx-txt-low:    #9aa4b2;    /* texto suave / placeholder */
+    --dfx-bd-soft:    #334155;    /* bordes suaves */
+    --dfx-bd-hard:    #1f2a37;    /* separadores/tablas */
+  }
 
-.dark{
-  --bg: #0b1220;             /* fondo app */
-  --card: #0f172a;           /* paneles */
-  --soft: #0b1427;           /* inputs/pastillas suaves */
-  --text: #e7e9ee;           /* texto principal */
-  --muted: #a3acc2;          /* texto tenue */
-  --border: #253046;         /* bordes */
-  --chip-bg: #121a2e;        /* chips/pastillas */
-  --chip-text: #e7e9ee;      /* texto en chips */
-  --link: #f0abfc;           /* link legible en dark */
-}
+  /* ---------- Cards / contenedores que venían blancos ---------- */
+  .card,
+  .panel,
+  .box,
+  .tile,
+  .widget,
+  .rounded-xl.border,
+  .rounded-2xl.border,
+  .shadow,
+  .shadow-sm,
+  .shadow-md {
+    background-color: var(--dfx-bg-surface) !important;
+    color: var(--dfx-txt-high) !important;
+    border-color: var(--dfx-bd-soft) !important;
+  }
 
-/* Fondo + color global */
-html, body { background: var(--bg); color: var(--text); }
-a { color: var(--link); }
+  /* Utilidades de Tailwind que quedan blancas por defecto */
+  .bg-white,
+  .bg-neutral-50,
+  .bg-slate-50,
+  .bg-gray-50,
+  .bg-zinc-50 {
+    background-color: var(--dfx-bg-subtle) !important;
+  }
 
-/* Cards / contenedores con borde */
-.card,
-.rounded-xl.border,
-.rounded-2xl.border {
-  background: var(--card) !important;
-  border-color: var(--border) !important;
-}
+  .text-neutral-800,
+  .text-neutral-700,
+  .text-gray-700 {
+    color: var(--dfx-txt-high) !important;
+  }
+  .text-neutral-600,
+  .text-gray-600 {
+    color: var(--dfx-txt-med) !important;
+  }
 
-/* Inputs/Selects/Textareas */
-.input, select.input, textarea.input, input.input {
-  background: var(--soft) !important;
-  color: var(--text) !important;
-  border-color: var(--border) !important;
-}
-.input::placeholder,
-textarea.input::placeholder {
-  color: var(--muted) !important;
-}
+  .border-neutral-200,
+  .border-neutral-300,
+  .border-gray-200,
+  .border-gray-300 {
+    border-color: var(--dfx-bd-soft) !important;
+  }
 
-/* Botones “secundarios” sobrios (guardar nota, PASS/FAILED, etc.) */
-.btn-secondary {
-  background: var(--soft) !important;
-  color: var(--text) !important;
-  border-color: var(--border) !important;
-}
+  /* ---------- Inputs / Selects / Textareas ---------- */
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="search"],
+  input[type="password"],
+  select,
+  textarea,
+  .input,
+  .select,
+  .textarea {
+    background-color: var(--dfx-bg-input) !important;
+    color: var(--dfx-txt-high) !important;
+    border-color: var(--dfx-bd-soft) !important;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--dfx-txt-low) !important;
+    opacity: 1 !important;
+  }
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    background-color: #273141 !important;
+    color: var(--dfx-txt-low) !important;
+  }
+  /* focus visible más nítido en oscuro */
+  input:focus,
+  select:focus,
+  textarea:focus,
+  .input:focus,
+  .select:focus,
+  .textarea:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, .4) !important; /* indigo */
+    border-color: #6366f1 !important;
+  }
 
-/* Pastillas / badges / chips (horario, sede, “Mitad de año”, etc.) */
-.badge,
-.pill,
-.tag,
-.chip,
-.pastilla,
-.px-2.py-0\.5.rounded-full,
-.px-2\.5.py-1\.5.rounded-xl,
-.px-3.py-1\.5.rounded-xl,
-.inline-flex.items-center.gap-2.rounded-xl {
-  background: var(--chip-bg) !important;
-  color: var(--chip-text) !important;
-  border-color: var(--border) !important;
-}
+  /* ---------- Chips / Badges / Pills (p. ej. “Sáb 09:00–12:00”) ---------- */
+  .badge,
+  .pill,
+  .chip,
+  .tag,
+  .px-2.py-0\.5.rounded-full,
+  .px-2.py-1.rounded-full {
+    background-color: rgba(255,255,255,.06) !important;
+    color: var(--dfx-txt-high) !important;
+    border-color: var(--dfx-bd-soft) !important;
+  }
 
-/* “Ver examen” pill en las tarjetas */
-a.inline-flex.items-center.gap-2.rounded-xl {
-  background: var(--chip-bg) !important;
-  color: var(--chip-text) !important;
-  border-color: var(--border) !important;
-}
+  /* ---------- Tablas (Usuarios, Boletín, Sets) ---------- */
+  table,
+  .table {
+    background: transparent !important;
+    color: var(--dfx-txt-high) !important;
+    border-color: var(--dfx-bd-hard) !important;
+  }
+  .table thead th,
+  thead th {
+    background-color: #0f172a !important;
+    color: var(--dfx-txt-med) !important;
+    border-bottom-color: var(--dfx-bd-hard) !important;
+  }
+  .table tbody tr,
+  tbody tr {
+    background-color: #0b1220 !important;  /* fila base */
+  }
+  .table tbody tr:nth-child(2n),
+  tbody tr:nth-child(2n) {
+    background-color: #0e1626 !important;  /* fila alterna */
+  }
+  .table th,
+  .table td,
+  th, td {
+    border-color: var(--dfx-bd-hard) !important;
+  }
 
-/* Textos tenues / ayudas */
-.text-neutral-600,
-.text-neutral-700,
-.text-neutral-500 {
-  color: var(--muted) !important;
-}
+  /* ---------- Bloques grandes que seguían “full white” ---------- */
+  /* (tarjetas de “Informes parciales”, boletín embebido, etc.) */
+  .prose,
+  .content,
+  .sheet,
+  .paper,
+  .paper-like,
+  .rounded-3xl,
+  .rounded-2xl.bg-white {
+    background-color: var(--dfx-bg-surface) !important;
+    color: var(--dfx-txt-high) !important;
+    border-color: var(--dfx-bd-soft) !important;
+  }
 
-/* Tablas (boletín, informes, listados) */
-.table, .table th, .table td {
-  background: var(--card) !important;
-  color: var(--text) !important;
-  border-color: var(--border) !important;
-}
+  /* ---------- Áreas con texto muy claro sobre blanco “duro” ---------- */
+  .text-black,
+  .text-gray-900,
+  .text-neutral-900 {
+    color: var(--dfx-txt-high) !important;
+  }
 
-/* Grilla de asistencia (encabezado y celdas) */
-.attendance-grid thead th,
-.attendance-grid tbody td {
-  background: var(--card) !important;
-  color: var(--text) !important;
-  border-color: var(--border) !important;
-}
+  /* ---------- Widgets de “Exam Models” nuevas (boxes internas) ---------- */
+  .exam-card-inner,
+  .rounded-lg.bg-neutral-50,
+  .rounded-xl.bg-neutral-50,
+  .rounded-xl.border.bg-neutral-50 {
+    background-color: var(--dfx-bg-subtle) !important;
+    border-color: var(--dfx-bd-soft) !important;
+  }
 
-/* Puntitos de asistencia (si usás un “dot” o botón circular) */
-.dot, .attendance-dot, .dot button {
-  background: var(--soft) !important;
-  border: 1px solid var(--border) !important;
-}
-.dot.is-checked,
-.attendance-dot.is-checked {
-  /* no toco tus colores de estado; esto sólo asegura contraste del fondo */
-  box-shadow: 0 0 0 2px var(--chip-bg) inset;
-}
-
-/* Skeletons (cargas) que se ven muy blancos en dark */
-.skeleton {
-  background: linear-gradient(90deg,
-    rgba(255,255,255,0.06),
-    rgba(255,255,255,0.12),
-    rgba(255,255,255,0.06)
-  ) !important;
-}
-
-/* Tab/Chip “Mitad de año / Fin de año” línea separadora */
-hr, .border-t, .border-b, .divide-y > * + * {
-  border-color: var(--border) !important;
-}
-
-/* Links dentro de cards que quedaban grisáceos en dark */
-.card a.link, .card a {
-  color: var(--link) !important;
+  /* ---------- Botones secundarios sobre fondo oscuro ---------- */
+  .btn-secondary {
+    background-color: rgba(255,255,255,.06) !important;
+    color: var(--dfx-txt-high) !important;
+    border-color: var(--dfx-bd-soft) !important;
+  }
+  .btn-secondary:hover {
+    background-color: rgba(255,255,255,.10) !important;
+  }
 }
