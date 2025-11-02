@@ -234,3 +234,47 @@ hr, .border-t, .border-b, .divide-y > * + * {
   border-color: var(--border) !important;
 }
 
+/* ===== Fix extra: Student Communications sheet in dark ===== */
+
+/* El “papel” blanco de la card (varias variantes comunes) */
+#student-communications .message-card,
+#student-communications .message,
+#student-communications .post,
+#student-communications .communication,
+.student-communications .message-card,
+.student-communications .message,
+.student-communications .post,
+.student-communications .communication,
+.bg-white.rounded-xl,
+.bg-white.rounded-2xl,
+.bg-white.rounded-3xl,
+.card .bg-white {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+/* Burbujas internas (citas, líneas, etc.) */
+#student-communications blockquote,
+.student-communications blockquote {
+  background: var(--soft) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+#student-communications hr,
+.student-communications hr {
+  border-color: var(--border) !important;
+}
+
+/* Timestamp/leyendas muy claras */
+#student-communications .timestamp,
+#student-communications .date,
+#student-communications .meta,
+.student-communications .timestamp,
+.student-communications .date,
+.student-communications .meta,
+.text-neutral-300, .text-gray-300 {
+  color: var(--muted) !important;
+}
+
