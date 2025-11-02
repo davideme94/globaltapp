@@ -278,3 +278,34 @@ hr, .border-t, .border-b, .divide-y > * + * {
   color: var(--muted) !important;
 }
 
+/* =======================
+   Legibilidad en móvil
+   ======================= */
+@media (max-width: 640px) {
+  html, body {
+    /* iOS Safari/WebView a veces achica/engorda letras */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Suaviza y optimiza el render del texto */
+  .student-communications .comm-card,
+  .student-communications .comm-card * {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* En pantallas chicas subimos el contraste de los textos tenues */
+  .student-communications .comm-card small,
+  .student-communications .comm-card .muted,
+  .student-communications .comm-card .text-neutral-600,
+  .student-communications .comm-card .text-neutral-700,
+  .student-communications .comm-card .text-neutral-500 {
+    color: var(--text) !important;
+  }
+
+  /* Placeholder más visible */
+  .student-communications textarea::placeholder {
+    color: var(--muted) !important;
+    opacity: .9;
+  }
+}
