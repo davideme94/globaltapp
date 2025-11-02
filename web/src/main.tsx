@@ -2,7 +2,10 @@
 import React, { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-import './index.css'; // 👈 IMPORTANTE: carga Tailwind y tus estilos
+
+// 👇 Tus estilos globales
+import './index.css';            // carga Tailwind y estilos base
+import './styles/dark-fixes.css'; // <- agregado: fixes para modo oscuro (dejar último)
 
 // ⬇️ React Query
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -18,7 +21,10 @@ const queryClient = new QueryClient({
   },
 });
 
-class Boundary extends React.Component<React.PropsWithChildren<{}>, { error: unknown }> {
+class Boundary extends React.Component<
+  React.PropsWithChildren<{}>,
+  { error: unknown }
+> {
   constructor(props: React.PropsWithChildren<{}>) {
     super(props);
     this.state = { error: null };
@@ -55,3 +61,4 @@ createRoot(root).render(
     </Boundary>
   </StrictMode>
 );
+
