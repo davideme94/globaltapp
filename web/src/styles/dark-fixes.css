@@ -18,7 +18,7 @@
   --link: #a21caf;           /* magenta de tu marca */
 }
 
-/* ---------- Paleta (OSCURA) por clase body.dark ---------- */
+/* ---------- Paleta (OSCURA) activada por clase .dark en <html> o <body> ---------- */
 .dark {
   --bg: #0b1220;
   --card: #0f172a;
@@ -49,6 +49,11 @@
 /* ---------- Fondo global + tipografía ---------- */
 html, body { background: var(--bg); color: var(--text); }
 a { color: var(--link); }
+
+/* Ayuda a que el fondo cubra toda la pantalla */
+html, body, #root { min-height: 100%; }
+/* Prioriza que el body pinte el fondo si html quedara en claro por alguna razón */
+body { background: var(--bg); color: var(--text); }
 
 /* ---------- Cards / contenedores con borde ---------- */
 .card,
@@ -131,9 +136,7 @@ textarea:focus,
   color: var(--text) !important;
   border-color: var(--border) !important;
 }
-.btn-secondary:hover {
-  filter: brightness(1.06);
-}
+.btn-secondary:hover { filter: brightness(1.06); }
 
 /* ---------- Pastillas / chips / badges (horarios, sede, etc.) ---------- */
 .badge,
@@ -235,8 +238,6 @@ hr, .border-t, .border-b, .divide-y > * + * {
 }
 
 /* ===== Fix extra: Student Communications sheet in dark ===== */
-
-/* El “papel” blanco de la card (varias variantes comunes) */
 #student-communications .message-card,
 #student-communications .message,
 #student-communications .post,
@@ -253,21 +254,16 @@ hr, .border-t, .border-b, .divide-y > * + * {
   color: var(--text) !important;
   border-color: var(--border) !important;
 }
-
-/* Burbujas internas (citas, líneas, etc.) */
 #student-communications blockquote,
 .student-communications blockquote {
   background: var(--soft) !important;
   border-color: var(--border) !important;
   color: var(--text) !important;
 }
-
 #student-communications hr,
 .student-communications hr {
   border-color: var(--border) !important;
 }
-
-/* Timestamp/leyendas muy claras */
 #student-communications .timestamp,
 #student-communications .date,
 #student-communications .meta,
@@ -282,19 +278,14 @@ hr, .border-t, .border-b, .divide-y > * + * {
    Legibilidad en móvil
    ======================= */
 @media (max-width: 640px) {
-  html, body {
-    /* iOS Safari/WebView a veces achica/engorda letras */
-    -webkit-text-size-adjust: 100%;
-  }
+  html, body { -webkit-text-size-adjust: 100%; }
 
-  /* Suaviza y optimiza el render del texto */
   .student-communications .comm-card,
   .student-communications .comm-card * {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
 
-  /* En pantallas chicas subimos el contraste de los textos tenues */
   .student-communications .comm-card small,
   .student-communications .comm-card .muted,
   .student-communications .comm-card .text-neutral-600,
@@ -303,18 +294,19 @@ hr, .border-t, .border-b, .divide-y > * + * {
     color: var(--text) !important;
   }
 
-  /* Placeholder más visible */
   .student-communications textarea::placeholder {
     color: var(--muted) !important;
     opacity: .9;
   }
 }
+
 /* Indica al navegador qué esquema usa la página en cada modo */
 :root { color-scheme: light; }
 html.dark, body.dark { color-scheme: dark; }  /* por si .dark está en html o body */
 
-/* Fondo/texto explícitos en la raíz (evita auto-dark de Chrome) */
+/* Redundancia intencional para que Chrome móvil no “auto-dimm” */
 html, body { background: var(--bg); color: var(--text); }
 
 /* Nitidez en Android */
 html { -webkit-text-size-adjust: 100%; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+
