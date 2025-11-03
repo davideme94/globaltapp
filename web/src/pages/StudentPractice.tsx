@@ -1,8 +1,6 @@
-// web/src/pages/StudentPractice.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
 import '../styles/student-practice.css';
-
 
 type Q = {
   _id:string;
@@ -16,11 +14,17 @@ type Q = {
 type Progress = { total:number; seen:number; remaining:number };
 
 export default function StudentPractice() {
+  // --- NUEVO: modo tester (coord/admin) si vienen ?as= & set=
+  const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const testerAs = params.get('as') || '';   // studentId para test
+  const testerSet = params.get('set') || '';
+  const testerUnit = params.get('unit') ? Number(params.get('unit')) : undefined;
+
   // --- NUEVO: sets habilitados (si el backend los expone)
   const [mySets, setMySets] = useState<{ set:{ _id:string; title:string; units?:number }, updatedAt:string }[]>([]);
-  const [setId, setSetId] = useState<string>('');
-  const [unit, setUnit] = useState<number|''>('');
-  const [mode, setMode] = useState<'sets'|'legacy'>('legacy'); // si hay sets -> 'sets'
+  const [setId, setSetId] = useState<string>(testerSet || '');
+  const [unit, setUnit] = useState<number|''>(typeof testerUnit === 'number' ? testerUnit : '');
+  const [mode, setMode] = useState<'sets'|'legacy'>(testerSet ? 'sets' : 'legacy'); // si hay sets -> 'sets'
 
   // --- juego
   const [qs, setQs] = useState<Q[]>([]);
@@ -42,10 +46,19 @@ export default function StudentPractice() {
     padding:'10px 12px', borderRadius:12, cursor:'pointer', fontWeight:600
   });
 
-  // monta: intenta modo sets; si no, legacy
+  // monta: intenta modo tester → sets → legacy
   useEffect(() => {
     (async () => {
       try {
+        // 1) tester directo
+        if (testerAs && testerSet) {
+          setMode('sets');
+          setSetId(testerSet);
+          await loadBatch(testerSet, typeof testerUnit === 'number' ? testerUnit : undefined, testerAs);
+          return;
+        }
+
+        // 2) sets habilitados
         const r = await api.practice.mySets().catch(() => ({ rows: [] as any[] }));
         const rows = r?.rows || [];
         if (rows.length > 0) {
@@ -55,7 +68,8 @@ export default function StudentPractice() {
           setLoading(false);
           return;
         }
-        // legacy
+
+        // 3) legacy
         const legacy = await api.practice.play();
         setQs(legacy.questions);
         setIdx(0);
@@ -65,13 +79,17 @@ export default function StudentPractice() {
         setErr(e.message);
       } finally { setLoading(false); }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // carga un batch del set (no repite + trae progreso)
-  async function loadBatch(currentSetId: string, currentUnit?: number) {
+  async function loadBatch(currentSetId: string, currentUnit?: number, asStudentId?: string) {
     setLoading(true); setErr(null);
     try {
-      const r = await api.practice.playSet(currentSetId, currentUnit);
+      const r = asStudentId
+        ? await api.practice.playAs(asStudentId, currentSetId, currentUnit)
+        : await api.practice.playSet(currentSetId, currentUnit);
+
       setQs(r.questions || []);
       setIdx(0);
       setAnswer('');
@@ -88,12 +106,15 @@ export default function StudentPractice() {
     if (!setId) return;
     setScore({ ok: 0, total: 0 });
     setCompleted(false);
-    await loadBatch(setId, unit ? Number(unit) : undefined);
+    await loadBatch(setId, unit ? Number(unit) : undefined, testerAs || undefined);
   }
 
   async function submit(a: string) {
     if (!q) return;
-    const res = await api.practice.submit(q._id, a);
+    const res = testerAs
+      ? await api.practice.submitAs(testerAs, q._id, a)
+      : await api.practice.submit(q._id, a);
+
     setScore(s => ({ ok: s.ok + (res.correct ? 1 : 0), total: s.total + 1 }));
     setAnswer('');
 
@@ -105,7 +126,7 @@ export default function StudentPractice() {
 
     // fin del batch → pedimos más (o felicidades si no hay)
     if (mode === 'sets' && setId) {
-      await loadBatch(setId, unit ? Number(unit) : undefined);
+      await loadBatch(setId, unit ? Number(unit) : undefined, testerAs || undefined);
     } else {
       // legacy simplemente vuelve a pedir
       const legacy = await api.practice.play();
@@ -130,7 +151,9 @@ export default function StudentPractice() {
         background:'linear-gradient(135deg,#0ea5e9,#7c3aed)',
         color:'#fff', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10
       }}>
-        <div style={{ fontWeight:800, letterSpacing:.2, fontSize:18 }}>Práctica constante</div>
+        <div style={{ fontWeight:800, letterSpacing:.2, fontSize:18 }}>
+          Práctica constante {testerAs ? '— Modo Tester' : ''}
+        </div>
         <div style={{ opacity:.95 }}>
           <span style={{ fontWeight:700 }}>Puntaje:</span> {score.ok}/{score.total}
         </div>
@@ -139,11 +162,13 @@ export default function StudentPractice() {
       {/* selector de set/unidad */}
       {mode === 'sets' && (
         <div className="controls" style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', margin:'8px 0 14px' }}>
-          <select value={setId} onChange={e=>setSetId(e.target.value)} style={{ padding:'8px 10px', borderRadius:12, border:'1px solid #e5e7eb' }}>
-            {mySets.map(r => (
-              <option key={r.set._id} value={r.set._id}>{r.set.title}</option>
-            ))}
-          </select>
+          {!testerAs && (
+            <select value={setId} onChange={e=>setSetId(e.target.value)} style={{ padding:'8px 10px', borderRadius:12, border:'1px solid #e5e7eb' }}>
+              {mySets.map(r => (
+                <option key={r.set._id} value={r.set._id}>{r.set.title}</option>
+              ))}
+            </select>
+          )}
           <input
             type="number"
             min={1}
@@ -185,7 +210,7 @@ export default function StudentPractice() {
           )}
           <div style={{ display:'flex', gap:8 }}>
             <button style={btn()} onClick={() => { setCompleted(false); setQs([]); setProgress(null); }}>
-              Elegir otro set
+              {testerAs ? 'Volver a probar' : 'Elegir otro set'}
             </button>
             <button style={btn(true)} onClick={() => startWithSet()}>
               Repetir (nuevos intentos)
@@ -260,3 +285,4 @@ export default function StudentPractice() {
     </div>
   );
 }
+
