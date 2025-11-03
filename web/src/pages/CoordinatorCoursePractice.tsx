@@ -263,3 +263,4 @@ const th: React.CSSProperties={ border, padding:6, background:'#f8fafc' };
 const thLeft: React.CSSProperties={ ...th, textAlign:'left' };
 const td: React.CSSProperties={ border, padding:6 };
 const tdLeft: React.CSSProperties={ ...td, textAlign:'left' };
+
