@@ -310,3 +310,39 @@ html, body { background: var(--bg); color: var(--text); }
 /* Nitidez en Android */
 html { -webkit-text-size-adjust: 100%; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
 
+/* ======= FORZAR CLARO GLOBAL ======= */
+/* Indica explícitamente que el sitio usa esquema CLARO */
+:root { color-scheme: light; }
+
+/* Si en algún lado agregaran .dark, la ignoramos marcando force-light */
+html.force-light, body.force-light { color-scheme: light; }
+
+/* Cuando hay .force-light NO aplicamos el fallback oscuro por preferencia del SO */
+@media (prefers-color-scheme: dark) {
+  :root.force-light {
+    /* nos quedamos con las variables de :root (claro) definidas arriba en el archivo */
+  }
+}
+
+/* ======= CONTRASTE EN MÓVIL / TAILWIND ======= */
+/* Evita textos “lavados” por --tw-text-opacity en Android/Chrome/WebView */
+html.force-light, html.force-light * {
+  --tw-text-opacity: 1 !important;
+  --tw-border-opacity: 1 !important;
+  --tw-bg-opacity: 1 !important;
+}
+
+/* Por si quedaron clases “tenues” en alguna vista, subimos contraste */
+html.force-light .text-slate-400,
+html.force-light .text-gray-400,
+html.force-light .text-neutral-400,
+html.force-light .text-slate-500,
+html.force-light .text-gray-500,
+html.force-light .text-neutral-500,
+html.force-light .text-slate-600,
+html.force-light .text-gray-600,
+html.force-light .text-neutral-600 {
+  color: var(--text) !important;
+}
+
+
