@@ -172,55 +172,62 @@ export default function CoordinatorUsers() {
         </button>
       </div>
 
-      {/* Tabla */}
-      <div className="bg-white rounded shadow">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left border-b">
-              <th className="p-3">Nombre</th>
-              <th className="p-3">Email</th>
-              <th className="p-3">Rol</th>
-              <th className="p-3">Sede</th>
-              {/* NUEVO */}
-              <th className="p-3">Curso(s)</th>
-              <th className="p-3">Estado</th>
-              <th className="p-3">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (<tr><td className="p-3" colSpan={7}>Cargando...</td></tr>)}
-            {!loading && filtered.length === 0 && (<tr><td className="p-3" colSpan={7}>Sin resultados.</td></tr>)}
-            {!loading && filtered.map(u => (
-              <tr key={u._id} className="border-t">
-                <td className="p-3 font-medium">{u.name}</td>
-                <td className="p-3">{u.email || <span className="text-slate-500">—</span>}</td>
-                <td className="p-3">{u.role}</td>
-                <td className="p-3">{u.campus}</td>
-                {/* NUEVO: muestra cursos solo para alumnos; si no tiene, vacío (… mientras carga) */}
-                <td className="p-3">
-                  {u.role === 'student'
-                    ? (studentCourses[u._id]?.join(', ') || (loadingStudentCourses ? '...' : ''))
-                    : ''}
-                </td>
-                <td className="p-3">{u.active ? 'Activo' : 'Inactivo'}</td>
-                <td className="p-3 space-x-3">
-                  <button className="underline text-indigo-700" onClick={() => handleReset(u)}>Reset clave</button>
-                  <button className="underline text-emerald-700" onClick={() => handleToggleActive(u)}>
-                    {u.active ? 'Desactivar' : 'Activar'}
-                  </button>
-                  <button className="underline text-rose-700" onClick={() => handleDelete(u)}>Eliminar</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Tabla con SCROLL horizontal */}
+      <div className="overflow-x-auto -mx-2 sm:mx-0">
+        <div className="inline-block min-w-[980px] align-middle">
+          <div className="bg-white rounded shadow">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left border-b">
+                  <th className="p-3 whitespace-nowrap">Nombre</th>
+                  <th className="p-3 whitespace-nowrap">Email</th>
+                  <th className="p-3 whitespace-nowrap">Rol</th>
+                  <th className="p-3 whitespace-nowrap">Sede</th>
+                  {/* NUEVO */}
+                  <th className="p-3 whitespace-nowrap">Curso(s)</th>
+                  <th className="p-3 whitespace-nowrap">Estado</th>
+                  <th className="p-3 whitespace-nowrap">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading && (<tr><td className="p-3" colSpan={7}>Cargando...</td></tr>)}
+                {!loading && filtered.length === 0 && (<tr><td className="p-3" colSpan={7}>Sin resultados.</td></tr>)}
+                {!loading && filtered.map(u => (
+                  <tr key={u._id} className="border-t">
+                    <td className="p-3 font-medium whitespace-nowrap">{u.name}</td>
+                    <td className="p-3 whitespace-nowrap">{u.email || <span className="text-slate-500">—</span>}</td>
+                    <td className="p-3 whitespace-nowrap">{u.role}</td>
+                    <td className="p-3 whitespace-nowrap">{u.campus}</td>
+                    {/* NUEVO: cursos del alumno */}
+                    <td className="p-3">
+                      {u.role === 'student'
+                        ? (studentCourses[u._id]?.join(', ') || (loadingStudentCourses ? '...' : ''))
+                        : ''}
+                    </td>
+                    <td className="p-3 whitespace-nowrap">{u.active ? 'Activo' : 'Inactivo'}</td>
+                    <td className="p-3 space-x-3 whitespace-nowrap">
+                      <button className="underline text-indigo-700" onClick={() => handleReset(u)}>Reset clave</button>
+                      <button className="underline text-emerald-700" onClick={() => handleToggleActive(u)}>
+                        {u.active ? 'Desactivar' : 'Activar'}
+                      </button>
+                      <button className="underline text-rose-700" onClick={() => handleDelete(u)}>Eliminar</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
-      {/* Modal crear */}
+      {/* Modal crear (scrollable en móvil) */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
-          <form onSubmit={handleCreate} className="bg-white rounded-lg shadow-xl w-full max-w-lg">
-            <div className="p-4 border-b flex justify-between items-center">
+          <form
+            onSubmit={handleCreate}
+            className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-screen overflow-y-auto"
+          >
+            <div className="p-4 border-b flex justify-between items-center sticky top-0 bg-white rounded-t-lg">
               <h2 className="text-lg font-semibold">Crear {role === 'teacher' ? 'docente' : 'alumno'}</h2>
               <button type="button" className="text-slate-600" onClick={() => setShowCreate(false)}>✕</button>
             </div>
@@ -241,7 +248,7 @@ export default function CoordinatorUsers() {
                 </select>
               </div>
             </div>
-            <div className="p-4 border-t flex justify-end gap-2">
+            <div className="p-4 border-t flex justify-end gap-2 sticky bottom-0 bg-white rounded-b-lg">
               <button type="button" className="px-3 py-2 rounded border" onClick={() => setShowCreate(false)}>Cancelar</button>
               <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded">Crear</button>
             </div>
@@ -249,11 +256,11 @@ export default function CoordinatorUsers() {
         </div>
       )}
 
-      {/* Aviso contraseña */}
+      {/* Aviso contraseña (scrollable en móvil) */}
       {justCreated && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-4 border-b">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-screen overflow-y-auto">
+            <div className="p-4 border-b sticky top-0 bg-white rounded-t-lg">
               <h2 className="text-lg font-semibold">Usuario creado</h2>
             </div>
             <div className="p-4 space-y-2 text-sm">
@@ -261,7 +268,7 @@ export default function CoordinatorUsers() {
               <div><b>Contraseña:</b> <code>{justCreated.password}</code></div>
               <div className="text-slate-600">Copia y entrega estas credenciales.</div>
             </div>
-            <div className="p-4 border-t text-right">
+            <div className="p-4 border-t text-right sticky bottom-0 bg-white rounded-b-lg">
               <button className="px-3 py-2 rounded border" onClick={() => setJustCreated(null)}>Cerrar</button>
             </div>
           </div>
