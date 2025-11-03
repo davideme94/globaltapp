@@ -545,14 +545,14 @@ export const api = {
       ),
 
       // dentro de api.practice = { ... }
-progressByCourseSet: (courseId: string, setId: string, goal = 10) =>
-  request<{ rows: {
-    student:{ _id:string; name:string; email:string };
-    enabled:boolean; attempts:number; correct:number; distinct:number;
-    percent:number; lastAt?:string|null; completed:boolean;
-  }[]; goal:number; totalQuestions:number }>(
-    `/practice/progress/course/${courseId}${qs({ setId, goal })}`
-  ),
+    progressByCourseSet: (courseId: string, setId: string, goal = 10) =>
+      request<{ rows: {
+        student:{ _id:string; name:string; email:string };
+        enabled:boolean; attempts:number; correct:number; distinct:number;
+        percent:number; lastAt?:string|null; completed:boolean;
+      }[]; goal:number; totalQuestions:number }>(
+        `/practice/progress/course/${courseId}${qs({ setId, goal })}`
+      ),
 
     // ➕ expandimos tipos para aceptar setId/unit/media (compat con tu builder)
     createQuestion: (payload: {
@@ -571,6 +571,24 @@ progressByCourseSet: (courseId: string, setId: string, goal = 10) =>
       request<{ attempts:number; correct:number; distinct:number; lastAt?:string|null; total:number; completed:boolean }>(
         `/practice/progress/mine${qs({ setId })}`
       ),
+
+    /* =================== NUEVO: TESTER MODE =================== */
+    // Jugar como alumno (coord/admin) – usa /practice/play-as
+    playAs: (studentId: string, setId: string, unit?: number) =>
+      request<{ questions: {
+        _id:string; prompt:string; type:'MC'|'GAP';
+        options?: string[]|null; imageUrl?:string|null; embedUrl?:string|null; unit?:number|null
+      }[]; completed?: boolean; progress?: { total:number; seen:number; remaining:number } }>(
+        `/practice/play-as${qs({ studentId, setId, unit })}`
+      ),
+
+    // Enviar respuesta como ese alumno – usa /practice/submit-as
+    submitAs: (studentId: string, questionId: string, answer: string) =>
+      request<{ correct: boolean }>(
+        `/practice/submit-as`,
+        { method:'POST', body: JSON.stringify({ studentId, questionId, answer }) }
+      ),
+    /* ========================================================== */
   },
 
   // BRITISH
