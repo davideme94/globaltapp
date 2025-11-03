@@ -1,4 +1,3 @@
-// src/App.tsx
 import { BrowserRouter, Routes, Route, Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { api, type Me } from './lib/api';
@@ -143,6 +142,8 @@ function Shell() {
       { to: '/teacher/students', label: 'Alumnos', icon: Users, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
       /* ➕ NUEVO: Crear Sets (visible para teacher/coord/admin) */
       { to: '/coordinator/practice/sets', label: 'Crear sets', icon: Settings, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
+      /* ➕ NUEVO: Práctica (curso) en el sidebar para coord/teacher/admin */
+      { to: '/coordinator/courses', label: 'Práctica (curso)', icon: BookOpen, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
       /* ➕ NUEVO: Exámenes modelos (visible para TODOS los roles logueados) */
       { to: '/exam-models', label: 'Exámenes modelos', icon: ClipboardList, show: !!me },
       { to: '/communications', label: 'Comunicaciones', icon: Mail, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
@@ -524,4 +525,3 @@ export default function App() {
     </BrowserRouter>
   );
 }
-
