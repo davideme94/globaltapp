@@ -185,53 +185,63 @@ export default function TeacherStudents() {
         />
       </div>
 
-      <div className="card">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left border-b">
-              <th className="p-3">Alumno</th>
-              <th className="p-3">Curso(s)</th>
-              <th className="p-3">Edad</th>
-              <th className="p-3">Tutor</th>
-              <th className="p-3">Tel. Tutor</th>
-              <th className="p-3">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr><td className="p-3" colSpan={6}>Cargando…</td></tr>
-            )}
-            {!loading && err && (
-              <tr><td className="p-3 text-danger" colSpan={6}>{err}</td></tr>
-            )}
-            {!loading && !err && filtered.length === 0 && (
-              <tr><td className="p-3" colSpan={6}>No hay alumnos.</td></tr>
-            )}
-            {!loading && !err && filtered.map(s => (
-              <tr key={s._id} className="border-t">
-                <td className="p-3">
-                  <Avatar name={s.name} photoUrl={s.photoUrl} />
-                </td>
-                <td className="p-3">
-                  {Array.isArray(s.courses) && s.courses.length
-                    ? s.courses.join(' · ')
-                    : '—'}
-                </td>
-                <td className="p-3">{calcAge(s.dob) || '—'}</td>
-                <td className="p-3">{s.tutor || '—'}</td>
-                <td className="p-3">{s.tutorPhone || '—'}</td>
-                <td className="p-3">
-                  <button
-                    className="btn btn-secondary !py-1"
-                    onClick={() => setModal({ open: true, studentId: s._id })}
-                  >
-                    ⚠️ Reportar
-                  </button>
-                </td>
+      {/* Contenedor con scroll horizontal en móvil */}
+      <div className="card p-0 -mx-4 md:mx-0">
+        <div
+          className="overflow-x-auto px-4"
+          style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorX: 'contain' }}
+        >
+          <table className="min-w-[900px] w-full text-sm">
+            <thead className="sticky top-0 bg-white">
+              <tr className="text-left border-b whitespace-nowrap">
+                <th className="p-3">Alumno</th>
+                <th className="p-3">Curso(s)</th>
+                <th className="p-3">Edad</th>
+                <th className="p-3">Tutor</th>
+                <th className="p-3">Tel. Tutor</th>
+                <th className="p-3">Acciones</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr><td className="p-3" colSpan={6}>Cargando…</td></tr>
+              )}
+              {!loading && err && (
+                <tr><td className="p-3 text-danger" colSpan={6}>{err}</td></tr>
+              )}
+              {!loading && !err && filtered.length === 0 && (
+                <tr><td className="p-3" colSpan={6}>No hay alumnos.</td></tr>
+              )}
+              {!loading && !err && filtered.map(s => (
+                <tr key={s._id} className="border-t align-top">
+                  <td className="p-3">
+                    <Avatar name={s.name} photoUrl={s.photoUrl} />
+                    {/* email bajo el nombre (mantiene ancho sin romper tabla) */}
+                    {s.email ? (
+                      <div className="text-xs text-neutral-600 mt-1 max-w-[240px] truncate">{s.email}</div>
+                    ) : null}
+                  </td>
+                  <td className="p-3">
+                    {Array.isArray(s.courses) && s.courses.length
+                      ? s.courses.join(' · ')
+                      : '—'}
+                  </td>
+                  <td className="p-3 whitespace-nowrap">{calcAge(s.dob) || '—'}</td>
+                  <td className="p-3 whitespace-nowrap">{s.tutor || '—'}</td>
+                  <td className="p-3 whitespace-nowrap">{s.tutorPhone || '—'}</td>
+                  <td className="p-3 whitespace-nowrap">
+                    <button
+                      className="btn btn-secondary !py-1"
+                      onClick={() => setModal({ open: true, studentId: s._id })}
+                    >
+                      ⚠️ Reportar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Modal Nuevo caso */}
@@ -268,3 +278,4 @@ export default function TeacherStudents() {
     </div>
   );
 }
+
