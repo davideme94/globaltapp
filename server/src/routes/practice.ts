@@ -2,7 +2,7 @@ import { Router } from 'express';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 import { requireAuth, allowRoles } from '../middlewares/rbac';
-import { PracticeAccess, PracticeAttempt, PracticeQuestion, PracticeSet } from '../models/practice';
+import { PracticeAccess, PracticeAttempt, PracticeQuestion, PracticeSet, PracticeItem } from '../models/practice';
 import { Course } from '../models/course';
 import { Enrollment } from '../models/enrollment';
 
@@ -47,6 +47,32 @@ function toDrivePreview(u?: string | null) {
 function normalizeEmbedUrl(u?: string | null) {
   if (!u) return undefined;
   return toDrivePreview(toYouTubeEmbed(u));
+}
+
+/* ===== Helper: resolver media desde item cuando falte ===== */
+async function resolveMediaForQuestions(list: any[]) {
+  const itemIds = list.map(q => q.item).filter(Boolean).map((id:any) => String(id));
+  const byId = new Map<string, any>();
+  if (itemIds.length) {
+    const docs = await PracticeItem.find({ _id: { $in: itemIds } })
+      .select('_id imageUrl embedUrl')
+      .lean();
+    docs.forEach((d:any) => byId.set(String(d._id), d));
+  }
+  return list.map(q => {
+    const it = q.item ? byId.get(String(q.item)) : null;
+    const imageUrl = q.imageUrl ?? it?.imageUrl ?? null;
+    const embedUrl = q.embedUrl ?? it?.embedUrl ?? null;
+    return {
+      _id: q._id,
+      prompt: q.prompt,
+      type: q.type,
+      options: q.options ?? null,
+      imageUrl,
+      embedUrl,
+      unit: q.unit ?? null,
+    };
+  });
 }
 
 /* ====== SETS (coord/admin) ====== */
@@ -185,6 +211,7 @@ router.put(
 /* ===== Preguntas (coord/admin/teacher) ===== */
 const qSchema = z.object({
   setId: z.string().optional(),
+  itemId: z.string().optional(),                 // <-- NUEVO: asociar media compartida
   unit: z.number().int().min(1).max(99).optional(),
   prompt: z.string().min(3),
   type: z.enum(['MC', 'GAP']),
@@ -215,6 +242,7 @@ router.post(
         createdBy: uid,
       };
       if (b.setId)    payload.set  = b.setId;
+      if (b.itemId)   payload.item = b.itemId;          // <-- NUEVO
       if (b.unit)     payload.unit = b.unit;
       if (b.imageUrl) payload.imageUrl = b.imageUrl;
       if (b.embedUrl) payload.embedUrl = normalizeEmbedUrl(b.embedUrl);
@@ -242,6 +270,7 @@ router.put(
       if (patch.options  !== undefined) toSet.options  = patch.options;
       if (patch.answer   !== undefined) toSet.answer   = patch.answer;
       if (patch.unit     !== undefined) toSet.unit     = patch.unit;
+      if (patch.itemId   !== undefined) toSet.item     = patch.itemId || null;  // <-- NUEVO
       if (patch.imageUrl !== undefined) toSet.imageUrl = patch.imageUrl || null;
       if (patch.embedUrl !== undefined) toSet.embedUrl = normalizeEmbedUrl(patch.embedUrl) || null;
 
@@ -283,14 +312,7 @@ router.delete(
   }
 );
 
-/* ===== Carga masiva de preguntas =====
-   POST /practice/questions/bulk
-   body: { setId: string, unit?: number, rows: Array<{
-     prompt:string; type:'MC'|'GAP';
-     options?: string[]; answer:string;
-     imageUrl?: string; embedUrl?: string; level?: string; courseId?: string;
-   }> }
-*/
+/* ===== Carga masiva de preguntas ===== */
 router.post(
   '/practice/questions/bulk',
   requireAuth,
@@ -309,6 +331,7 @@ router.post(
           embedUrl: z.string().url().optional(),
           level: z.string().optional(),
           courseId: z.string().optional(),
+          itemId: z.string().optional(),           // <-- NUEVO (bulk)
         })).min(1).max(1000),
       }).parse(req.body);
 
@@ -326,6 +349,7 @@ router.post(
         level: r.level,
         course: r.courseId || null,
         createdBy: uid,
+        item: r.itemId ?? undefined,               // <-- NUEVO
       }));
 
       const inserted = await PracticeQuestion.insertMany(docs, { ordered: false });
@@ -358,11 +382,7 @@ router.post(
   }
 );
 
-/* ===== Juego del alumno =====
-   GET /practice/play?setId=...&unit=...
-   (legacy: sin params usa acceso global)
-   ➕ NUEVO: si viene setId, evita repetir preguntas ya vistas y devuelve progress/completed
-*/
+/* ===== Juego del alumno ===== */
 router.get(
   '/practice/play',
   requireAuth,
@@ -372,22 +392,19 @@ router.get(
       const uid = (req as any).userId as string;
       const { setId, unit } = req.query as { setId?: string; unit?: string };
 
-      // --- MODO POR SET (nuevo)
+      // --- MODO POR SET
       if (setId) {
-        // permiso específico para ese set
         const acc = await PracticeAccess.findOne({ student: uid, set: setId, enabled: true }).lean();
         if (!acc) return res.status(403).json({ error: 'Práctica no habilitada para este set.' });
 
         const qFilter: any = { set: new mongoose.Types.ObjectId(setId) };
         if (unit) qFilter.unit = Number(unit);
 
-        // total de preguntas en ese set/(unidad)
         const total = await PracticeQuestion.countDocuments(qFilter);
 
-        // preguntas ya vistas por el alumno en ese set/(unidad)
         const seenFilter: any = { student: new mongoose.Types.ObjectId(uid), set: new mongoose.Types.ObjectId(setId) };
         if (unit) seenFilter.unit = Number(unit);
-        const seenIds = await PracticeAttempt.distinct('question', seenFilter); // ObjectId[]
+        const seenIds = await PracticeAttempt.distinct('question', seenFilter);
 
         const remaining = Math.max(0, total - seenIds.length);
 
@@ -399,30 +416,22 @@ router.get(
           });
         }
 
-        // sample solo entre no vistas
         const pipeline: any[] = [
           { $match: qFilter },
           { $match: { _id: { $nin: seenIds.map((x:any)=> new mongoose.Types.ObjectId(String(x))) } } },
           { $sample: { size: Math.min(10, remaining) } },
         ];
 
-        const list = await PracticeQuestion.aggregate(pipeline);
+        const raw = await PracticeQuestion.aggregate(pipeline);
+        const questions = await resolveMediaForQuestions(raw);  // <-- usa item si falta media
         return res.json({
-          questions: list.map((q: any) => ({
-            _id: q._id,
-            prompt: q.prompt,
-            type: q.type,
-            options: q.options ?? null,
-            imageUrl: q.imageUrl ?? null,
-            embedUrl: q.embedUrl ?? null,
-            unit: q.unit ?? null,
-          })),
+          questions,
           completed: false,
           progress: { total, seen: seenIds.length, remaining },
         });
       }
 
-      // --- LEGACY (como antes)
+      // --- LEGACY
       const acc = await PracticeAccess.findOne({ student: uid, enabled: true }).lean();
       if (!acc) return res.status(403).json({ error: 'Práctica no habilitada. Consultá al coordinador.' });
 
@@ -434,19 +443,9 @@ router.get(
       if (Object.keys(match).length) pipeline.push({ $match: match });
       pipeline.push({ $sample: { size: 10 } });
 
-      const list = await PracticeQuestion.aggregate(pipeline);
-      res.json({
-        questions: list.map((q: any) => ({
-          _id: q._id,
-          prompt: q.prompt,
-          type: q.type,
-          options: q.options ?? null,
-          imageUrl: q.imageUrl ?? null,
-          embedUrl: q.embedUrl ?? null,
-          unit: q.unit ?? null,
-        })),
-        completed: false,
-      });
+      const raw = await PracticeQuestion.aggregate(pipeline);
+      const questions = await resolveMediaForQuestions(raw);   // <-- también hereda media
+      res.json({ questions, completed: false });
     } catch (e) { next(e); }
   }
 );
@@ -475,8 +474,7 @@ router.post(
   }
 );
 
-/* ===== Progreso por curso + set =====
-   GET /practice/progress/course/:courseId?setId=...&goal=10 */
+/* ===== Progreso por curso + set ===== */
 router.get(
   '/practice/progress/course/:courseId',
   requireAuth,
@@ -546,8 +544,7 @@ router.get(
   }
 );
 
-/* ===== NUEVO: Progreso del alumno para un set =====
-   GET /practice/progress/mine?setId=... */
+/* ===== NUEVO: Progreso del alumno para un set ===== */
 router.get(
   '/practice/progress/mine',
   requireAuth,
@@ -590,8 +587,6 @@ router.get(
 );
 
 // ===== Tester (coord/admin): jugar como alumno =====
-// GET  /practice/play-as?studentId=...&setId=...&unit=...
-// POST /practice/submit-as { questionId, answer, studentId }
 router.get(
   '/practice/play-as',
   requireAuth,
@@ -627,18 +622,10 @@ router.get(
         { $sample: { size: Math.min(10, remaining) } },
       ];
 
-      const list = await PracticeQuestion.aggregate(pipeline);
+      const raw = await PracticeQuestion.aggregate(pipeline);
+      const questions = await resolveMediaForQuestions(raw);   // <-- usa item si falta media
       res.json({
-        questions: list.map((q: any) => ({
-          _id: q._id,
-          prompt: q.prompt,
-          type: q.type,
-          options: q.options ?? null,
-          // compat con imageUrl/embedUrl por ahora
-          imageUrl: q.imageUrl ?? null,
-          embedUrl: q.embedUrl ?? null,
-          unit: q.unit ?? null,
-        })),
+        questions,
         completed: false,
         progress: { total, seen: total - remaining, remaining },
       });
