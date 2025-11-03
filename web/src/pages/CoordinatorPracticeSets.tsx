@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
+import { normalizeEmbedUrl, isAudio } from '../lib/media';
 
 type SetRow = { _id:string; title:string; units?:number; tags?:string[] };
 type Q = {
@@ -86,13 +87,13 @@ export default function CoordinatorPracticeSets() {
       options: type==='MC' ? options.filter(Boolean) : undefined,
       answer: answer.trim(),
       imageUrl: media==='image' ? imageUrl.trim() : undefined,
-      embedUrl: media==='embed' ? embedUrl.trim() : undefined,
+      // 👇 normalizamos embeds (YouTube/Drive → /embed o /preview)
+      embedUrl: media==='embed' ? (normalizeEmbedUrl(embedUrl.trim()) || embedUrl.trim()) : undefined,
     };
     if (!body.prompt) return alert('Falta el enunciado');
     if (!body.answer) return alert('Falta la respuesta');
     if (type==='MC' && (!body.options || body.options.length<2)) return alert('Mínimo 2 opciones en MC');
 
-    // usamos createQuestion (compat ampliada con setId/unit/media)
     await api.practice.createQuestion(body);
     await afterSaveQuestion('Pregunta creada');
   }
@@ -107,7 +108,10 @@ export default function CoordinatorPracticeSets() {
       options: type==='MC' ? options.filter(Boolean) : undefined,
       answer: answer.trim(),
       imageUrl: media==='image' ? imageUrl.trim() : (media==='none' ? '' : undefined),
-      embedUrl: media==='embed' ? embedUrl.trim() : (media==='none' ? '' : undefined),
+      // 👇 normalizamos; si se quita media, mandamos vacío para limpiar
+      embedUrl: media==='embed'
+        ? (normalizeEmbedUrl(embedUrl.trim()) || embedUrl.trim())
+        : (media==='none' ? '' : undefined),
     };
     if (!body.prompt) return alert('Falta el enunciado');
     if (!body.answer) return alert('Falta la respuesta');
@@ -194,10 +198,17 @@ export default function CoordinatorPracticeSets() {
     setSel('');
   }
 
-  const preview = useMemo(() => ({
-    showImg: media==='image' && imageUrl.trim(),
-    showEmbed: media==='embed' && embedUrl.trim()
-  }), [media, imageUrl, embedUrl]);
+  const preview = useMemo(() => {
+    const hasImg = media==='image' && !!imageUrl.trim();
+    const rawEmbed = media==='embed' ? embedUrl.trim() : '';
+    const norm = rawEmbed ? (normalizeEmbedUrl(rawEmbed) || rawEmbed) : '';
+    return {
+      showImg: hasImg,
+      showEmbed: !!norm,
+      embedSrc: norm,
+      isAudio: rawEmbed ? isAudio(rawEmbed) : false,
+    };
+  }, [media, imageUrl, embedUrl]);
 
   return (
     <div style={{ padding:16, maxWidth:1100 }}>
@@ -268,7 +279,12 @@ export default function CoordinatorPracticeSets() {
               </>)}
               {media==='embed' && (<>
                 <label>Embed URL</label>
-                <input placeholder="https://..." value={embedUrl} onChange={e=>setEmbedUrl(e.target.value)} />
+                <input
+                  placeholder="https://... (YouTube/Drive/MP3)"
+                  value={embedUrl}
+                  onChange={e=>setEmbedUrl(e.target.value)}
+                  onBlur={()=> setEmbedUrl(prev => (normalizeEmbedUrl(prev) || prev))}
+                />
               </>)}
             </div>
 
@@ -301,12 +317,14 @@ export default function CoordinatorPracticeSets() {
                 <div style={{ fontWeight:700, marginBottom:6 }}>Preview</div>
                 {preview.showImg && <img src={imageUrl} alt="" style={{ maxWidth:'100%', borderRadius:12 }} />}
                 {preview.showEmbed && (
-                  <iframe
-                    src={embedUrl}
-                    title="embed"
-                    style={{ width:'100%', height:360, border:'1px solid #e5e7eb', borderRadius:12 }}
-                    sandbox="allow-same-origin allow-scripts allow-popups"
-                  />
+                  isAudio(preview.embedSrc)
+                    ? <audio controls src={preview.embedSrc} style={{ width:'100%' }} />
+                    : <iframe
+                        src={preview.embedSrc}
+                        title="embed"
+                        style={{ width:'100%', height:360, border:'1px solid #e5e7eb', borderRadius:12 }}
+                        sandbox="allow-same-origin allow-scripts allow-popups"
+                      />
                 )}
               </div>
             )}
@@ -376,3 +394,4 @@ export default function CoordinatorPracticeSets() {
     </div>
   );
 }
+
