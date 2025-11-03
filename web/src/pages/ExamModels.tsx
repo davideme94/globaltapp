@@ -246,29 +246,32 @@ function Section({ title, children }: { title:string; children:any }) {
    ========================= */
 function Chip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-xs
-                     bg-[var(--chip-bg)] border-[var(--border)] text-[var(--chip-text)]">
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-xl text-[11px]
+                 bg-[var(--chip-bg)] text-[var(--chip-text)]
+                 ring-1 ring-[var(--border)] shadow-[0_1px_0_rgba(0,0,0,.03)]"
+    >
       {children}
     </span>
   );
 }
 
 function SoftDivider() {
-  return <div className="h-px my-3 bg-[var(--border)]/70" />;
+  return <div className="h-px my-3 bg-[var(--border)]/80" />;
 }
 
 function BookSticker() {
-  // Ilustración inline (sin assets externos)
   return (
-    <svg viewBox="0 0 64 64" width="56" height="56" className="drop-shadow-sm">
+    <svg viewBox="0 0 64 64" width="64" height="64" className="drop-shadow-sm">
       <defs>
         <linearGradient id="g" x1="0" x2="1">
           <stop offset="0" stopColor="#a21caf"/><stop offset="1" stopColor="#7c3aed"/>
         </linearGradient>
       </defs>
-      <rect x="6" y="10" rx="10" ry="10" width="52" height="44" fill="url(#g)"/>
-      <rect x="10" y="14" rx="8" ry="8" width="44" height="36" fill="#ffffff" opacity="0.96"/>
-      <circle cx="26" cy="30" r="3" fill="#0ea5e9"/><circle cx="38" cy="30" r="3" fill="#10b981"/>
+      <rect x="6" y="10" rx="12" ry="12" width="52" height="44" fill="url(#g)"/>
+      <rect x="10" y="14" rx="9" ry="9" width="44" height="36" fill="#ffffff" opacity="0.95" />
+      <circle cx="26" cy="30" r="3.2" fill="#0ea5e9"/>
+      <circle cx="38" cy="30" r="3.2" fill="#10b981"/>
       <path d="M20 40c6 4 18 4 24 0" stroke="#a78bfa" strokeWidth="3" fill="none" strokeLinecap="round"/>
     </svg>
   );
@@ -298,15 +301,21 @@ function ExamRow({
 
   return (
     <div
-      className="rounded-3xl border p-4 shadow-sm bg-[var(--card)] border-[var(--border)]
-                 hover:shadow-md transition group overflow-hidden relative"
+      className="rounded-3xl border overflow-hidden shadow-sm transition group
+                 ring-1 ring-[var(--border)] bg-[var(--card)]"
       style={{
         backgroundImage:
-          'linear-gradient(120deg, rgba(162,28,175,.06), rgba(124,58,237,.06))'
+          'linear-gradient(120deg, rgba(162,28,175,.14), rgba(124,58,237,.12))'
       }}
     >
-      {/* Header amigable */}
-      <div className="flex items-center gap-3">
+      {/* Banda superior con degradado y sticker */}
+      <div
+        className="relative flex items-center gap-3 px-4 py-3"
+        style={{
+          background:
+            'linear-gradient(90deg, rgba(162,28,175,.25), rgba(124,58,237,.18))'
+        }}
+      >
         <div className="shrink-0 rounded-2xl bg-[var(--soft)] p-2 ring-1 ring-[var(--border)]">
           <BookSticker/>
         </div>
@@ -318,92 +327,92 @@ function ExamRow({
           <h3 className="mt-1 font-semibold text-[17px] leading-6 truncate">{title}</h3>
         </div>
 
-        <div className="ml-auto">
-          <a
-            className={
-              'inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm transition ' +
-              (canOpen
-                ? 'border bg-[var(--soft)] hover:brightness-105 ring-1 ring-[var(--border)]'
-                : 'border opacity-50 pointer-events-none ring-1 ring-[var(--border)]')
-            }
-            href={canOpen ? form.driveUrl : undefined}
-            target="_blank" rel="noreferrer"
-            title={canOpen ? 'Abrir examen' : 'Sin link disponible'}
-          >
-            Ver examen <ExternalLink size={16}/>
-          </a>
-        </div>
+        <a
+          className={
+            'ml-auto inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm transition ' +
+            (canOpen
+              ? 'border bg-[var(--soft)] hover:brightness-110 ring-1 ring-[var(--border)]'
+              : 'border opacity-50 pointer-events-none ring-1 ring-[var(--border)]')
+          }
+          href={canOpen ? form.driveUrl : undefined}
+          target="_blank" rel="noreferrer"
+          title={canOpen ? 'Abrir examen' : 'Sin link disponible'}
+        >
+          Ver examen <ExternalLink size={16}/>
+        </a>
       </div>
 
-      <SoftDivider/>
+      <div className="p-4">
+        <SoftDivider/>
 
-      {/* Vista por rol (misma lógica) */}
-      {mode === 'coord' && (
-        <div className="grid gap-3">
-          <div>
-            <label className="block text-sm mb-1">URL del examen (Drive)</label>
-            <input
-              className="input"
-              placeholder="https://drive.google.com/..."
-              value={form.driveUrl}
-              onChange={e=>setForm({ driveUrl: e.target.value })}
-            />
-          </div>
-
-          <label className="inline-flex items-center gap-2">
-            <input type="checkbox" checked={form.visible} onChange={e=>setForm({ visible: e.target.checked })}/>
-            <span>Habilitar vista para alumnos</span>
-          </label>
-
-          <div className="rounded-2xl border bg-[var(--soft)] p-3 ring-1 ring-[var(--border)]">
-            <GradeBox row={row} />
-          </div>
-        </div>
-      )}
-
-      {mode === 'staffSimple' && (
-        <div className="grid gap-3">
-          {canToggleVisibility && (
-            <label className="inline-flex items-center gap-2">
+        {/* Vista por rol (misma lógica) */}
+        {mode === 'coord' && (
+          <div className="grid gap-3">
+            <div>
+              <label className="block text-sm mb-1">URL del examen (Drive)</label>
               <input
-                type="checkbox"
-                checked={form.visible}
-                onChange={e=>setForm({ visible: e.target.checked })}
+                className="input"
+                placeholder="https://drive.google.com/..."
+                value={form.driveUrl}
+                onChange={e=>setForm({ driveUrl: e.target.value })}
               />
+            </div>
+
+            <label className="inline-flex items-center gap-2">
+              <input type="checkbox" checked={form.visible} onChange={e=>setForm({ visible: e.target.checked })}/>
               <span>Habilitar vista para alumnos</span>
             </label>
-          )}
 
-          {allowGrade ? (
             <div className="rounded-2xl border bg-[var(--soft)] p-3 ring-1 ring-[var(--border)]">
               <GradeBox row={row} />
             </div>
-          ) : (
-            <div className="text-xs text-[var(--muted)]">
-              Solo docentes pueden cargar notas.
-            </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
 
-      {mode === 'student' && (
-        <div className="rounded-2xl border bg-[var(--soft)] p-3 ring-1 ring-[var(--border)]">
-          {(row as any).myGrade ? (
-            <div>
-              <div className="text-sm">Tu resultado</div>
-              <div className="mt-1">
-                <span className="badge">
-                  {row.gradeType === 'PASS3'
-                    ? ((row as any).myGrade.resultPass3 ?? 'Sin registro')
-                    : ((row as any).myGrade.resultNumeric ?? 'Sin registro')}
-                </span>
+        {mode === 'staffSimple' && (
+          <div className="grid gap-3">
+            {canToggleVisibility && (
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={form.visible}
+                  onChange={e=>setForm({ visible: e.target.checked })}
+                />
+                <span>Habilitar vista para alumnos</span>
+              </label>
+            )}
+
+            {allowGrade ? (
+              <div className="rounded-2xl border bg-[var(--soft)] p-3 ring-1 ring-[var(--border)]">
+                <GradeBox row={row} />
               </div>
-            </div>
-          ) : (
-            <div className="text-xs text-[var(--muted)]">Aún no tenés resultado cargado.</div>
-          )}
-        </div>
-      )}
+            ) : (
+              <div className="text-xs text-[var(--muted)]">
+                Solo docentes pueden cargar notas.
+              </div>
+            )}
+          </div>
+        )}
+
+        {mode === 'student' && (
+          <div className="rounded-2xl border bg-[var(--soft)] p-3 ring-1 ring-[var(--border)]">
+            {(row as any).myGrade ? (
+              <div>
+                <div className="text-sm">Tu resultado</div>
+                <div className="mt-1">
+                  <span className="badge">
+                    {row.gradeType === 'PASS3'
+                      ? ((row as any).myGrade.resultPass3 ?? 'Sin registro')
+                      : ((row as any).myGrade.resultNumeric ?? 'Sin registro')}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-[var(--muted)]">Aún no tenés resultado cargado.</div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -493,5 +502,6 @@ function GradeBox({ row }: { row: ExamModelRow }) {
     </div>
   );
 }
+
 
 
