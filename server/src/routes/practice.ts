@@ -8,6 +8,47 @@ import { Enrollment } from '../models/enrollment';
 
 const router = Router();
 
+/* ===== Helpers de media (YouTube/Drive) ===== */
+function toYouTubeEmbed(u?: string | null) {
+  if (!u) return u;
+  try {
+    const url = new URL(u);
+    if (url.hostname === 'youtu.be') {
+      const id = url.pathname.slice(1);
+      return id ? `https://www.youtube-nocookie.com/embed/${id}` : u;
+    }
+    if (url.hostname.includes('youtube.com')) {
+      const v = url.searchParams.get('v');
+      if (v) return `https://www.youtube-nocookie.com/embed/${v}`;
+      const parts = url.pathname.split('/').filter(Boolean);
+      if (parts[0] && parts[1] && (parts[0] === 'shorts' || parts[0] === 'live')) {
+        return `https://www.youtube-nocookie.com/embed/${parts[1]}`;
+      }
+    }
+  } catch {}
+  return u || undefined;
+}
+
+function toDrivePreview(u?: string | null) {
+  if (!u) return u;
+  try {
+    const url = new URL(u);
+    if (!url.hostname.includes('drive.google.com')) return u;
+    if (url.pathname.startsWith('/file/d/')) {
+      const id = url.pathname.split('/')[3];
+      return id ? `https://drive.google.com/file/d/${id}/preview` : u;
+    }
+    const id = url.searchParams.get('id');
+    if (id) return `https://drive.google.com/file/d/${id}/preview`;
+  } catch {}
+  return u || undefined;
+}
+
+function normalizeEmbedUrl(u?: string | null) {
+  if (!u) return undefined;
+  return toDrivePreview(toYouTubeEmbed(u));
+}
+
 /* ====== SETS (coord/admin) ====== */
 const setSchema = z.object({
   title: z.string().min(3),
@@ -176,7 +217,7 @@ router.post(
       if (b.setId)    payload.set  = b.setId;
       if (b.unit)     payload.unit = b.unit;
       if (b.imageUrl) payload.imageUrl = b.imageUrl;
-      if (b.embedUrl) payload.embedUrl = b.embedUrl;
+      if (b.embedUrl) payload.embedUrl = normalizeEmbedUrl(b.embedUrl);
 
       const q = await PracticeQuestion.create(payload);
       res.json({ ok: true, question: q });
@@ -202,7 +243,7 @@ router.put(
       if (patch.answer   !== undefined) toSet.answer   = patch.answer;
       if (patch.unit     !== undefined) toSet.unit     = patch.unit;
       if (patch.imageUrl !== undefined) toSet.imageUrl = patch.imageUrl || null;
-      if (patch.embedUrl !== undefined) toSet.embedUrl = patch.embedUrl || null;
+      if (patch.embedUrl !== undefined) toSet.embedUrl = normalizeEmbedUrl(patch.embedUrl) || null;
 
       const q = await PracticeQuestion.findByIdAndUpdate(id, { $set: toSet }, { new: true }).lean();
       if (!q) return res.status(404).json({ error: 'Pregunta no encontrada' });
@@ -239,6 +280,57 @@ router.delete(
       console.error('delete question', e);
       return res.status(500).json({ error: 'Failed to delete question' });
     }
+  }
+);
+
+/* ===== Carga masiva de preguntas =====
+   POST /practice/questions/bulk
+   body: { setId: string, unit?: number, rows: Array<{
+     prompt:string; type:'MC'|'GAP';
+     options?: string[]; answer:string;
+     imageUrl?: string; embedUrl?: string; level?: string; courseId?: string;
+   }> }
+*/
+router.post(
+  '/practice/questions/bulk',
+  requireAuth,
+  allowRoles('coordinator', 'admin', 'teacher'),
+  async (req, res, next) => {
+    try {
+      const body = z.object({
+        setId: z.string(),
+        unit: z.number().int().min(1).max(99).optional(),
+        rows: z.array(z.object({
+          prompt: z.string().min(3),
+          type: z.enum(['MC', 'GAP']),
+          options: z.array(z.string()).optional(),
+          answer: z.string().min(1),
+          imageUrl: z.string().url().optional(),
+          embedUrl: z.string().url().optional(),
+          level: z.string().optional(),
+          courseId: z.string().optional(),
+        })).min(1).max(1000),
+      }).parse(req.body);
+
+      const uid = (req as any).userId as string;
+
+      const docs = body.rows.map(r => ({
+        set: body.setId,
+        unit: body.unit ?? undefined,
+        prompt: r.prompt,
+        type: r.type,
+        options: r.options,
+        answer: r.answer,
+        imageUrl: r.imageUrl,
+        embedUrl: normalizeEmbedUrl(r.embedUrl),
+        level: r.level,
+        course: r.courseId || null,
+        createdBy: uid,
+      }));
+
+      const inserted = await PracticeQuestion.insertMany(docs, { ordered: false });
+      res.json({ ok: true, created: inserted.length });
+    } catch (e) { next(e); }
   }
 );
 
@@ -578,4 +670,5 @@ router.post(
 );
 
 export default router;
+
 
