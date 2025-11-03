@@ -31,6 +31,7 @@ import practiceRoute from './routes/practice';
 import examModelsRoutes from './routes/examModels';
 import scheduleRoute from './routes/schedule';
 import britishRoutes from './routes/british';
+import practiceItemsRouter from './routes/practice-items';
 
 /** NUEVO: mis inscripciones + compat cursos/míos */
 import enrollmentsRoute from './routes/enrollments';
@@ -95,6 +96,7 @@ app.use('/api', casesRoute);
 app.use('/api', alertsRoute);
 app.use('/api', boardRouter);
 app.use('/api', examModelsRoutes);
+app.use('/api', practiceItemsRouter);
 
 /** Errores */
 app.use(errorHandler);
