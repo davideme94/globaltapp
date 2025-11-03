@@ -444,152 +444,201 @@ export const api = {
       ),
   },
 
-   // PRACTICE
-  practice: {
-    /* ===================== NUEVO: Sets ===================== */
-    // Lista todos los sets (coord/admin/teacher y student para mostrar)
-    listSets: () =>
-      request<{ rows: { _id:string; title:string; units?:number; tags?:string[] }[] }>(`/practice/sets`),
+  // PRACTICE
+practice: {
+  /* ===================== NUEVO: Sets ===================== */
+  // Lista todos los sets (coord/admin/teacher y student para mostrar)
+  listSets: () =>
+    request<{ rows: { _id:string; title:string; units?:number; tags?:string[] }[] }>(`/practice/sets`),
 
-    // Crear un set (coord/admin/teacher)
-    createSet: (payload: { title:string; level?:string; units?:number; tags?:string[] }) =>
-      request<{ ok:true; set:{ _id:string; title:string } }>(
-        `/practice/sets`,
-        { method:'POST', body: JSON.stringify(payload) }
-      ),
+  // Crear un set (coord/admin/teacher)
+  createSet: (payload: { title:string; level?:string; units?:number; tags?:string[] }) =>
+    request<{ ok:true; set:{ _id:string; title:string } }>(
+      `/practice/sets`,
+      { method:'POST', body: JSON.stringify(payload) }
+    ),
 
-    // 🔧 NUEVO: actualizar / borrar set
-    updateSet: (id: string, patch: { title?:string; units?:number; tags?:string[] }) =>
-      request<{ ok:true; set:any }>(
-        `/practice/sets/${id}`,
-        { method:'PUT', body: JSON.stringify(patch) }
-      ),
+  // 🔧 NUEVO: actualizar / borrar set
+  updateSet: (id: string, patch: { title?:string; units?:number; tags?:string[] }) =>
+    request<{ ok:true; set:any }>(
+      `/practice/sets/${id}`,
+      { method:'PUT', body: JSON.stringify(patch) }
+    ),
 
-    deleteSet: (id: string) =>
-      request<{ ok:true }>(`/practice/sets/${id}`, { method:'DELETE' }),
+  deleteSet: (id: string) =>
+    request<{ ok:true }>(`/practice/sets/${id}`, { method:'DELETE' }),
 
-    // Sets habilitados para el alumno actual
-    mySets: () =>
-      request<{ rows:{ set:{ _id:string; title:string; units?:number }, updatedAt:string }[] }>(`/practice/my-sets`),
+  // Sets habilitados para el alumno actual
+  mySets: () =>
+    request<{ rows:{ set:{ _id:string; title:string; units?:number }, updatedAt:string }[] }>(`/practice/my-sets`),
 
-    /* ======== NUEVO: Habilitación por curso + set ========= */
-    // (no rompe tu endpoint viejo; éste exige setId)
-    accessByCourseForSet: (courseId: string, setId: string) =>
-      request<{ rows: { student: { _id:string; name:string; email:string }, enabled: boolean }[] }>(
-        `/practice/access/course/${courseId}${qs({ setId })}`
-      ),
+  /* ======== NUEVO: Habilitación por curso + set ========= */
+  // (no rompe tu endpoint viejo; éste exige setId)
+  accessByCourseForSet: (courseId: string, setId: string) =>
+    request<{ rows: { student: { _id:string; name:string; email:string }, enabled: boolean }[] }>(
+      `/practice/access/course/${courseId}${qs({ setId })}`
+    ),
 
-    setAccessForSet: (studentId: string, setId: string, enabled: boolean, courseId?: string) =>
-      request<{ ok:true; access:any }>(
-        `/practice/access`,
-        { method:'PUT', body: JSON.stringify({ studentId, setId, enabled, courseId }) }
-      ),
+  setAccessForSet: (studentId: string, setId: string, enabled: boolean, courseId?: string) =>
+    request<{ ok:true; access:any }>(
+      `/practice/access`,
+      { method:'PUT', body: JSON.stringify({ studentId, setId, enabled, courseId }) }
+    ),
 
-    /* ============ NUEVO: Jugar por set/unidad ============ */
-    // Devuelve 10 random del set (y unidad opcional)
-    playSet: (setId: string, unit?: number) =>
-      request<{ questions: {
-        _id:string; prompt:string; type:'MC'|'GAP';
-        options?: string[]|null; imageUrl?:string|null; embedUrl?:string|null; unit?:number|null
-      }[]; completed?: boolean; progress?: { total:number; seen:number; remaining:number } }>(
-        `/practice/play${qs({ setId, unit })}`
-      ),
+  /* ============ NUEVO: Jugar por set/unidad ============ */
+  // Devuelve 10 random del set (y unidad opcional)
+  playSet: (setId: string, unit?: number) =>
+    request<{ questions: {
+      _id:string; prompt:string; type:'MC'|'GAP';
+      options?: string[]|null; imageUrl?:string|null; embedUrl?:string|null; unit?:number|null
+    }[]; completed?: boolean; progress?: { total:number; seen:number; remaining:number } }>(
+      `/practice/play${qs({ setId, unit })}`
+    ),
 
-    /* ========= NUEVO: Preguntas con media (v2) ========== */
-    createQuestionV2: (payload: {
-      setId:string; unit?:number; prompt:string; type:'MC'|'GAP';
-      options?:string[]; answer:string; level?:string; imageUrl?:string; embedUrl?:string; courseId?:string
-    }) =>
-      request<{ ok:true; question:any }>(`/practice/questions`, { method:'POST', body: JSON.stringify(payload) }),
+  /* ========= NUEVO: Preguntas con media (v2) ========== */
+  createQuestionV2: (payload: {
+    setId:string; unit?:number; prompt:string; type:'MC'|'GAP';
+    options?:string[]; answer:string; level?:string; imageUrl?:string; embedUrl?:string; courseId?:string;
+    // 👇 NUEVO: referenciar media compartida
+    itemId?: string;
+  }) =>
+    request<{ ok:true; question:any }>(
+      `/practice/questions`,
+      { method:'POST', body: JSON.stringify(payload) }
+    ),
 
-    // 🔧 NUEVO: actualizar / borrar pregunta
-    updateQuestion: (id: string, patch: {
-      setId?:string; unit?:number; prompt?:string; type?:'MC'|'GAP';
-      options?:string[]; answer?:string; imageUrl?:string; embedUrl?:string
-    }) =>
-      request<{ ok:true; question:any }>(
-        `/practice/questions/${id}`,
-        { method:'PUT', body: JSON.stringify(patch) }
-      ),
+  // 🔧 NUEVO: actualizar / borrar pregunta
+  updateQuestion: (id: string, patch: {
+    setId?:string; unit?:number; prompt?:string; type?:'MC'|'GAP';
+    options?:string[]; answer?:string; imageUrl?:string; embedUrl?:string;
+    // 👇 NUEVO
+    itemId?: string | null;  // pasar null para desvincular
+  }) =>
+    request<{ ok:true; question:any }>(
+      `/practice/questions/${id}`,
+      { method:'PUT', body: JSON.stringify(patch) }
+    ),
 
-    deleteQuestion: (id: string) =>
-      request<{ ok:true }>(`/practice/questions/${id}`, { method:'DELETE' }),
+  deleteQuestion: (id: string) =>
+    request<{ ok:true }>(`/practice/questions/${id}`, { method:'DELETE' }),
 
-    // Listar preguntas por set (para editor)
-    listQuestionsBySet: (setId?: string) =>
-      request<{ questions:any[] }>(`/practice/questions${qs({ setId })}`),
+  // Listar preguntas por set (para editor)
+  listQuestionsBySet: (setId?: string) =>
+    request<{ questions:any[] }>(`/practice/questions${qs({ setId })}`),
 
-    /* ============== LO ANTERIOR (se mantiene) ============== */
-    accessByCourse: (courseId: string) =>
-      request<{ rows: { student: { _id:string; name:string; email:string }, enabled: boolean }[] }>(
-        `/practice/access/course/${courseId}`
-      ),
+  /* ============== LO ANTERIOR (se mantiene) ============== */
+  accessByCourse: (courseId: string) =>
+    request<{ rows: { student: { _id:string; name:string; email:string }, enabled: boolean }[] }>(
+      `/practice/access/course/${courseId}`
+    ),
 
-    setAccess: (studentId: string, enabled: boolean) =>
-      request<{ ok:true; access:any }>(
-        `/practice/access`,
-        { method:'PUT', body: JSON.stringify({ studentId, enabled }) }
-      ),
+  setAccess: (studentId: string, enabled: boolean) =>
+    request<{ ok:true; access:any }>(
+      `/practice/access`,
+      { method:'PUT', body: JSON.stringify({ studentId, enabled }) }
+    ),
 
-    seed: () => request<{ ok:true; created:number }>(`/practice/seed-simple`, { method:'POST' }),
+  seed: () => request<{ ok:true; created:number }>(`/practice/seed-simple`, { method:'POST' }),
 
-    // Versión legacy (sin setId). La dejamos por compatibilidad.
-    // ➕ incluye media opcional en la respuesta para futuros usos
-    play: () =>
-      request<{ questions: { _id:string; prompt:string; type:'MC'|'GAP'; options?: string[]|null; imageUrl?:string|null; embedUrl?:string|null }[] }>(`/practice/play`),
+  // Versión legacy (sin setId). La dejamos por compatibilidad.
+  // ➕ incluye media opcional en la respuesta para futuros usos
+  play: () =>
+    request<{ questions: { _id:string; prompt:string; type:'MC'|'GAP'; options?: string[]|null; imageUrl?:string|null; embedUrl?:string|null }[] }>(`/practice/play`),
 
-    submit: (questionId: string, answer: string) =>
-      request<{ correct: boolean }>(
-        `/practice/submit`,
-        { method:'POST', body: JSON.stringify({ questionId, answer }) }
-      ),
+  submit: (questionId: string, answer: string) =>
+    request<{ correct: boolean }>(
+      `/practice/submit`,
+      { method:'POST', body: JSON.stringify({ questionId, answer }) }
+    ),
 
-      // dentro de api.practice = { ... }
-    progressByCourseSet: (courseId: string, setId: string, goal = 10) =>
-      request<{ rows: {
-        student:{ _id:string; name:string; email:string };
-        enabled:boolean; attempts:number; correct:number; distinct:number;
-        percent:number; lastAt?:string|null; completed:boolean;
-      }[]; goal:number; totalQuestions:number }>(
-        `/practice/progress/course/${courseId}${qs({ setId, goal })}`
-      ),
+  // dentro de api.practice = { ... }
+  progressByCourseSet: (courseId: string, setId: string, goal = 10) =>
+    request<{ rows: {
+      student:{ _id:string; name:string; email:string };
+      enabled:boolean; attempts:number; correct:number; distinct:number;
+      percent:number; lastAt?:string|null; completed:boolean;
+    }[]; goal:number; totalQuestions:number }>(
+      `/practice/progress/course/${courseId}${qs({ setId, goal })}`
+    ),
 
-    // ➕ expandimos tipos para aceptar setId/unit/media (compat con tu builder)
-    createQuestion: (payload: {
-      prompt:string; type:'MC'|'GAP'; options?:string[]; answer:string; level?:string; courseId?:string;
-      setId?:string; unit?:number; imageUrl?:string; embedUrl?:string;
-    }) =>
-      request<{ ok:true; question:any }>(
-        `/practice/questions`,
-        { method:'POST', body: JSON.stringify(payload) }
-      ),
+  // ➕ expandimos tipos para aceptar setId/unit/media (+ itemId)
+  createQuestion: (payload: {
+    prompt:string; type:'MC'|'GAP'; options?:string[]; answer:string; level?:string; courseId?:string;
+    setId?:string; unit?:number; imageUrl?:string; embedUrl?:string;
+    // 👇 NUEVO
+    itemId?: string;
+  }) =>
+    request<{ ok:true; question:any }>(
+      `/practice/questions`,
+      { method:'POST', body: JSON.stringify(payload) }
+    ),
 
-    listQuestions: () => request<{ questions:any[] }>(`/practice/questions`),
+  listQuestions: () => request<{ questions:any[] }>(`/practice/questions`),
 
-    // NUEVO: progreso del alumno para un set
-    progressMine: (setId: string) =>
-      request<{ attempts:number; correct:number; distinct:number; lastAt?:string|null; total:number; completed:boolean }>(
-        `/practice/progress/mine${qs({ setId })}`
-      ),
+  // NUEVO: progreso del alumno para un set
+  progressMine: (setId: string) =>
+    request<{ attempts:number; correct:number; distinct:number; lastAt?:string|null; total:number; completed:boolean }>(
+      `/practice/progress/mine${qs({ setId })}`
+    ),
 
-    /* =================== NUEVO: TESTER MODE =================== */
-    // Jugar como alumno (coord/admin) – usa /practice/play-as
-    playAs: (studentId: string, setId: string, unit?: number) =>
-      request<{ questions: {
-        _id:string; prompt:string; type:'MC'|'GAP';
-        options?: string[]|null; imageUrl?:string|null; embedUrl?:string|null; unit?:number|null
-      }[]; completed?: boolean; progress?: { total:number; seen:number; remaining:number } }>(
-        `/practice/play-as${qs({ studentId, setId, unit })}`
-      ),
+  /* =================== NUEVO: TESTER MODE =================== */
+  // Jugar como alumno (coord/admin) – usa /practice/play-as
+  playAs: (studentId: string, setId: string, unit?: number) =>
+    request<{ questions: {
+      _id:string; prompt:string; type:'MC'|'GAP';
+      options?: string[]|null; imageUrl?:string|null; embedUrl?:string|null; unit?:number|null
+    }[]; completed?: boolean; progress?: { total:number; seen:number; remaining:number } }>(
+      `/practice/play-as${qs({ studentId, setId, unit })}`
+    ),
 
-    // Enviar respuesta como ese alumno – usa /practice/submit-as
-    submitAs: (studentId: string, questionId: string, answer: string) =>
-      request<{ correct: boolean }>(
-        `/practice/submit-as`,
-        { method:'POST', body: JSON.stringify({ studentId, questionId, answer }) }
-      ),
-    /* ========================================================== */
-  },
+  // Enviar respuesta como ese alumno – usa /practice/submit-as
+  submitAs: (studentId: string, questionId: string, answer: string) =>
+    request<{ correct: boolean }>(
+      `/practice/submit-as`,
+      { method:'POST', body: JSON.stringify({ studentId, questionId, answer }) }
+    ),
+
+  /* ===================== NUEVO: Items ===================== */
+  // Listar items (media reutilizable) con filtros opcionales
+  itemsList: (params?: { setId?: string; search?: string }) =>
+    request<{ rows: {
+      _id:string; title:string; set?:string|null; unit?:number|null;
+      imageUrl?:string|null; embedUrl?:string|null; updatedAt:string;
+    }[] }>(`/practice/items${qs(params || {})}`),
+
+  itemsCreate: (payload: { title:string; setId?:string; unit?:number; imageUrl?:string; embedUrl?:string }) =>
+    request<{ ok:true; item:any }>(
+      `/practice/items`,
+      { method:'POST', body: JSON.stringify(payload) }
+    ),
+
+  itemsUpdate: (id:string, patch: { title?:string; setId?:string|null; unit?:number; imageUrl?:string|null; embedUrl?:string|null }) =>
+    request<{ ok:true; item:any }>(
+      `/practice/items/${id}`,
+      { method:'PUT', body: JSON.stringify(patch) }
+    ),
+
+  itemsDelete: (id:string) =>
+    request<{ ok:true }>(`/practice/items/${id}`, { method:'DELETE' }),
+
+  /* ============== NUEVO: Carga masiva preguntas ============== */
+  questionsBulk: (payload: {
+    setId: string;
+    unit?: number;
+    rows: Array<{
+      prompt:string; type:'MC'|'GAP';
+      options?: string[]; answer:string;
+      imageUrl?: string; embedUrl?: string; level?: string; courseId?: string;
+      // 👇 opcional: podés mezclar filas con itemId
+      itemId?: string;
+    }>;
+  }) =>
+    request<{ ok:true; created:number }>(
+      `/practice/questions/bulk`,
+      { method:'POST', body: JSON.stringify(payload) }
+    ),
+},
+
 
   // BRITISH
   british: {
