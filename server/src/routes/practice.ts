@@ -1,4 +1,3 @@
-// server/src/routes/practice.ts
 import { Router } from 'express';
 import mongoose from 'mongoose';
 import { z } from 'zod';
@@ -578,5 +577,5 @@ router.post(
   }
 );
 
-
 export default router;
+
