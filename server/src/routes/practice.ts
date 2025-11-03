@@ -498,4 +498,85 @@ router.get(
   }
 );
 
+// ===== Tester (coord/admin): jugar como alumno =====
+// GET  /practice/play-as?studentId=...&setId=...&unit=...
+// POST /practice/submit-as { questionId, answer, studentId }
+router.get(
+  '/practice/play-as',
+  requireAuth,
+  allowRoles('coordinator','admin'),
+  async (req, res, next) => {
+    try {
+      const { studentId, setId, unit } = req.query as { studentId?: string; setId?: string; unit?: string };
+      if (!studentId) return res.status(400).json({ error: 'studentId requerido' });
+      if (!setId) return res.status(400).json({ error: 'setId requerido' });
+
+      const qFilter: any = { set: new mongoose.Types.ObjectId(setId) };
+      if (unit) qFilter.unit = Number(unit);
+
+      const total = await PracticeQuestion.countDocuments(qFilter);
+
+      // ✅ no repetir correctas (repite erradas)
+      const baseSeen: any = { student: new mongoose.Types.ObjectId(studentId), set: new mongoose.Types.ObjectId(setId) };
+      if (unit) baseSeen.unit = Number(unit);
+      const correctIds = await PracticeAttempt.distinct('question', { ...baseSeen, correct: true });
+      const remaining = Math.max(0, total - correctIds.length);
+
+      if (remaining <= 0) {
+        return res.json({
+          questions: [],
+          completed: true,
+          progress: { total, seen: total, remaining: 0 },
+        });
+      }
+
+      const pipeline: any[] = [
+        { $match: qFilter },
+        { $match: { _id: { $nin: correctIds.map((x:any)=> new mongoose.Types.ObjectId(String(x))) } } },
+        { $sample: { size: Math.min(10, remaining) } },
+      ];
+
+      const list = await PracticeQuestion.aggregate(pipeline);
+      res.json({
+        questions: list.map((q: any) => ({
+          _id: q._id,
+          prompt: q.prompt,
+          type: q.type,
+          options: q.options ?? null,
+          // compat con imageUrl/embedUrl por ahora
+          imageUrl: q.imageUrl ?? null,
+          embedUrl: q.embedUrl ?? null,
+          unit: q.unit ?? null,
+        })),
+        completed: false,
+        progress: { total, seen: total - remaining, remaining },
+      });
+    } catch (e) { next(e); }
+  }
+);
+
+router.post(
+  '/practice/submit-as',
+  requireAuth,
+  allowRoles('coordinator','admin'),
+  async (req, res, next) => {
+    try {
+      const b = z.object({ questionId: z.string(), answer: z.string(), studentId: z.string() }).parse(req.body);
+      const q = await PracticeQuestion.findById(b.questionId).lean();
+      if (!q) return res.status(404).json({ error: 'Pregunta no encontrada' });
+      const correct = q.answer.trim().toLowerCase() === b.answer.trim().toLowerCase();
+      await PracticeAttempt.create({
+        student: b.studentId,
+        question: q._id,
+        given: b.answer,
+        correct,
+        set: q.set || null,
+        unit: q.unit || null,
+      });
+      res.json({ correct });
+    } catch (e) { next(e); }
+  }
+);
+
+
 export default router;
