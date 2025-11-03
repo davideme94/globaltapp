@@ -23,31 +23,36 @@ const practiceSetSchema = new Schema<IPracticeSet>(
 
 export const PracticeSet = model<IPracticeSet>('PracticeSet', practiceSetSchema);
 
-/* ========= NUEVO: Media compartida (opcional) ========= */
-export interface IPracticeItem extends Document<Types.ObjectId> {
-  set: Types.ObjectId;
-  unit?: number;
+/* ========= PracticeItem (media reutilizable) =========
+   ⚠️ Evitamos colisión con Document#set usando Omit<Document,'set'> */
+type ItemDocBase = Omit<Document<Types.ObjectId>, 'set'>;
+
+export interface IPracticeItem extends ItemDocBase {
+  title: string;
+  set?: Types.ObjectId | null;     // asociación opcional a un set
+  unit?: number | null;            // unidad opcional
   imageUrl?: string | null;
   embedUrl?: string | null;
-  notes?: string | null;
   createdBy: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const practiceItemSchema = new Schema<IPracticeItem>(
+const itemSchema = new Schema<IPracticeItem>(
   {
-    set:      { type: Schema.Types.ObjectId, ref: 'PracticeSet', required: true, index: true },
-    unit:     { type: Number, min: 1, max: 99, index: true },
+    title:    { type: String, required: true, trim: true, index: true },
+    set:      { type: Schema.Types.ObjectId, ref: 'PracticeSet', default: null, index: true },
+    unit:     { type: Number, min: 1, max: 99 },
     imageUrl: { type: String, default: null },
     embedUrl: { type: String, default: null },
-    notes:    { type: String, default: null },
     createdBy:{ type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
   { timestamps: true }
 );
 
-export const PracticeItem = model<IPracticeItem>('PracticeItem', practiceItemSchema);
+itemSchema.index({ set: 1, unit: 1, updatedAt: -1 });
+
+export const PracticeItem = model<IPracticeItem>('PracticeItem', itemSchema);
 
 /* ========= Preguntas =========
    Nota: evitamos conflicto con Document.set() usando Omit<Document,'set'> */
@@ -56,8 +61,6 @@ type DocBase = Omit<Document<Types.ObjectId>, 'set'>;
 export interface IPracticeQuestion extends DocBase {
   set?: Types.ObjectId | null;   // pack (opcional para compatibilidad)
   unit?: number;                 // unidad (1..n)
-  /** NUEVO: referencia opcional a media compartida */
-  item?: Types.ObjectId | null;
   prompt: string;
   imageUrl?: string;
   embedUrl?: string;
@@ -75,8 +78,6 @@ const questionSchema = new Schema<IPracticeQuestion>(
   {
     set:       { type: Schema.Types.ObjectId, ref: 'PracticeSet', index: true, default: null },
     unit:      { type: Number, min: 1, max: 99 },
-    /** NUEVO: si existe, la pregunta hereda el media de PracticeItem */
-    item:      { type: Schema.Types.ObjectId, ref: 'PracticeItem', index: true, default: null },
     prompt:    { type: String, required: true },
     imageUrl:  { type: String },
     embedUrl:  { type: String },
@@ -90,9 +91,7 @@ const questionSchema = new Schema<IPracticeQuestion>(
   { timestamps: true }
 );
 
-// Índices útiles
 questionSchema.index({ set: 1, unit: 1 });
-questionSchema.index({ item: 1 });
 
 export const PracticeQuestion = model<IPracticeQuestion>('PracticeQuestion', questionSchema);
 
@@ -130,7 +129,6 @@ accessSchema.index(
 export const PracticeAccess = model<IPracticeAccess>('PracticeAccess', accessSchema);
 
 /* ========= Intentos ========= */
-// Evitamos colisión con Document#set (método de Mongoose)
 type AttemptDocBase = Omit<Document<Types.ObjectId>, 'set'>;
 
 export interface IPracticeAttempt extends AttemptDocBase {
