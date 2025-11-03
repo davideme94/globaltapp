@@ -75,6 +75,34 @@ router.post(
   }
 );
 
+/** ✅ DELETE /courses/:id  -> borra curso y sus inscripciones */
+router.delete(
+  '/courses/:id',
+  requireAuth,
+  allowRoles('coordinator', 'admin'),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      if (!isObjectId(id)) return res.status(404).json({ error: 'Curso no encontrado' });
+
+      const course = await Course.findById(id).lean();
+      if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
+
+      // 1) Borrar inscripciones del curso (todas; si querés limitar por año, agrega year: course.year)
+      await Enrollment.deleteMany({ course: id });
+
+      // 2) (Opcional) limpiar otros datos que dependan del curso aquí
+
+      // 3) Borrar el curso
+      await Course.deleteOne({ _id: id });
+
+      res.json({ ok: true });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
 /** PUT /courses/:id/teacher  -> asigna docente */
 router.put(
   '/courses/:id/teacher',
@@ -539,3 +567,4 @@ router.get(
 );
 
 export default router;
+
