@@ -310,7 +310,7 @@ function ExamRow({
     >
       {/* Banda superior con degradado y sticker */}
       <div
-        className="relative flex items-center gap-3 px-4 py-3"
+        className="relative flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3"
         style={{
           background:
             'linear-gradient(90deg, rgba(162,28,175,.25), rgba(124,58,237,.18))'
@@ -319,17 +319,30 @@ function ExamRow({
         <div className="shrink-0 rounded-2xl bg-[var(--soft)] p-2 ring-1 ring-[var(--border)]">
           <BookSticker/>
         </div>
-        <div className="min-w-0">
+
+        <div className="min-w-0 grow">
           <div className="flex flex-wrap items-center gap-2">
             <Chip>{catLabel}</Chip>
             <Chip>🧮 {gradeLabel}</Chip>
           </div>
-          <h3 className="mt-1 font-semibold text-[17px] leading-6 truncate">{title}</h3>
+
+          {/* 🔧 título sin truncar en móvil */}
+          <h3
+            className="mt-1 font-semibold text-[17px] leading-6 pr-1 w-full"
+            style={{
+              whiteSpace: 'normal',
+              wordBreak: 'break-word',
+              overflow: 'visible',
+              textOverflow: 'clip'
+            }}
+          >
+            {title}
+          </h3>
         </div>
 
         <a
           className={
-            'ml-auto inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm transition ' +
+            'sm:ml-auto w-full sm:w-auto text-center inline-flex items-center justify-center gap-2 rounded-xl px-3 py-1.5 text-sm transition ' +
             (canOpen
               ? 'border bg-[var(--soft)] hover:brightness-110 ring-1 ring-[var(--border)]'
               : 'border opacity-50 pointer-events-none ring-1 ring-[var(--border)]')
