@@ -128,6 +128,13 @@ export default function CoordinatorCoursePractice() {
     await load(); // refresca progreso/habilitado del set seleccionado
   }
 
+  // ====== NUEVO: probar como alumno (abre en otra pestaña) ======
+  function testAs(studentId: string) {
+    if (!setId) return;
+    // podés pasar unidad fija si querés: &unit=1
+    window.open(`/student/practice?as=${encodeURIComponent(studentId)}&set=${encodeURIComponent(setId)}`, '_blank', 'noopener');
+  }
+
   if (!id) return null;
   if (loading) return <div style={{ padding:16 }}>Cargando…</div>;
 
@@ -196,7 +203,11 @@ export default function CoordinatorCoursePractice() {
               </td>
               <td style={td}>{r.lastAt ? new Date(r.lastAt).toLocaleString() : '-'}</td>
               <td style={td}>
-                <button onClick={()=>openAssign(r.student)}>Asignar sets</button>
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                  <button onClick={()=>openAssign(r.student)}>Asignar sets</button>
+                  {/* 👉 NUEVO botón Probar */}
+                  <button onClick={()=>testAs(r.student._id)}>Probar</button>
+                </div>
               </td>
             </tr>
           ))}
