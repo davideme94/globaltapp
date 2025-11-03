@@ -4,17 +4,38 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 
 // 👇 Tus estilos globales
-import './index.css';              // carga Tailwind y estilos base
-import './styles/dark-fixes.css';  // fixes para modo oscuro (dejarlo después de index.css)
+import './index.css';
+import './styles/dark-fixes.css';
 
 // ⬇️ React Query
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// 👇 Inicializa el tema en <html> al arrancar (oscuro/claro)
-import { initTheme } from './theme';
-initTheme(); // <- importante para que en móvil el fondo no quede claro
+// 🔆 Forzar modo claro SIEMPRE (evita auto-dark en móvil / WebView / Chrome)
+(function forceLight() {
+  const html = document.documentElement; // <html>
+  html.classList.add('force-light');     // <- clave para bloquear preferencia del SO
+  html.classList.remove('dark');         // por si estaba seteado en algún lado
 
-// Cliente global de React Query (no cambia tu lógica de datos)
+  // meta color-scheme => le dice al motor que la página es light
+  let metaCS = document.querySelector('meta[name="color-scheme"]') as HTMLMetaElement | null;
+  if (!metaCS) {
+    metaCS = document.createElement('meta');
+    metaCS.setAttribute('name', 'color-scheme');
+    document.head.appendChild(metaCS);
+  }
+  metaCS.setAttribute('content', 'light');
+
+  // meta theme-color => barra del navegador clara en Android/Chrome
+  let metaTheme = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+  if (!metaTheme) {
+    metaTheme = document.createElement('meta');
+    metaTheme.setAttribute('name', 'theme-color');
+    document.head.appendChild(metaTheme);
+  }
+  metaTheme.setAttribute('content', '#ffffff');
+})();
+
+// Cliente global de React Query (igual que tenías)
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -25,10 +46,7 @@ const queryClient = new QueryClient({
   },
 });
 
-class Boundary extends React.Component<
-  React.PropsWithChildren<{}>,
-  { error: unknown }
-> {
+class Boundary extends React.Component<React.PropsWithChildren<{}>, { error: unknown }> {
   constructor(props: React.PropsWithChildren<{}>) {
     super(props);
     this.state = { error: null };
@@ -57,12 +75,9 @@ const root = document.getElementById('root')!;
 createRoot(root).render(
   <StrictMode>
     <Boundary>
-      {/* ⬇️ Proveedor requerido por useQuery/useMutation */}
       <QueryClientProvider client={queryClient}>
         <App />
-        {/* Devtools opcional (solo en desarrollo) */}
       </QueryClientProvider>
     </Boundary>
   </StrictMode>
 );
-
