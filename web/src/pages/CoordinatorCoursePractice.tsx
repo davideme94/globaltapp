@@ -167,52 +167,55 @@ export default function CoordinatorCoursePractice() {
         </div>
       )}
 
-      <table style={{ width:'100%', borderCollapse:'collapse' }}>
-        <thead>
-          <tr>
-            <th style={thLeft}>Alumno</th>
-            <th style={th}>Email</th>
-            <th style={th}>Habilitado</th>
-            <th style={th}>Progreso</th>
-            <th style={th}>Última vez</th>
-            <th style={th}>Sets</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(r => (
-            <tr key={r.student._id}>
-              <td style={tdLeft}>{r.student.name}</td>
-              <td style={td}>{r.student.email}</td>
-              <td style={td}>
-                <label style={{ display:'inline-flex', gap:6, alignItems:'center' }}>
-                  <input
-                    type="checkbox"
-                    checked={r.enabled}
-                    onChange={e=>setAccess(r.student._id, e.target.checked)}
-                  />
-                  {r.enabled ? 'Sí' : 'No'}
-                </label>
-              </td>
-              <td style={td}>
-                <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                  <span>{r.distinct || 0} únicos · {r.percent || 0}%</span>
-                  {r.completed && (
-                    <span style={{ color:'#16a34a', fontWeight:600 }}>✓ Completado</span>
-                  )}
-                </div>
-              </td>
-              <td style={td}>{r.lastAt ? new Date(r.lastAt).toLocaleString() : '-'}</td>
-              <td style={td}>
-                <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                  <button onClick={()=>openAssign(r.student)}>Asignar sets</button>
-                  {/* 👉 NUEVO botón Probar */}
-                  <button onClick={()=>testAs(r.student._id)}>Probar</button>
-                </div>
-              </td>
+      {/* 👇 Contenedor con scroll horizontal para mobile */}
+      <div style={{ overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
+        <table style={{ width:'100%', borderCollapse:'collapse', minWidth: 760 }}>
+          <thead>
+            <tr>
+              <th style={thLeft}>Alumno</th>
+              <th style={th}>Email</th>
+              <th style={th}>Habilitado</th>
+              <th style={th}>Progreso</th>
+              <th style={th}>Última vez</th>
+              <th style={th}>Sets</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.student._id}>
+                <td style={tdLeft}>{r.student.name}</td>
+                <td style={td}>{r.student.email}</td>
+                <td style={td}>
+                  <label style={{ display:'inline-flex', gap:6, alignItems:'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={r.enabled}
+                      onChange={e=>setAccess(r.student._id, e.target.checked)}
+                    />
+                    {r.enabled ? 'Sí' : 'No'}
+                  </label>
+                </td>
+                <td style={td}>
+                  <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                    <span>{r.distinct || 0} únicos · {r.percent || 0}%</span>
+                    {r.completed && (
+                      <span style={{ color:'#16a34a', fontWeight:600 }}>✓ Completado</span>
+                    )}
+                  </div>
+                </td>
+                <td style={td}>{r.lastAt ? new Date(r.lastAt).toLocaleString() : '-'}</td>
+                <td style={td}>
+                  <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                    <button onClick={()=>openAssign(r.student)}>Asignar sets</button>
+                    {/* 👉 NUEVO botón Probar */}
+                    <button onClick={()=>testAs(r.student._id)}>Probar</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {/* ===== Modal Asignar sets ===== */}
       {assignOpen && (
