@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
+import { normalizeEmbedUrl } from '../lib/media'; // 👈 agregado
 import '../styles/student-practice.css';
 
 type Q = {
@@ -183,7 +184,7 @@ export default function StudentPractice() {
           {progress && (
             <div style={{ flex:1, minWidth:220, display:'flex', alignItems:'center', gap:10 }}>
               <div style={{ flex:1, background:'#e5e7eb', borderRadius:999, height:10, overflow:'hidden' }}>
-                <div style={{ width:`${pct}%`, height:'100%', background:'linear-gradient(90deg,#22c55e,#16a34a)', borderRadius:999 }} />
+                <div style={{ width:`${pct}%`, height:'100%', borderRadius:999, background:'linear-gradient(90deg,#22c55e,#16a34a)' }} />
               </div>
               <div style={{ minWidth:110, fontSize:12, color:'#111827' }}>
                 <b>{progress.seen}</b> / {progress.total} únicos
@@ -246,10 +247,13 @@ export default function StudentPractice() {
           {q?.embedUrl && (
             <div style={{ marginBottom:12 }}>
               <iframe
-                src={q.embedUrl}
+                src={normalizeEmbedUrl(q.embedUrl) /* 👈 normalizado */}
                 title="embed"
                 style={{ width:'100%', height:360, border:'1px solid #e5e7eb', borderRadius:12 }}
-                sandbox="allow-same-origin allow-scripts allow-popups"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"  /* 👈 permisos YT */
+                allowFullScreen  /* 👈 fullscreen */
+                sandbox="allow-same-origin allow-scripts allow-popups allow-presentation" /* 👈 habilita presentación */
+                referrerPolicy="strict-origin-when-cross-origin" /* 👈 evita bloqueos de referrer */
               />
             </div>
           )}
@@ -285,4 +289,5 @@ export default function StudentPractice() {
     </div>
   );
 }
+
 
