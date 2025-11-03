@@ -130,7 +130,6 @@ export default function CoordinatorStudentSearch() {
                   name: c.name,
                   year: c.year,
                   campus: c.campus as Campus,
-                  // teacher puede venir poblado en /courses si lo tenés así
                   // @ts-ignore
                   teacher: (c as any).teacher
                     ? {
@@ -261,122 +260,133 @@ export default function CoordinatorStudentSearch() {
       {/* errores */}
       {error && <div className="text-danger">{error}</div>}
 
-      {/* tabla */}
-      <div className="card overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead className="sticky top-0 bg-white">
-            <tr className="text-left text-neutral-700">
-              <th className="px-3 py-2 border-b">Alumno</th>
-              <th className="px-3 py-2 border-b">Curso(s) y Docente</th>
-              <th className="px-3 py-2 border-b">Edad</th>
-              <th className="px-3 py-2 border-b">Tel.</th>
-              <th className="px-3 py-2 border-b">Tutor</th>
-              <th className="px-3 py-2 border-b">Tel. Tutor</th>
-              <th className="px-3 py-2 border-b">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={7} className="px-3 py-6">
-                  <div className="h-16 skeleton" />
-                </td>
+      {/* tabla (scroll horizontal en móvil) */}
+      <div
+        className="card p-0 -mx-4 md:mx-0"
+      >
+        <div
+          className="overflow-x-auto px-4"
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehaviorX: 'contain',
+          }}
+        >
+          <table className="min-w-[980px] text-sm">
+            <thead className="sticky top-0 bg-white">
+              <tr className="text-left text-neutral-700 whitespace-nowrap">
+                <th className="px-3 py-2 border-b">Alumno</th>
+                <th className="px-3 py-2 border-b">Curso(s) y Docente</th>
+                <th className="px-3 py-2 border-b">Edad</th>
+                <th className="px-3 py-2 border-b">Tel.</th>
+                <th className="px-3 py-2 border-b">Tutor</th>
+                <th className="px-3 py-2 border-b">Tel. Tutor</th>
+                <th className="px-3 py-2 border-b">Acciones</th>
               </tr>
-            )}
+            </thead>
+            <tbody>
+              {loading && (
+                <tr>
+                  <td colSpan={7} className="px-3 py-6">
+                    <div className="h-16 skeleton" />
+                  </td>
+                </tr>
+              )}
 
-            {!loading && rows.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-3 py-6 text-neutral-700">
-                  Sin resultados. Escribí al menos 3 letras del nombre o email y presioná “Buscar”.
-                </td>
-              </tr>
-            )}
+              {!loading && rows.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-3 py-6 text-neutral-700">
+                    Sin resultados. Escribí al menos 3 letras del nombre o email y presioná “Buscar”.
+                  </td>
+                </tr>
+              )}
 
-            {!loading &&
-              rows.map((s) => {
-                const c0 = s.courses[0];
+              {!loading &&
+                rows.map((s) => {
+                  const c0 = s.courses[0];
 
-                return (
-                  <tr key={s._id} className="border-t align-top">
-                    {/* Alumno */}
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-3">
-                        <Avatar name={s.name} photoUrl={s.photoUrl} />
-                        <div className="min-w-0">
-                          <div className="font-medium truncate">{s.name}</div>
-                          <div className="text-xs text-neutral-600 truncate">{s.email || '—'}</div>
+                  return (
+                    <tr key={s._id} className="border-t align-top">
+                      {/* Alumno */}
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-3">
+                          <Avatar name={s.name} photoUrl={s.photoUrl} />
+                          <div className="min-w-0">
+                            <div className="font-medium truncate max-w-[220px]">{s.name}</div>
+                            <div className="text-xs text-neutral-600 truncate max-w-[220px]">{s.email || '—'}</div>
+                          </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Cursos + Docente */}
-                    <td className="px-3 py-2">
-                      <div className="flex flex-col gap-2">
-                        {s.courses && s.courses.length ? (
-                          s.courses.map((c) => (
-                            <div key={c._id} className="flex items-center gap-2">
-                              <span className="inline-flex items-center rounded-lg bg-neutral-50 px-2 py-1">
-                                <span className="font-medium">{c.name}</span>
-                                <span className="mx-1 text-neutral-600">—</span>
-                                <span className="text-neutral-700">{c.campus}</span>
-                                {c.year ? <span className="ml-1 text-neutral-600">({c.year})</span> : null}
-                              </span>
-                              {c.teacher && (
-                                <span className="inline-flex items-center gap-2">
-                                  <Avatar name={c.teacher.name} photoUrl={c.teacher.photoUrl} size={20} />
-                                  <span className="text-neutral-800">{c.teacher.name}</span>
+                      {/* Cursos + Docente */}
+                      <td className="px-3 py-2">
+                        <div className="flex flex-col gap-2">
+                          {s.courses && s.courses.length ? (
+                            s.courses.map((c) => (
+                              <div key={c._id} className="flex items-center gap-2">
+                                <span className="inline-flex items-center rounded-lg bg-neutral-50 px-2 py-1">
+                                  <span className="font-medium">{c.name}</span>
+                                  <span className="mx-1 text-neutral-600">—</span>
+                                  <span className="text-neutral-700">{c.campus}</span>
+                                  {c.year ? <span className="ml-1 text-neutral-600">({c.year})</span> : null}
                                 </span>
-                              )}
-                            </div>
-                          ))
-                        ) : (
-                          <span>—</span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Edad */}
-                    <td className="px-3 py-2">{calcAge(s.dob) || '—'}</td>
-
-                    {/* Tel alumno */}
-                    <td className="px-3 py-2">{s.phone || '—'}</td>
-
-                    {/* Tutor */}
-                    <td className="px-3 py-2">{s.tutor || '—'}</td>
-
-                    {/* Tel tutor */}
-                    <td className="px-3 py-2">{s.tutorPhone || '—'}</td>
-
-                    {/* Acciones */}
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {c0 ? (
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <Link to={`/coordinator/course/${c0._id}/boletin`} className="text-brand-primary underline">
-                            Boletín
-                          </Link>
-                          <span>·</span>
-                          <Link to={`/coordinator/course/${c0._id}/partials`} className="text-brand-primary underline">
-                            Reporte parcial
-                          </Link>
-                          <span>·</span>
-                          <Link to={`/coordinator/course/${c0._id}/british`} className="text-brand-primary underline">
-                            Británico
-                          </Link>
-                          <span>·</span>
-                          <Link to={`/communications`} className="text-brand-primary underline">
-                            Comunicaciones
-                          </Link>
+                                {c.teacher && (
+                                  <span className="inline-flex items-center gap-2">
+                                    <Avatar name={c.teacher.name} photoUrl={c.teacher.photoUrl} size={20} />
+                                    <span className="text-neutral-800">{c.teacher.name}</span>
+                                  </span>
+                                )}
+                              </div>
+                            ))
+                          ) : (
+                            <span>—</span>
+                          )}
                         </div>
-                      ) : (
-                        <span className="text-neutral-500">—</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-          </tbody>
-        </table>
+                      </td>
+
+                      {/* Edad */}
+                      <td className="px-3 py-2 whitespace-nowrap">{calcAge(s.dob) || '—'}</td>
+
+                      {/* Tel alumno */}
+                      <td className="px-3 py-2 whitespace-nowrap">{s.phone || '—'}</td>
+
+                      {/* Tutor */}
+                      <td className="px-3 py-2 whitespace-nowrap">{s.tutor || '—'}</td>
+
+                      {/* Tel tutor */}
+                      <td className="px-3 py-2 whitespace-nowrap">{s.tutorPhone || '—'}</td>
+
+                      {/* Acciones */}
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {c0 ? (
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <Link to={`/coordinator/course/${c0._id}/boletin`} className="text-brand-primary underline">
+                              Boletín
+                            </Link>
+                            <span>·</span>
+                            <Link to={`/coordinator/course/${c0._id}/partials`} className="text-brand-primary underline">
+                              Reporte parcial
+                            </Link>
+                            <span>·</span>
+                            <Link to={`/coordinator/course/${c0._id}/british`} className="text-brand-primary underline">
+                              Británico
+                            </Link>
+                            <span>·</span>
+                            <Link to={`/communications`} className="text-brand-primary underline">
+                              Comunicaciones
+                            </Link>
+                          </div>
+                        ) : (
+                          <span className="text-neutral-500">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 }
+
