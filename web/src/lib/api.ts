@@ -703,7 +703,7 @@ practice: {
   },
 
   /* ===================== NUEVO: EXÁMENES MODELOS ===================== */
-  exams: {
+   exams: {
     // Lista modelos del curso (alumno recibe solo visibles + su nota)
     listModels: (courseId: string) =>
       request<ExamModelRow[]>(`/courses/${courseId}/exam-models`),
@@ -731,7 +731,14 @@ practice: {
         `/exam-models/${id}/grade`,
         { method: 'PUT', body: JSON.stringify(payload) }
       ),
+
+    // ✅ NUEVO: obtener la nota de un alumno para un modelo
+    getGrade: (id: string, params: { studentId: string }) =>
+      request<{ resultPass3?: Pass3 | null; resultNumeric?: number | null } | null>(
+        `/exam-models/${id}/grade${qs(params)}`
+      ),
   },
+
   /* =================================================================== */
 
   /* ========= NUEVO: Agregador para NOTIFICACIONES (front-only) =========
