@@ -437,6 +437,9 @@ function GradeBox({ row }: { row: ExamModelRow }) {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // 💾 última nota cargada por alumno en esta sesión
+  const [lastGrades, setLastGrades] = useState<Record<string, string>>({});
+
   useEffect(() => {
     // roster del curso del modelo (para validar permisos)
     api.courses.teacher(String((row as any).course?._id || (row as any).course))
@@ -458,6 +461,13 @@ function GradeBox({ row }: { row: ExamModelRow }) {
     setSaving(true);
     try {
       await api.exams.setGrade(row._id, { studentId, resultPass3: v });
+
+      // guardamos la última nota PASS3 para ese alumno
+      setLastGrades(prev => ({
+        ...prev,
+        [studentId]: v,
+      }));
+
       flashSaved();
     } catch (e:any) {
       window.alert(e?.message || 'Error al guardar');
@@ -472,6 +482,13 @@ function GradeBox({ row }: { row: ExamModelRow }) {
     setSaving(true);
     try {
       await api.exams.setGrade(row._id, { studentId, resultNumeric: n });
+
+      // guardamos la última nota numérica para ese alumno
+      setLastGrades(prev => ({
+        ...prev,
+        [studentId]: String(n),
+      }));
+
       setNum('');
       flashSaved();
     } catch (e:any) {
@@ -480,6 +497,8 @@ function GradeBox({ row }: { row: ExamModelRow }) {
       setSaving(false);
     }
   };
+
+  const lastForStudent = studentId ? lastGrades[studentId] : undefined;
 
   return (
     <div className="mt-1">
@@ -496,6 +515,15 @@ function GradeBox({ row }: { row: ExamModelRow }) {
         <option value="">Seleccionar…</option>
         {students.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
       </select>
+
+      {/* Mostrar última nota cargada para este alumno en esta sesión */}
+      {studentId && (
+        <div className="mb-2 text-xs text-neutral-700">
+          {lastForStudent
+            ? <>Última nota cargada para este alumno: <span className="font-semibold">{lastForStudent}</span></>
+            : 'Este alumno todavía no tiene nota cargada en esta sesión.'}
+        </div>
+      )}
 
       {row.gradeType === 'PASS3' ? (
         <div className="flex gap-2 flex-wrap">
@@ -515,6 +543,7 @@ function GradeBox({ row }: { row: ExamModelRow }) {
     </div>
   );
 }
+
 
 
 
