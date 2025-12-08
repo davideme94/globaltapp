@@ -131,6 +131,36 @@ r.put(
   }
 );
 
+/* ✅ NUEVO: obtener la nota de UN alumno para un modelo (para coord/profe/admin) */
+r.get(
+  '/exam-models/:id/grade',
+  requireAuth, allowRoles('teacher', 'coordinator', 'admin'),
+  async (req, res, next) => {
+    try {
+      const examId = String(req.params.id);
+      const studentId = String(req.query.studentId || '').trim();
+
+      if (!studentId) {
+        return res.status(400).json({ error: 'studentId es requerido' });
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(examId) || !mongoose.Types.ObjectId.isValid(studentId)) {
+        return res.status(400).json({ error: 'IDs inválidos' });
+      }
+
+      const grade = await ExamGrade.findOne({
+        exam: new mongoose.Types.ObjectId(examId),
+        student: new mongoose.Types.ObjectId(studentId),
+      })
+        .select('resultPass3 resultNumeric')
+        .lean();
+
+      // devolvemos directamente la nota o null
+      return res.json(grade || null);
+    } catch (err) { next(err); }
+  }
+);
+
 /* Cargar nota (teacher/coord/admin) */
 const gradeSchema = z.object({
   studentId: z.string(),
@@ -167,3 +197,4 @@ r.put(
 );
 
 export default r;
+
