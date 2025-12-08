@@ -451,6 +451,36 @@ function GradeBox({ row }: { row: ExamModelRow }) {
       .catch(()=>setStudents([]));
   }, [row]);
 
+  // ⬇️ si existe api.exams.getGrade, cuando cambio de alumno intento leer su nota guardada
+  useEffect(() => {
+    if (!studentId) return;
+    if (lastGrades[studentId]) return; // ya la tengo en memoria
+
+    const anyApi = api as any;
+    if (!anyApi.exams || !anyApi.exams.getGrade) return; // si no existe el endpoint, no rompemos nada
+
+    (async () => {
+      try {
+        const g = await anyApi.exams.getGrade(row._id, { studentId });
+        if (!g) return;
+
+        const value =
+          row.gradeType === 'PASS3'
+            ? (g.resultPass3 ?? '')
+            : (typeof g.resultNumeric === 'number' ? String(g.resultNumeric) : '');
+
+        if (!value) return;
+
+        setLastGrades((prev: Record<string,string>) => ({
+          ...prev,
+          [studentId]: value,
+        }));
+      } catch {
+        // silencio: si falla, se queda el mensajito de "no tiene nota cargada en esta sesión"
+      }
+    })();
+  }, [studentId, row, lastGrades]);
+
   const flashSaved = () => {
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -516,7 +546,7 @@ function GradeBox({ row }: { row: ExamModelRow }) {
         {students.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
       </select>
 
-      {/* Mostrar última nota cargada para este alumno en esta sesión */}
+      {/* Mostrar última nota (desde el server o desde esta sesión) */}
       {studentId && (
         <div className="mb-2 text-xs text-neutral-700">
           {lastForStudent
@@ -543,7 +573,6 @@ function GradeBox({ row }: { row: ExamModelRow }) {
     </div>
   );
 }
-
 
 
 
