@@ -12,10 +12,15 @@ function providerLabel(p?: string) {
 }
 
 // 🔴 DESAPROBADO si ALGUNA nota cargada es < 50
-// (aunque la otra esté en null)
 function isFailed(oral: number | null, written: number | null) {
   if (oral == null && written == null) return false;
   return (oral != null && oral < 50) || (written != null && written < 50);
+}
+
+// 🟢 APROBADO si AMBAS notas están cargadas y >= 50
+function isApproved(oral: number | null, written: number | null) {
+  if (oral == null || written == null) return false;
+  return oral >= 50 && written >= 50;
 }
 
 export default function StudentBritishExam() {
@@ -66,7 +71,9 @@ export default function StudentBritishExam() {
 
       {!loading && !err && rows.map((r, idx) => {
         const course = typeof r.course === 'string' ? null : r.course;
+
         const failed = isFailed(r.oral ?? null, r.written ?? null);
+        const approved = isApproved(r.oral ?? null, r.written ?? null);
 
         return (
           <div key={(r as any)._id || idx} className="card p-0 overflow-hidden">
@@ -113,6 +120,12 @@ export default function StudentBritishExam() {
               {failed && (
                 <div className="mb-3 px-3 py-2 rounded-lg bg-red-100 text-red-700 font-semibold text-center">
                   DESAPROBADO
+                </div>
+              )}
+
+              {!failed && approved && (
+                <div className="mb-3 px-3 py-2 rounded-lg bg-emerald-100 text-emerald-700 font-semibold text-center">
+                  APROBADO
                 </div>
               )}
 
