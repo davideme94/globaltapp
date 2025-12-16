@@ -5,12 +5,13 @@ function providerLabel(p?: string) {
   switch (p) {
     case 'TRINITY': return 'Trinity College';
     case 'CAMBRIDGE': return 'Cambridge';
-    case 'BRITANICO': return 'Británico';
+    case 'BRITISH': return 'Británico';
+    case 'OTHER': return 'Otro';
     default: return '—';
   }
 }
 
-// 🔴 DESAPROBADO si alguna nota < 50 (y ambas cargadas)
+// 🔴 Desaprueba si alguna nota < 50 (cuando ambas están cargadas)
 function isFailed(oral: number | null, written: number | null) {
   if (oral == null || written == null) return false;
   return oral < 50 || written < 50;
@@ -54,8 +55,6 @@ export default function StudentBritishExam() {
       {!loading && !err && rows.map((r, idx) => {
         const course = typeof r.course === 'string' ? null : r.course;
         const failed = isFailed(r.oral ?? null, r.written ?? null);
-        const oralBad = r.oral != null && r.oral < 50;
-        const writtenBad = r.written != null && r.written < 50;
 
         return (
           <div key={(r as any)._id || idx} className="card p-0 overflow-hidden">
@@ -93,18 +92,12 @@ export default function StudentBritishExam() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="p-3 rounded-lg border border-neutral-200 bg-white">
                   <div className="text-sm text-neutral-600">Oral</div>
-                  <div className={'text-3xl font-bold ' + (oralBad ? 'text-red-600' : '')}>
-                    {r.oral ?? '—'}
-                  </div>
+                  <div className="text-3xl font-bold">{r.oral ?? '—'}</div>
                 </div>
-
                 <div className="p-3 rounded-lg border border-neutral-200 bg-white">
                   <div className="text-sm text-neutral-600">Escrito</div>
-                  <div className={'text-3xl font-bold ' + (writtenBad ? 'text-red-600' : '')}>
-                    {r.written ?? '—'}
-                  </div>
+                  <div className="text-3xl font-bold">{r.written ?? '—'}</div>
                 </div>
-
                 <div className="p-3 rounded-lg border border-neutral-200 bg-white">
                   <div className="text-sm text-neutral-600">Actualizado</div>
                   <div className="font-medium">
@@ -119,4 +112,5 @@ export default function StudentBritishExam() {
     </div>
   );
 }
+
 
