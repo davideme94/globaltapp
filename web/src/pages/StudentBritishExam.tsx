@@ -11,10 +11,11 @@ function providerLabel(p?: string) {
   }
 }
 
-// 🔴 Desaprueba si alguna nota < 50 (cuando ambas están cargadas)
+// 🔴 DESAPROBADO si ALGUNA nota cargada es < 50
+// (aunque la otra esté en null)
 function isFailed(oral: number | null, written: number | null) {
-  if (oral == null || written == null) return false;
-  return oral < 50 || written < 50;
+  if (oral == null && written == null) return false;
+  return (oral != null && oral < 50) || (written != null && written < 50);
 }
 
 export default function StudentBritishExam() {
@@ -28,11 +29,14 @@ export default function StudentBritishExam() {
     (async () => {
       setLoading(true); setErr(null);
       try {
-        const [meR, data] = await Promise.all([api.me(), api.british.mine()]);
+        const [meR, data] = await Promise.all([
+          api.me(),
+          api.british.mine()
+        ]);
         if (!alive) return;
         setMe(meR.user);
         setRows(data.results || []);
-      } catch (e:any) {
+      } catch (e: any) {
         if (!alive) return;
         setErr(e?.message || String(e));
       } finally {
@@ -46,8 +50,16 @@ export default function StudentBritishExam() {
     <div className="space-y-3">
       <h1 className="font-heading text-xl">Examen británico</h1>
 
-      {loading && <div className="card p-4"><div className="h-20 skeleton"/></div>}
-      {!loading && err && <div className="card p-4 text-danger">{err}</div>}
+      {loading && (
+        <div className="card p-4">
+          <div className="h-20 skeleton" />
+        </div>
+      )}
+
+      {!loading && err && (
+        <div className="card p-4 text-danger">{err}</div>
+      )}
+
       {!loading && !err && rows.length === 0 && (
         <div className="card p-4">Aún no hay resultados.</div>
       )}
@@ -59,20 +71,35 @@ export default function StudentBritishExam() {
         return (
           <div key={(r as any)._id || idx} className="card p-0 overflow-hidden">
             {/* Encabezado */}
-            <div className="px-4 py-3 text-white" style={{ background: 'var(--grad-primary)' }}>
+            <div
+              className="px-4 py-3 text-white"
+              style={{ background: 'var(--grad-primary)' }}
+            >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-7 w-7 rounded-xl" style={{ background: 'var(--grad-brand)' }} />
+                  <div
+                    className="h-7 w-7 rounded-xl"
+                    style={{ background: 'var(--grad-brand)' }}
+                  />
                   <div className="leading-tight">
-                    <div className="text-xs opacity-90">Instituto Global-T</div>
+                    <div className="text-xs opacity-90">
+                      Instituto Global-T
+                    </div>
                     <div className="font-medium">
-                      {course?.name || 'Curso'} <span className="opacity-90">— {course?.year ?? ''}</span>
+                      {course?.name || 'Curso'}
+                      <span className="opacity-90">
+                        {' '}— {course?.year ?? ''}
+                      </span>
                     </div>
                     {me && (
-                      <div className="text-xs opacity-90">Alumno: <b className="text-white">{me.name}</b></div>
+                      <div className="text-xs opacity-90">
+                        Alumno:{' '}
+                        <b className="text-white">{me.name}</b>
+                      </div>
                     )}
                   </div>
                 </div>
+
                 <div className="text-right">
                   <span className="px-3 py-1 rounded-full text-xs font-semibold border border-white/50">
                     {providerLabel(r.provider)}
@@ -92,16 +119,24 @@ export default function StudentBritishExam() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="p-3 rounded-lg border border-neutral-200 bg-white">
                   <div className="text-sm text-neutral-600">Oral</div>
-                  <div className="text-3xl font-bold">{r.oral ?? '—'}</div>
+                  <div className="text-3xl font-bold">
+                    {r.oral ?? '—'}
+                  </div>
                 </div>
+
                 <div className="p-3 rounded-lg border border-neutral-200 bg-white">
                   <div className="text-sm text-neutral-600">Escrito</div>
-                  <div className="text-3xl font-bold">{r.written ?? '—'}</div>
+                  <div className="text-3xl font-bold">
+                    {r.written ?? '—'}
+                  </div>
                 </div>
+
                 <div className="p-3 rounded-lg border border-neutral-200 bg-white">
                   <div className="text-sm text-neutral-600">Actualizado</div>
                   <div className="font-medium">
-                    {r.updatedAt ? new Date(r.updatedAt).toLocaleDateString('es-AR') : '—'}
+                    {r.updatedAt
+                      ? new Date(r.updatedAt).toLocaleDateString('es-AR')
+                      : '—'}
                   </div>
                 </div>
               </div>
@@ -112,5 +147,4 @@ export default function StudentBritishExam() {
     </div>
   );
 }
-
 
