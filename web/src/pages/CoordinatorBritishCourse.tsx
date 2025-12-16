@@ -11,13 +11,19 @@ type UiRow = {
   written: string;
   provider: Provider;
   saving?: boolean;
-  justSaved?: boolean; // ← NUEVO: feedback visual post-guardado
+  justSaved?: boolean; // ← feedback visual post-guardado
 };
 
 type Props = {
   /** "edit": coordinador edita / "view": docente solo lectura */
   mode?: 'edit' | 'view';
 };
+
+// 🔴 DESAPROBADO si alguna nota < 50 (y ambas cargadas)
+function isFailed(oral: number | null, written: number | null) {
+  if (oral == null || written == null) return false;
+  return oral < 50 || written < 50;
+}
 
 export default function CoordinatorBritishCourse({ mode = 'edit' }: Props) {
   const { id: courseId } = useParams<{ id: string }>();
@@ -159,56 +165,107 @@ export default function CoordinatorBritishCourse({ mode = 'edit' }: Props) {
               </tr>
             </thead>
             <tbody>
-              {rows.map(r => (
-                <tr key={r.studentId} className="border-t">
-                  <td className="px-3 py-2">{r.name}</td>
-                  <td className="px-3 py-2">
-                    <select
-                      className="input !h-8"
-                      disabled={readOnly || r.saving}
-                      value={r.provider}
-                      onChange={e => setRows(prev => prev.map(x => x.studentId === r.studentId ? { ...x, provider: e.target.value as Provider } : x))}
-                    >
-                      <option value="TRINITY">Trinity College</option>
-                      <option value="CAMBRIDGE">Cambridge</option>
-                      <option value="BRITANICO">Británico</option>
-                    </select>
-                  </td>
-                  <td className="px-3 py-2">
-                    <input
-                      className="input !h-8 w-24"
-                      placeholder="0–100"
-                      disabled={readOnly || r.saving}
-                      value={r.oral ?? ''}
-                      onChange={e => setRows(prev => prev.map(x => x.studentId === r.studentId ? { ...x, oral: e.target.value } : x))}
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <input
-                      className="input !h-8 w-24"
-                      placeholder="0–100"
-                      disabled={readOnly || r.saving}
-                      value={r.written ?? ''}
-                      onChange={e => setRows(prev => prev.map(x => x.studentId === r.studentId ? { ...x, written: e.target.value } : x))}
-                    />
-                  </td>
-                  {!readOnly && (
-                    <td className="px-3 py-2 text-right">
-                      <button
-                        className={
-                          'btn !h-8 !py-0 disabled:opacity-60 ' +
-                          (r.justSaved ? '!bg-emerald-600 text-white' : 'btn-primary')
-                        }
-                        disabled={r.saving || anySaving}
-                        onClick={() => saveOne(r)}
-                        aria-live="polite"
-                      >
-                        {r.saving ? 'Guardando…' : (r.justSaved ? 'Guardado ✓' : 'Guardar')}
-                      </button>
+              {rows.map(r => {
+                const oralNum = r.oral.trim() === '' ? null : Number(r.oral);
+                const writtenNum = r.written.trim() === '' ? null : Number(r.written);
+                const failed = isFailed(
+                  Number.isFinite(oralNum as any) ? oralNum : null,
+                  Number.isFinite(writtenNum as any) ? writtenNum : null
+                );
+
+                const oralBad = oralNum != null && Number.isFinite(oralNum) && oralNum < 50;
+                const writtenBad = writtenNum != null && Number.isFinite(writtenNum) && writtenNum < 50;
+
+                return (
+                  <tr key={r.studentId} className="border-t">
+                    <td className="px-3 py-2">
+                      {r.name}
+                      {failed && (
+                        <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700 font-semibold">
+                          DESAPROBADO
+                        </span>
+                      )}
                     </td>
-                  )}
-                </tr>
-              ))}
+
+                    <td className="px-3 py-2">
+                      <select
+                        className="input !h-8"
+                        disabled={readOnly || r.saving}
+                        value={r.provider}
+                        onChange={e =>
+                          setRows(prev =>
+                            prev.map(x =>
+                              x.studentId === r.studentId
+                                ? { ...x, provider: e.target.value as Provider }
+                                : x
+                            )
+                          )
+                        }
+                      >
+                        <option value="TRINITY">Trinity College</option>
+                        <option value="CAMBRIDGE">Cambridge</option>
+                        <option value="BRITANICO">Británico</option>
+                      </select>
+                    </td>
+
+                    <td className="px-3 py-2">
+                      <input
+                        className={
+                          'input !h-8 w-24 ' + (oralBad ? '!border-red-400' : '')
+                        }
+                        placeholder="0–100"
+                        disabled={readOnly || r.saving}
+                        value={r.oral ?? ''}
+                        onChange={e =>
+                          setRows(prev =>
+                            prev.map(x =>
+                              x.studentId === r.studentId
+                                ? { ...x, oral: e.target.value }
+                                : x
+                            )
+                          )
+                        }
+                      />
+                    </td>
+
+                    <td className="px-3 py-2">
+                      <input
+                        className={
+                          'input !h-8 w-24 ' + (writtenBad ? '!border-red-400' : '')
+                        }
+                        placeholder="0–100"
+                        disabled={readOnly || r.saving}
+                        value={r.written ?? ''}
+                        onChange={e =>
+                          setRows(prev =>
+                            prev.map(x =>
+                              x.studentId === r.studentId
+                                ? { ...x, written: e.target.value }
+                                : x
+                            )
+                          )
+                        }
+                      />
+                    </td>
+
+                    {!readOnly && (
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          className={
+                            'btn !h-8 !py-0 disabled:opacity-60 ' +
+                            (r.justSaved ? '!bg-emerald-600 text-white' : 'btn-primary')
+                          }
+                          disabled={r.saving || anySaving}
+                          onClick={() => saveOne(r)}
+                          aria-live="polite"
+                        >
+                          {r.saving ? 'Guardando…' : (r.justSaved ? 'Guardado ✓' : 'Guardar')}
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
