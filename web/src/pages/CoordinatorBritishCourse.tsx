@@ -11,7 +11,7 @@ type UiRow = {
   written: string;
   provider: Provider;
   saving?: boolean;
-  justSaved?: boolean; // ← feedback visual post-guardado
+  justSaved?: boolean; // ← NUEVO: feedback visual post-guardado
 };
 
 type Props = {
@@ -19,7 +19,7 @@ type Props = {
   mode?: 'edit' | 'view';
 };
 
-// 🔴 DESAPROBADO si alguna nota < 50 (y ambas cargadas)
+// 🔴 Desaprueba si alguna nota < 50 (cuando ambas están cargadas)
 function isFailed(oral: number | null, written: number | null) {
   if (oral == null || written == null) return false;
   return oral < 50 || written < 50;
@@ -166,15 +166,14 @@ export default function CoordinatorBritishCourse({ mode = 'edit' }: Props) {
             </thead>
             <tbody>
               {rows.map(r => {
-                const oralNum = r.oral.trim() === '' ? null : Number(r.oral);
-                const writtenNum = r.written.trim() === '' ? null : Number(r.written);
-                const failed = isFailed(
-                  Number.isFinite(oralNum as any) ? oralNum : null,
-                  Number.isFinite(writtenNum as any) ? writtenNum : null
-                );
-
-                const oralBad = oralNum != null && Number.isFinite(oralNum) && oralNum < 50;
-                const writtenBad = writtenNum != null && Number.isFinite(writtenNum) && writtenNum < 50;
+                // 👇 Solo para calcular DESAPROBADO (NO cambia tu lógica de guardado)
+                const toNumLoose = (v: string): number | null => {
+                  const s = String(v ?? '').trim();
+                  if (s === '') return null;
+                  const n = Number(s);
+                  return Number.isFinite(n) ? n : null;
+                };
+                const failed = isFailed(toNumLoose(r.oral), toNumLoose(r.written));
 
                 return (
                   <tr key={r.studentId} className="border-t">
@@ -186,68 +185,36 @@ export default function CoordinatorBritishCourse({ mode = 'edit' }: Props) {
                         </span>
                       )}
                     </td>
-
                     <td className="px-3 py-2">
                       <select
                         className="input !h-8"
                         disabled={readOnly || r.saving}
                         value={r.provider}
-                        onChange={e =>
-                          setRows(prev =>
-                            prev.map(x =>
-                              x.studentId === r.studentId
-                                ? { ...x, provider: e.target.value as Provider }
-                                : x
-                            )
-                          )
-                        }
+                        onChange={e => setRows(prev => prev.map(x => x.studentId === r.studentId ? { ...x, provider: e.target.value as Provider } : x))}
                       >
                         <option value="TRINITY">Trinity College</option>
                         <option value="CAMBRIDGE">Cambridge</option>
                         <option value="BRITANICO">Británico</option>
                       </select>
                     </td>
-
                     <td className="px-3 py-2">
                       <input
-                        className={
-                          'input !h-8 w-24 ' + (oralBad ? '!border-red-400' : '')
-                        }
+                        className="input !h-8 w-24"
                         placeholder="0–100"
                         disabled={readOnly || r.saving}
                         value={r.oral ?? ''}
-                        onChange={e =>
-                          setRows(prev =>
-                            prev.map(x =>
-                              x.studentId === r.studentId
-                                ? { ...x, oral: e.target.value }
-                                : x
-                            )
-                          )
-                        }
+                        onChange={e => setRows(prev => prev.map(x => x.studentId === r.studentId ? { ...x, oral: e.target.value } : x))}
                       />
                     </td>
-
                     <td className="px-3 py-2">
                       <input
-                        className={
-                          'input !h-8 w-24 ' + (writtenBad ? '!border-red-400' : '')
-                        }
+                        className="input !h-8 w-24"
                         placeholder="0–100"
                         disabled={readOnly || r.saving}
                         value={r.written ?? ''}
-                        onChange={e =>
-                          setRows(prev =>
-                            prev.map(x =>
-                              x.studentId === r.studentId
-                                ? { ...x, written: e.target.value }
-                                : x
-                            )
-                          )
-                        }
+                        onChange={e => setRows(prev => prev.map(x => x.studentId === r.studentId ? { ...x, written: e.target.value } : x))}
                       />
                     </td>
-
                     {!readOnly && (
                       <td className="px-3 py-2 text-right">
                         <button
@@ -273,3 +240,4 @@ export default function CoordinatorBritishCourse({ mode = 'edit' }: Props) {
     </div>
   );
 }
+
