@@ -26,7 +26,7 @@ const upsertSchema = z.object({
   term: Term,
   grades: gradesSchema,
   comments: z.string().max(2000).optional(),
-  year: z.coerce.number().int().optional(), // opcional; por defecto toma el del curso
+  year: z.coerce.number().int().optional(),
 });
 
 /* ===== Helpers ===== */
@@ -44,23 +44,90 @@ function defaultTerm(): 'MAY' | 'OCT' {
 
 /* =============================================================================
  * 1) ALUMNO: mis informes
- * GET /partials/mine  -> { rows: PartialReport[], reports: PartialReport[] }
+ * ahora muestra report card aunque no haya notas
  * ========================================================================== */
 router.get(
   '/partials/mine',
   requireAuth,
-  // permitimos también staff para debug, pero filtra por student=yo
   allowRoles('student', 'teacher', 'coordinator', 'admin'),
   async (req, res, next) => {
     try {
+
       const userId = (req as any).userId as string;
-      const rows = await PartialReport.find({ student: userId })
-        .sort({ year: -1, term: 1 })
+
+      /* cursos donde el alumno está inscripto */
+      const enrollments = await Enrollment.find({ student: userId })
         .populate('course', '_id name year')
         .lean();
 
-      // Devolvemos rows y reports para compatibilidad
-      res.json({ rows, reports: rows });
+      const courseIds = enrollments
+        .map((e: any) => e.course?._id)
+        .filter(Boolean);
+
+      /* parciales existentes */
+      const reports = await PartialReport.find({
+        student: userId,
+        course: { $in: courseIds }
+      })
+        .populate('course', '_id name year')
+        .lean();
+
+      const byKey = new Map<string, any>();
+
+      reports.forEach((r: any) => {
+
+        if (!r.course) return;
+
+        const key = `${r.course._id}-${r.term}-${r.year}`;
+        byKey.set(key, r);
+
+      });
+
+      const rows: any[] = [];
+
+      for (const e of enrollments) {
+
+        if (!e.course) continue;
+
+        const terms: ('MAY' | 'OCT')[] = ['MAY', 'OCT'];
+
+        for (const term of terms) {
+
+          const key = `${e.course._id}-${term}-${e.course.year}`;
+
+          const existing = byKey.get(key);
+
+          rows.push(
+            existing ?? {
+              _id: null,
+              course: e.course,
+              student: userId,
+              year: e.course.year,
+              term,
+              grades: null,
+              comments: '',
+            }
+          );
+        }
+      }
+
+      /* ordena por año y curso */
+      rows.sort((a, b) => {
+
+        if (a.year !== b.year) return b.year - a.year;
+
+        const na = a.course?.name || '';
+        const nb = b.course?.name || '';
+
+        return na.localeCompare(nb);
+
+      });
+
+      res.json({
+        rows,
+        reports: rows
+      });
+
     } catch (e) {
       next(e);
     }
@@ -69,8 +136,6 @@ router.get(
 
 /* =============================================================================
  * 2) STAFF: ver curso (con roster) + parciales del term
- * GET /partials/course/:courseId?term=MAY|OCT&year=YYYY
- * -> { course:{ id,name,year,term }, rows:[{ student, partial|null }], year }
  * ========================================================================== */
 router.get(
   '/partials/course/:courseId',
@@ -98,15 +163,15 @@ router.get(
       const y = year ?? course.year;
       const t = term ?? defaultTerm();
 
-      // roster del curso
       const roster = await Enrollment.find({ course: courseId })
         .populate('student', '_id name email')
         .lean();
 
-      // parciales de ese term
       const prs = await PartialReport.find({ course: courseId, year: y, term: t })
         .lean();
+
       const byStudent = new Map<string, any>();
+
       prs.forEach((p) => byStudent.set(String(p.student), p));
 
       const rows = roster
@@ -121,6 +186,7 @@ router.get(
         rows,
         year: y,
       });
+
     } catch (e) {
       next(e);
     }
@@ -129,8 +195,6 @@ router.get(
 
 /* =============================================================================
  * 3) STAFF: guardar (upsert)
- * PUT /partials  body: { courseId, studentId, term, grades, comments?, year? }
- * Unique por (student, course, year, term)
  * ========================================================================== */
 router.put(
   '/partials',
@@ -138,6 +202,7 @@ router.put(
   allowRoles('teacher', 'coordinator', 'admin'),
   async (req, res, next) => {
     try {
+
       const payload = upsertSchema.parse(req.body || {});
       const role = (req as any).role || (req as any).userRole;
       const userId = (req as any).userId as string;
@@ -146,12 +211,12 @@ router.put(
         return res.status(403).json({ error: 'No autorizado' });
       }
 
-      // año a usar
       const course = await Course.findById(payload.courseId).lean();
+
       if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
+
       const y = payload.year ?? course.year;
 
-      // upsert
       const doc = await PartialReport.findOneAndUpdate(
         {
           student: payload.studentId,
@@ -176,6 +241,7 @@ router.put(
       ).lean();
 
       res.json({ ok: true, report: doc });
+
     } catch (e) {
       next(e);
     }
