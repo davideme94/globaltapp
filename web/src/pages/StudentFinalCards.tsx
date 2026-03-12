@@ -44,7 +44,7 @@ function avg3(a?: number | null, b?: number | null, c?: number | null) {
   return xs.length ? Math.round(xs.reduce((p, q) => p + q, 0) / xs.length) : '—';
 }
 
-/* ---------- Card (mismo estilo que parciales) ---------- */
+/* ---------- Card ---------- */
 function BoletinTable({ r, studentId }: { r: ReportCard; studentId: string }) {
   const courseObj = typeof r.course === 'string' ? null : r.course;
   const courseId = typeof r.course === 'string' ? (r.course as string) : (courseObj?._id as string);
@@ -60,7 +60,6 @@ function BoletinTable({ r, studentId }: { r: ReportCard; studentId: string }) {
       className="rounded-2xl overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.06)] bg-white print:shadow-none print:border"
       style={{ pageBreakInside: 'avoid' }}
     >
-      {/* Header en gradiente */}
       <div
         className="px-4 py-3 text-white flex items-center justify-between flex-wrap gap-3"
         style={{ background: 'var(--grad-primary)' }}
@@ -87,9 +86,7 @@ function BoletinTable({ r, studentId }: { r: ReportCard; studentId: string }) {
         </div>
       </div>
 
-      {/* Body */}
       <div className="p-4 space-y-4">
-        {/* Tabla 3 trimestres */}
         <div className="rounded-xl border border-neutral-200 overflow-x-auto">
           <table className="min-w-[760px] w-full border-collapse text-sm">
             <thead>
@@ -113,11 +110,11 @@ function BoletinTable({ r, studentId }: { r: ReportCard; studentId: string }) {
               </tr>
             </thead>
             <tbody>
-              {/* Writing */}
+
               <tr>
                 <td className="border border-neutral-300 p-2 align-top">
                   <b>Writing</b>
-                  <div className="text-xs text-neutral-600 font-medium leading-4">(escrito)</div>
+                  <div className="text-xs text-neutral-600">(escrito)</div>
                 </td>
                 <td className="border border-neutral-300 p-2 text-center font-semibold">{val(t1.writing)}</td>
                 <td className="border border-neutral-300 p-2 text-center font-semibold">{val(t2.writing)}</td>
@@ -127,11 +124,10 @@ function BoletinTable({ r, studentId }: { r: ReportCard; studentId: string }) {
                 </td>
               </tr>
 
-              {/* Speaking */}
               <tr>
                 <td className="border border-neutral-300 p-2 align-top">
                   <b>Speaking</b>
-                  <div className="text-xs text-neutral-600 font-medium leading-4">(oral)</div>
+                  <div className="text-xs text-neutral-600">(oral)</div>
                 </td>
                 <td className="border border-neutral-300 p-2 text-center font-semibold">{val(t1.speaking)}</td>
                 <td className="border border-neutral-300 p-2 text-center font-semibold">{val(t2.speaking)}</td>
@@ -141,11 +137,10 @@ function BoletinTable({ r, studentId }: { r: ReportCard; studentId: string }) {
                 </td>
               </tr>
 
-              {/* Reading */}
               <tr>
                 <td className="border border-neutral-300 p-2 align-top">
                   <b>Reading</b>
-                  <div className="text-xs text-neutral-600 font-medium leading-4">(leer)</div>
+                  <div className="text-xs text-neutral-600">(leer)</div>
                 </td>
                 <td className="border border-neutral-300 p-2 text-center font-semibold">{val(t1.reading)}</td>
                 <td className="border border-neutral-300 p-2 text-center font-semibold">{val(t2.reading)}</td>
@@ -155,11 +150,10 @@ function BoletinTable({ r, studentId }: { r: ReportCard; studentId: string }) {
                 </td>
               </tr>
 
-              {/* Listening */}
               <tr>
                 <td className="border border-neutral-300 p-2 align-top">
                   <b>Listening</b>
-                  <div className="text-xs text-neutral-600 font-medium leading-4">(escuchar)</div>
+                  <div className="text-xs text-neutral-600">(escuchar)</div>
                 </td>
                 <td className="border border-neutral-300 p-2 text-center font-semibold">{val(t1.listening)}</td>
                 <td className="border border-neutral-300 p-2 text-center font-semibold">{val(t2.listening)}</td>
@@ -169,63 +163,6 @@ function BoletinTable({ r, studentId }: { r: ReportCard; studentId: string }) {
                 </td>
               </tr>
 
-              {/* Firma del alumno */}
-              <tr>
-                <td className="border border-neutral-300 p-2"><b>Firma del Alumno</b></td>
-                <td className="border border-neutral-300 p-2"></td>
-                <td className="border border-neutral-300 p-2"></td>
-                <td className="border border-neutral-300 p-2"></td>
-                <td className="border border-neutral-300 p-2"></td>
-              </tr>
-
-              {/* Firma del tutor */}
-              <tr>
-                <td className="border border-neutral-300 p-2"><b>Firma del Tutor</b></td>
-                <td className="border border-neutral-300 p-2"></td>
-                <td className="border border-neutral-300 p-2"></td>
-                <td className="border border-neutral-300 p-2"></td>
-                <td className="border border-neutral-300 p-2"></td>
-              </tr>
-
-              {/* Observaciones (por trimestre) */}
-              <tr>
-                <td className="border border-neutral-300 p-2"><b>Observaciones</b></td>
-                <td className="border border-neutral-300 p-2">{(t1 as any).comments || '¡Bienvenido! / Welcome!'}</td>
-                <td className="border border-neutral-300 p-2">{(t2 as any).comments || ''}</td>
-                <td className="border border-neutral-300 p-2">{(t3 as any).comments || ''}</td>
-                <td className="border border-neutral-300 p-2"></td>
-              </tr>
-
-              {/* Exámenes */}
-              <tr>
-                <td className="border border-neutral-300 p-2"><b>Exámenes</b></td>
-                <td className="border border-neutral-300 p-2"></td>
-                <td className="border border-neutral-300 p-2">
-                  <div className="text-[13px] text-neutral-700">
-                    Oral: <b>{val(r.examOral) as any}</b>
-                  </div>
-                  <div className="text-[13px] text-neutral-700">
-                    Escrito: <b>{val(r.examWritten) as any}</b>
-                  </div>
-                </td>
-                <td className="border border-neutral-300 p-2">
-                  <div className="text-[13px] text-neutral-700">
-                    Oral final: <b>{val(r.finalOral) as any}</b>
-                  </div>
-                  <div className="text-[13px] text-neutral-700">
-                    Escrito final: <b>{val(r.finalWritten) as any}</b>
-                  </div>
-                </td>
-                <td className="border border-neutral-300 p-2"></td>
-              </tr>
-
-              {/* Comentarios generales (si existen) */}
-              {r.comments ? (
-                <tr>
-                  <td className="border border-neutral-300 p-2"><b>Comentarios</b></td>
-                  <td className="border border-neutral-300 p-2" colSpan={4}>{r.comments}</td>
-                </tr>
-              ) : null}
             </tbody>
           </table>
         </div>
@@ -236,10 +173,13 @@ function BoletinTable({ r, studentId }: { r: ReportCard; studentId: string }) {
 
 /* ---------- Página ---------- */
 export default function StudentFinalCards() {
+
   const [me, setMe] = useState<Me['user'] | null>(null);
   const [rows, setRows] = useState<ReportCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     (async () => {
@@ -258,22 +198,55 @@ export default function StudentFinalCards() {
     })();
   }, []);
 
-  const ordered = useMemo(() => rows.slice().sort((a, b) => b.year - a.year), [rows]);
+  const ordered = useMemo(() => {
+    const filtered = rows.filter(r => r.year === selectedYear);
+    return filtered.sort((a, b) => b.year - a.year);
+  }, [rows, selectedYear]);
 
   if (loading) return <div className="p-4">Cargando…</div>;
   if (me?.role !== 'student') return <div className="p-4 text-danger">Acceso solo para alumnos.</div>;
 
   return (
     <div className="space-y-3">
+
       <h1 className="font-heading text-xl">Boletín</h1>
+
+      <div className="flex items-center gap-3">
+
+        <button
+          className="btn btn-secondary"
+          onClick={() => setSelectedYear(y => y - 1)}
+        >
+          ◀
+        </button>
+
+        <div className="font-semibold text-lg">
+          {selectedYear}
+        </div>
+
+        <button
+          className="btn btn-secondary"
+          onClick={() => setSelectedYear(y => y + 1)}
+        >
+          ▶
+        </button>
+
+      </div>
+
       {err && <div className="text-danger mb-2">{err}</div>}
+
       {ordered.length === 0 ? (
-        <div className="card p-4">Aún no hay boletines.</div>
+        <div className="card p-4">
+          No hay boletín cargado para {selectedYear}.
+        </div>
       ) : (
         <div className="grid gap-4">
-          {ordered.map((c) => <BoletinTable key={c._id} r={c} studentId={me.id} />)}
+          {ordered.map((c) => (
+            <BoletinTable key={c._id} r={c} studentId={me.id} />
+          ))}
         </div>
       )}
+
     </div>
   );
 }
