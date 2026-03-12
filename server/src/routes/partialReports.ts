@@ -44,7 +44,7 @@ function defaultTerm(): 'MAY' | 'OCT' {
 
 /* =============================================================================
  * 1) ALUMNO: mis informes
- * ahora muestra report card aunque no haya notas
+ * Ahora muestra report card aunque no haya notas
  * ========================================================================== */
 router.get(
   '/partials/mine',
@@ -55,16 +55,14 @@ router.get(
 
       const userId = (req as any).userId as string;
 
-      /* cursos donde el alumno está inscripto */
       const enrollments = await Enrollment.find({ student: userId })
         .populate('course', '_id name year')
         .lean();
 
       const courseIds = enrollments
-        .map((e: any) => e.course?._id)
+        .map((e: any) => (e.course as any)?._id)
         .filter(Boolean);
 
-      /* parciales existentes */
       const reports = await PartialReport.find({
         student: userId,
         course: { $in: courseIds }
@@ -78,7 +76,10 @@ router.get(
 
         if (!r.course) return;
 
-        const key = `${r.course._id}-${r.term}-${r.year}`;
+        const course: any = r.course;
+
+        const key = `${course._id}-${r.term}-${r.year}`;
+
         byKey.set(key, r);
 
       });
@@ -87,31 +88,33 @@ router.get(
 
       for (const e of enrollments) {
 
-        if (!e.course) continue;
+        const course: any = e.course;   // 👈 FIX TYPESCRIPT
+
+        if (!course) continue;
 
         const terms: ('MAY' | 'OCT')[] = ['MAY', 'OCT'];
 
         for (const term of terms) {
 
-          const key = `${e.course._id}-${term}-${e.course.year}`;
+          const key = `${course._id}-${term}-${course.year}`;
 
           const existing = byKey.get(key);
 
           rows.push(
             existing ?? {
               _id: null,
-              course: e.course,
+              course: course,
               student: userId,
-              year: e.course.year,
+              year: course.year,
               term,
               grades: null,
               comments: '',
             }
           );
+
         }
       }
 
-      /* ordena por año y curso */
       rows.sort((a, b) => {
 
         if (a.year !== b.year) return b.year - a.year;
@@ -143,21 +146,23 @@ router.get(
   allowRoles('teacher', 'coordinator', 'admin'),
   async (req, res, next) => {
     try {
+
       const role = (req as any).role || (req as any).userRole;
       const userId = (req as any).userId as string;
+
       const { courseId } = z.object({ courseId: z.string().min(1) }).parse(req.params);
-      const { term, year } = z
-        .object({
-          term: Term.optional(),
-          year: z.coerce.number().int().optional(),
-        })
-        .parse(req.query);
+
+      const { term, year } = z.object({
+        term: Term.optional(),
+        year: z.coerce.number().int().optional(),
+      }).parse(req.query);
 
       if (!(await ensureCourseAccess(role, userId, courseId))) {
         return res.status(403).json({ error: 'No autorizado' });
       }
 
       const course = await Course.findById(courseId).lean();
+
       if (!course) return res.status(404).json({ error: 'Curso no encontrado' });
 
       const y = year ?? course.year;
@@ -167,8 +172,11 @@ router.get(
         .populate('student', '_id name email')
         .lean();
 
-      const prs = await PartialReport.find({ course: courseId, year: y, term: t })
-        .lean();
+      const prs = await PartialReport.find({
+        course: courseId,
+        year: y,
+        term: t
+      }).lean();
 
       const byStudent = new Map<string, any>();
 
@@ -176,8 +184,12 @@ router.get(
 
       const rows = roster
         .map((r: any) => ({
-          student: r.student ? { _id: String(r.student._id), name: r.student.name } : null,
-          partial: r.student ? byStudent.get(String(r.student._id)) ?? null : null,
+          student: r.student
+            ? { _id: String(r.student._id), name: r.student.name }
+            : null,
+          partial: r.student
+            ? byStudent.get(String(r.student._id)) ?? null
+            : null,
         }))
         .sort((a, b) => (a.student?.name || '').localeCompare(b.student?.name || ''));
 
