@@ -358,19 +358,27 @@ export default function StudentFinalCards() {
       {err && <div className="text-danger mb-2">{err}</div>}
 
       {/* selector de año */}
-      <div className="flex gap-2 mb-3">
-        {years.map(y => (
-          <button
-            key={y}
-            onClick={() => setYear(y)}
-            className={`px-3 py-1 rounded-lg border ${
-              y === year ? 'bg-purple-600 text-white' : 'bg-white'
-            }`}
-          >
-            {y}
-          </button>
-        ))}
-      </div>
+      <div className="flex items-center gap-4 mb-4">
+
+  <button
+    onClick={() => setYear(y => y - 1)}
+    className="px-3 py-1 rounded-lg border hover:bg-neutral-100"
+  >
+    ◀
+  </button>
+
+  <div className="text-lg font-semibold">
+    {year}
+  </div>
+
+  <button
+    onClick={() => setYear(y => y + 1)}
+    className="px-3 py-1 rounded-lg border hover:bg-neutral-100"
+  >
+    ▶
+  </button>
+
+</div>
 
       {filtered.length === 0 ? (
         <div className="card p-4">Aún no hay boletines.</div>
