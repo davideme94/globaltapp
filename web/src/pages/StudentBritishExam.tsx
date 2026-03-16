@@ -61,21 +61,28 @@ export default function StudentBritishExam() {
   }, []);
 
   const years = useMemo(() => {
-    const ys = rows
-      .map(r => {
-        const course = typeof r.course === 'string' ? null : r.course;
-        return course?.year;
-      })
-      .filter(Boolean) as number[];
-
+    const ys = rows.map(r => r.year).filter(Boolean) as number[];
     return Array.from(new Set(ys)).sort((a, b) => b - a);
   }, [rows]);
 
   const filtered = useMemo(() => {
-    return rows.filter(r => {
-      const course = typeof r.course === 'string' ? null : r.course;
-      return course?.year === year;
-    });
+
+    const data = rows.filter(r => r.year === year);
+
+    if (data.length === 0) {
+      return [{
+        _id: 'virtual',
+        year,
+        oral: null,
+        written: null,
+        provider: 'BRITANICO',
+        updatedAt: null,
+        course: rows[0]?.course || null
+      }] as any;
+    }
+
+    return data;
+
   }, [rows, year]);
 
   return (
@@ -116,12 +123,6 @@ export default function StudentBritishExam() {
         <div className="card p-4 text-danger">{err}</div>
       )}
 
-      {!loading && !err && filtered.length === 0 && (
-        <div className="card p-4">
-          No hay resultados para {year}.
-        </div>
-      )}
-
       {!loading && !err && filtered.map((r, idx) => {
 
         const course = typeof r.course === 'string' ? null : r.course;
@@ -154,7 +155,7 @@ export default function StudentBritishExam() {
                     </div>
 
                     <div className="font-medium">
-                      {course?.name || 'Curso'} — {course?.year ?? ''}
+                      {course?.name || 'Curso'} — {year}
                     </div>
 
                     {me && (
@@ -189,6 +190,12 @@ export default function StudentBritishExam() {
               {!failed && approved && (
                 <div className="mb-3 px-3 py-2 rounded-lg bg-emerald-100 text-emerald-700 font-semibold text-center">
                   APROBADO
+                </div>
+              )}
+
+              {r.oral === null && r.written === null && (
+                <div className="mb-3 text-center text-neutral-500">
+                  Aún no hay resultados cargados para este año.
                 </div>
               )}
 
