@@ -39,6 +39,16 @@ function isMine(c: any, myId: string): boolean {
   return false;
 }
 
+// 🎨 Emoji automático según curso
+function getEmoji(name: string) {
+  const n = name.toLowerCase();
+  if (n.includes('1°')) return '🌱';
+  if (n.includes('2°')) return '📘';
+  if (n.includes('3°')) return '🎯';
+  if (n.includes('4°')) return '🚀';
+  return '📚';
+}
+
 export default function TeacherCourses() {
   const [me, setMe] = useState<Me['user'] | null>(null);
   const [year, setYear] = useState<number>(new Date().getFullYear());
@@ -137,44 +147,36 @@ export default function TeacherCourses() {
         Mis cursos ({year})
       </h1>
 
-      {loading && (
-        <div className="card p-4 space-y-2">
-          <div className="h-5 w-48 skeleton" />
-          <div className="h-20 skeleton" />
-        </div>
-      )}
-
-      {!loading && err && <div className="card p-4 text-danger">{err}</div>}
-
-      {!loading && !err && rows.length === 0 && (
-        <div className="card p-4">No tenés cursos asignados en {year}.</div>
-      )}
-
       {!loading && !err && rows.length > 0 && (
         <div className="grid gap-5 md:grid-cols-2">
           {rows.map((c) => (
             <div
               key={c._id}
-              className="group rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              className="group rounded-2xl border border-purple-200 bg-white p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-purple-400 transition-all duration-300"
             >
               {/* HEADER */}
-              <div className="mb-4">
-                <div className="text-xl font-bold tracking-tight">
-                  {c.name}
-                </div>
+              <div className="mb-4 flex items-center gap-2">
+                <div className="text-2xl">{getEmoji(c.name)}</div>
 
-                <div className="text-sm text-neutral-500 font-medium">
-                  {c.campus}
-                </div>
-
-                {c.scheduleLabel && (
-                  <div className="mt-2">
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-neutral-100 border">
-                      {c.scheduleLabel}
-                    </span>
+                <div>
+                  <div className="text-xl font-bold tracking-tight">
+                    {c.name}
                   </div>
-                )}
+
+                  <div className="text-sm text-neutral-500 font-medium">
+                    {c.campus}
+                  </div>
+                </div>
               </div>
+
+              {/* HORARIO */}
+              {c.scheduleLabel && (
+                <div className="mb-3">
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                    {c.scheduleLabel}
+                  </span>
+                </div>
+              )}
 
               {/* INFO */}
               <div className="mb-4 text-sm">
@@ -196,7 +198,7 @@ export default function TeacherCourses() {
                   <Link
                     key={btn.path}
                     to={`/teacher/course/${c._id}/${btn.path}`}
-                    className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-neutral-100 text-neutral-700 hover:bg-neutral-200 transition"
+                    className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-neutral-100 text-neutral-700 hover:bg-purple-100 hover:text-purple-700 transition"
                   >
                     {btn.label}
                   </Link>
@@ -204,9 +206,9 @@ export default function TeacherCourses() {
 
                 <Link
                   to={`/teacher/course/${c._id}/board`}
-                  className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-purple-600 text-white hover:bg-purple-700 shadow-sm transition"
+                  className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-purple-600 text-white hover:bg-purple-700 shadow-md transition"
                 >
-                  MURO
+                  💬 MURO
                 </Link>
               </div>
             </div>
