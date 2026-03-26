@@ -132,8 +132,10 @@ export default function TeacherCourses() {
   }, [me, year]);
 
   return (
-    <div className="space-y-4">
-      <h1 className="font-heading text-2xl font-semibold">Mis cursos ({year})</h1>
+    <div className="space-y-5">
+      <h1 className="font-heading text-3xl font-bold tracking-tight">
+        Mis cursos ({year})
+      </h1>
 
       {loading && (
         <div className="card p-4 space-y-2">
@@ -149,20 +151,25 @@ export default function TeacherCourses() {
       )}
 
       {!loading && !err && rows.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-5 md:grid-cols-2">
           {rows.map((c) => (
             <div
               key={c._id}
-              className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm hover:shadow-md transition"
+              className="group rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
             >
               {/* HEADER */}
-              <div className="mb-3">
-                <div className="text-lg font-semibold">{c.name}</div>
-                <div className="text-sm text-neutral-600">{c.campus}</div>
+              <div className="mb-4">
+                <div className="text-xl font-bold tracking-tight">
+                  {c.name}
+                </div>
+
+                <div className="text-sm text-neutral-500 font-medium">
+                  {c.campus}
+                </div>
 
                 {c.scheduleLabel && (
                   <div className="mt-2">
-                    <span className="px-2 py-1 rounded-full text-xs bg-neutral-100 border">
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-neutral-100 border">
                       {c.scheduleLabel}
                     </span>
                   </div>
@@ -170,41 +177,35 @@ export default function TeacherCourses() {
               </div>
 
               {/* INFO */}
-              <div className="mb-3 text-sm">
-                <span className="font-semibold">{c.studentsCount ?? 0}</span> alumnos
+              <div className="mb-4 text-sm">
+                <span className="font-bold text-base">{c.studentsCount ?? 0}</span>{' '}
+                alumnos
               </div>
 
               {/* ACCIONES */}
               <div className="flex flex-wrap gap-2">
-                <Link to={`/teacher/course/${c._id}/attendance`} className="px-3 py-1 text-xs rounded-full bg-neutral-100 hover:bg-neutral-200 transition">
-                  Asistencia
-                </Link>
+                {[
+                  { label: 'ASISTENCIA', path: 'attendance' },
+                  { label: 'ALUMNOS', path: 'students' },
+                  { label: 'PARCIALES', path: 'partials' },
+                  { label: 'BOLETÍN', path: 'boletin' },
+                  { label: 'BRITÁNICO', path: 'british' },
+                  { label: 'LIBRO', path: 'topics' },
+                  { label: 'MATERIAL', path: 'materials' },
+                ].map((btn) => (
+                  <Link
+                    key={btn.path}
+                    to={`/teacher/course/${c._id}/${btn.path}`}
+                    className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-neutral-100 text-neutral-700 hover:bg-neutral-200 transition"
+                  >
+                    {btn.label}
+                  </Link>
+                ))}
 
-                <Link to={`/teacher/course/${c._id}/students`} className="px-3 py-1 text-xs rounded-full bg-neutral-100 hover:bg-neutral-200 transition">
-                  Alumnos
-                </Link>
-
-                <Link to={`/teacher/course/${c._id}/partials`} className="px-3 py-1 text-xs rounded-full bg-neutral-100 hover:bg-neutral-200 transition">
-                  Parciales
-                </Link>
-
-                <Link to={`/teacher/course/${c._id}/boletin`} className="px-3 py-1 text-xs rounded-full bg-neutral-100 hover:bg-neutral-200 transition">
-                  Boletín
-                </Link>
-
-                <Link to={`/teacher/course/${c._id}/british`} className="px-3 py-1 text-xs rounded-full bg-neutral-100 hover:bg-neutral-200 transition">
-                  Británico
-                </Link>
-
-                <Link to={`/teacher/course/${c._id}/topics`} className="px-3 py-1 text-xs rounded-full bg-neutral-100 hover:bg-neutral-200 transition">
-                  Libro
-                </Link>
-
-                <Link to={`/teacher/course/${c._id}/materials`} className="px-3 py-1 text-xs rounded-full bg-neutral-100 hover:bg-neutral-200 transition">
-                  Material
-                </Link>
-
-                <Link to={`/teacher/course/${c._id}/board`} className="px-3 py-1 text-xs rounded-full bg-purple-600 text-white hover:bg-purple-700 transition">
+                <Link
+                  to={`/teacher/course/${c._id}/board`}
+                  className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-purple-600 text-white hover:bg-purple-700 shadow-sm transition"
+                >
                   MURO
                 </Link>
               </div>
