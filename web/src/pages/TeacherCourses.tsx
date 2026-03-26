@@ -150,68 +150,77 @@ export default function TeacherCourses() {
       {!loading && !err && rows.length > 0 && (
         <div className="grid gap-5 md:grid-cols-2">
           {rows.map((c) => (
+            
+            // 🌈 CONTENEDOR CON BORDE GRADIENTE
             <div
               key={c._id}
-              className="group rounded-2xl border border-purple-200 bg-white p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-purple-400 transition-all duration-300"
+              className="group relative rounded-2xl p-[2px] bg-gradient-to-r from-purple-400 via-pink-400 to-purple-500 hover:from-purple-500 hover:to-pink-500 transition-all duration-300"
             >
-              {/* HEADER */}
-              <div className="mb-4 flex items-center gap-2">
-                <div className="text-2xl">{getEmoji(c.name)}</div>
+              
+              {/* CARD INTERNA */}
+              <div className="rounded-2xl bg-white p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
 
-                <div>
-                  <div className="text-xl font-bold tracking-tight">
-                    {c.name}
-                  </div>
+                {/* HEADER */}
+                <div className="mb-4 flex items-center gap-2">
+                  <div className="text-2xl">{getEmoji(c.name)}</div>
 
-                  <div className="text-sm text-neutral-500 font-medium">
-                    {c.campus}
+                  <div>
+                    <div className="text-xl font-bold tracking-tight">
+                      {c.name}
+                    </div>
+
+                    <div className="text-sm text-neutral-500 font-medium">
+                      {c.campus}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* HORARIO */}
-              {c.scheduleLabel && (
-                <div className="mb-3">
-                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
-                    {c.scheduleLabel}
-                  </span>
+                {/* HORARIO */}
+                {c.scheduleLabel && (
+                  <div className="mb-3">
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                      {c.scheduleLabel}
+                    </span>
+                  </div>
+                )}
+
+                {/* INFO */}
+                <div className="mb-4 text-sm">
+                  <span className="font-bold text-base">{c.studentsCount ?? 0}</span>{' '}
+                  alumnos
                 </div>
-              )}
 
-              {/* INFO */}
-              <div className="mb-4 text-sm">
-                <span className="font-bold text-base">{c.studentsCount ?? 0}</span>{' '}
-                alumnos
-              </div>
+                {/* ACCIONES */}
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { label: 'ASISTENCIA', path: 'attendance' },
+                    { label: 'ALUMNOS', path: 'students' },
+                    { label: 'PARCIALES', path: 'partials' },
+                    { label: 'BOLETÍN', path: 'boletin' },
+                    { label: 'BRITÁNICO', path: 'british' },
+                    { label: 'LIBRO', path: 'topics' },
+                    { label: 'MATERIAL', path: 'materials' },
+                  ].map((btn) => (
+                    <Link
+                      key={btn.path}
+                      to={`/teacher/course/${c._id}/${btn.path}`}
+                      className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-neutral-100 text-neutral-700 hover:bg-purple-100 hover:text-purple-700 transition"
+                    >
+                      {btn.label}
+                    </Link>
+                  ))}
 
-              {/* ACCIONES */}
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { label: 'ASISTENCIA', path: 'attendance' },
-                  { label: 'ALUMNOS', path: 'students' },
-                  { label: 'PARCIALES', path: 'partials' },
-                  { label: 'BOLETÍN', path: 'boletin' },
-                  { label: 'BRITÁNICO', path: 'british' },
-                  { label: 'LIBRO', path: 'topics' },
-                  { label: 'MATERIAL', path: 'materials' },
-                ].map((btn) => (
                   <Link
-                    key={btn.path}
-                    to={`/teacher/course/${c._id}/${btn.path}`}
-                    className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-neutral-100 text-neutral-700 hover:bg-purple-100 hover:text-purple-700 transition"
+                    to={`/teacher/course/${c._id}/board`}
+                    className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-purple-600 text-white hover:bg-purple-700 shadow-md transition"
                   >
-                    {btn.label}
+                    💬 MURO
                   </Link>
-                ))}
+                </div>
 
-                <Link
-                  to={`/teacher/course/${c._id}/board`}
-                  className="px-3 py-1 text-xs font-bold uppercase rounded-full bg-purple-600 text-white hover:bg-purple-700 shadow-md transition"
-                >
-                  💬 MURO
-                </Link>
               </div>
             </div>
+
           ))}
         </div>
       )}
