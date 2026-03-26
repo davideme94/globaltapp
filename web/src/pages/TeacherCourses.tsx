@@ -46,7 +46,6 @@ export default function TeacherCourses() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // 1) Cargar usuario
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -64,7 +63,6 @@ export default function TeacherCourses() {
     };
   }, []);
 
-  // 2) Cargar cursos del profe
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -72,30 +70,25 @@ export default function TeacherCourses() {
       setLoading(true);
       setErr(null);
       try {
-        // ---------- A) Primer intento: backend /courses/mine ----------
         const r = await api.courses.mine({ year });
         if (!alive) return;
 
         setYear(r.year ?? year);
 
-        // r.rows puede venir como Course[] (teacher) o como { course, schedule }[] (student compat)
         const base = (r.rows || []) as any[];
 
-        // Normalizo a Course[]
         let mineCourses: { course: Course; schedule?: CourseScheduleItem[] }[] = base.map((it) =>
           it?.course
             ? { course: it.course as Course, schedule: (it.schedule || []) as CourseScheduleItem[] }
             : { course: it as Course }
         );
 
-        // ---------- B) Fallback: si vino vacío, traigo todos y filtro en cliente ----------
         if (!mineCourses.length) {
           const all = await api.courses.list({ year });
           const filtered = (all.courses || []).filter((c) => isMine(c, me.id));
           mineCourses = filtered.map((course) => ({ course }));
         }
 
-        // ---------- C) Enriquecer (horarios y cantidad alumnos) en paralelo ----------
         const enriched: Row[] = await Promise.all(
           mineCourses.map(async ({ course, schedule }) => {
             let finalSchedule = schedule;
@@ -139,8 +132,8 @@ export default function TeacherCourses() {
   }, [me, year]);
 
   return (
-    <div className="space-y-3">
-      <h1 className="font-heading text-xl">Mis cursos ({year})</h1>
+    <div className="space-y-4">
+      <h1 className="font-heading text-2xl font-semibold">Mis cursos ({year})</h1>
 
       {loading && (
         <div className="card p-4 space-y-2">
@@ -156,49 +149,62 @@ export default function TeacherCourses() {
       )}
 
       {!loading && !err && rows.length > 0 && (
-        <div className="card p-4">
+        <div className="grid gap-4 md:grid-cols-2">
           {rows.map((c) => (
-            <div key={c._id} className="mb-3">
-              <div className="font-medium">
-                {c.name}{' '}
-                <span className="italic text-neutral-700">— {c.campus}</span>{' '}
+            <div
+              key={c._id}
+              className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm hover:shadow-md transition"
+            >
+              {/* HEADER */}
+              <div className="mb-3">
+                <div className="text-lg font-semibold">{c.name}</div>
+                <div className="text-sm text-neutral-600">{c.campus}</div>
+
                 {c.scheduleLabel && (
-                  <>
-                    —{' '}
-                    <span className="px-2 py-0.5 rounded-full text-xs border border-neutral-300 bg-neutral-50">
+                  <div className="mt-2">
+                    <span className="px-2 py-1 rounded-full text-xs bg-neutral-100 border">
                       {c.scheduleLabel}
                     </span>
-                  </>
+                  </div>
                 )}
-                {' '}—{' '}
-                <span className="inline-flex items-center gap-1">
-                  <span className="font-medium">{c.studentsCount ?? 0}</span> alumnos
-                </span>
-                {' '}—{' '}
-                {/* Acciones (sin "Comunicaciones") */}
-                <Link to={`/teacher/course/${c._id}/attendance`} className="text-brand-primary underline">
-                  Tomar asistencia
-                </Link>{' '}{'·'}{' '}
-                <Link to={`/teacher/course/${c._id}/students`} className="text-brand-primary underline">
+              </div>
+
+              {/* INFO */}
+              <div className="mb-3 text-sm">
+                <span className="font-semibold">{c.studentsCount ?? 0}</span> alumnos
+              </div>
+
+              {/* ACCIONES */}
+              <div className="flex flex-wrap gap-2">
+                <Link to={`/teacher/course/${c._id}/attendance`} className="px-3 py-1 text-xs rounded-full bg-neutral-100 hover:bg-neutral-200 transition">
+                  Asistencia
+                </Link>
+
+                <Link to={`/teacher/course/${c._id}/students`} className="px-3 py-1 text-xs rounded-full bg-neutral-100 hover:bg-neutral-200 transition">
                   Alumnos
-                </Link>{' '}{'·'}{' '}
-                <Link to={`/teacher/course/${c._id}/partials`} className="text-brand-primary underline">
-                  Informes parciales
-                </Link>{' '}{'·'}{' '}
-                <Link to={`/teacher/course/${c._id}/boletin`} className="text-brand-primary underline">
+                </Link>
+
+                <Link to={`/teacher/course/${c._id}/partials`} className="px-3 py-1 text-xs rounded-full bg-neutral-100 hover:bg-neutral-200 transition">
+                  Parciales
+                </Link>
+
+                <Link to={`/teacher/course/${c._id}/boletin`} className="px-3 py-1 text-xs rounded-full bg-neutral-100 hover:bg-neutral-200 transition">
                   Boletín
-                </Link>{' '}{'·'}{' '}
-                <Link to={`/teacher/course/${c._id}/british`} className="text-brand-primary underline">
+                </Link>
+
+                <Link to={`/teacher/course/${c._id}/british`} className="px-3 py-1 text-xs rounded-full bg-neutral-100 hover:bg-neutral-200 transition">
                   Británico
-                </Link>{' '}{'·'}{' '}
-                <Link to={`/teacher/course/${c._id}/topics`} className="text-brand-primary underline">
-                  Libro de temas
-                </Link>{' '}{'·'}{' '}
-                <Link to={`/teacher/course/${c._id}/materials`} className="text-brand-primary underline">
-                  Material del curso
-                </Link>{' '}{'·'}{' '}
-                {/* ➕ NUEVO: Tablón */}
-                <Link to={`/teacher/course/${c._id}/board`} className="text-brand-primary underline">
+                </Link>
+
+                <Link to={`/teacher/course/${c._id}/topics`} className="px-3 py-1 text-xs rounded-full bg-neutral-100 hover:bg-neutral-200 transition">
+                  Libro
+                </Link>
+
+                <Link to={`/teacher/course/${c._id}/materials`} className="px-3 py-1 text-xs rounded-full bg-neutral-100 hover:bg-neutral-200 transition">
+                  Material
+                </Link>
+
+                <Link to={`/teacher/course/${c._id}/board`} className="px-3 py-1 text-xs rounded-full bg-purple-600 text-white hover:bg-purple-700 transition">
                   MURO
                 </Link>
               </div>
