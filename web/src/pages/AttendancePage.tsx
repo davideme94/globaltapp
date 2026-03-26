@@ -105,29 +105,20 @@ export default function AttendancePage() {
       </div>
 
       {/* CONTROLES */}
-      <div style={{
-        display:'flex',
-        gap:10,
-        flexWrap:'wrap',
-        alignItems:'center',
-        marginBottom:16,
-        padding:12,
-        borderRadius:16,
-        background:'#ffffff',
-        border:'1px solid #e9d5ff',
-        boxShadow:'0 4px 12px rgba(0,0,0,0.05)'
-      }}>
-        <input type="date" value={date} onChange={e=>setDate(e.target.value)} />
+      <div style={card}>
+        <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center', padding:12 }}>
+          <input type="date" value={date} onChange={e=>setDate(e.target.value)} />
 
-        {['P','A','T','J'].map(s => (
-          <button key={s} onClick={()=>setAll(s as any)} style={pillBtn}>
-            Todos {s}
+          {['P','A','T','J'].map(s => (
+            <button key={s} onClick={()=>setAll(s as any)} style={pillBtn}>
+              Todos {s}
+            </button>
+          ))}
+
+          <button onClick={saveAll} style={saveBtn}>
+            💾 GUARDAR LISTA
           </button>
-        ))}
-
-        <button onClick={saveAll} style={saveBtn}>
-          💾 GUARDAR LISTA
-        </button>
+        </div>
       </div>
 
       {/* TABLA EDITOR */}
@@ -170,7 +161,7 @@ export default function AttendancePage() {
         </table>
       </div>
 
-      {/* HISTORICO RESTAURADO */}
+      {/* HISTORICO */}
       <h2 style={{ fontSize:20, marginTop:20 }}>📊 Listas</h2>
 
       <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:10 }}>
@@ -179,6 +170,7 @@ export default function AttendancePage() {
         <button onClick={refreshGrid} style={pillBtn}>Aplicar</button>
       </div>
 
+      {/* 🔥 SCROLL HORIZONTAL RESTAURADO */}
       <div style={{ overflowX:'auto' }}>
         {!grid || grid.dates.length===0 ? (
           <p>No hay registros aún.</p>
@@ -227,12 +219,12 @@ export default function AttendancePage() {
   );
 }
 
-// estilos visuales (no lógica)
+// estilos
 const card = {
   borderRadius:16,
-  overflow:'hidden',
   border:'1px solid #e9d5ff',
-  boxShadow:'0 4px 12px rgba(0,0,0,0.05)'
+  boxShadow:'0 4px 12px rgba(0,0,0,0.05)',
+  marginBottom:12
 };
 
 const pillBtn = {
@@ -251,8 +243,7 @@ const saveBtn = {
   background:'#7c3aed',
   color:'#fff',
   fontWeight:700,
-  cursor:'pointer',
-  boxShadow:'0 4px 10px rgba(124,58,237,0.3)'
+  cursor:'pointer'
 };
 
 const th = { padding:8 };
