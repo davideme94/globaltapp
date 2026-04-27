@@ -34,6 +34,20 @@ async function postJSON<T>(path: string, body: any): Promise<T> {
   return payload as T;
 }
 
+async function patchJSON<T>(path: string, body: any): Promise<T> {
+  const r = await fetch(`${BASE}${path}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  const ct = r.headers.get('content-type') || '';
+  const payload = ct.includes('application/json') ? await r.json() : await r.text();
+  if (!r.ok) throw new Error((payload as any)?.error || `HTTP ${r.status}`);
+  return payload as T;
+}
+
 async function del(path: string) {
   const r = await fetch(`${BASE}${path}`, { method: 'DELETE', credentials: 'include' });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -104,6 +118,35 @@ function buildCourseTitle(name?: string, year?: number) {
   return clean.includes(yearStr) ? clean : `${clean} — ${yearStr}`;
 }
 
+function renderMarkdownText(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={index} className="font-black">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+
+    return <React.Fragment key={index}>{part}</React.Fragment>;
+  });
+}
+
+function linksToText(links?: PostLink[]) {
+  return (links || []).map((l) => l.url).join('\n');
+}
+
+function parseLinksFromText(value: string) {
+  return value
+    .split(/\n|\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 10)
+    .map((url) => ({ url } as PostLink));
+}
+
 /* ============== UI: LinkPreview ============== */
 function LinkPreview({ url, meta }: { url: string; meta?: LinkMeta }) {
   const id = ytId(url);
@@ -132,18 +175,6 @@ function LinkPreview({ url, meta }: { url: string; meta?: LinkMeta }) {
             </div>
           </div>
         </div>
-
-        <div className="p-4 text-sm">
-          <div className="font-black text-neutral-900">
-            {meta?.title || 'YouTube'}
-          </div>
-
-          {meta?.description && (
-            <div className="mt-1 line-clamp-2 text-neutral-600">
-              {meta.description}
-            </div>
-          )}
-        </div>
       </a>
     );
   }
@@ -159,22 +190,10 @@ function LinkPreview({ url, meta }: { url: string; meta?: LinkMeta }) {
         <div className="bg-neutral-50">
           <img
             src={url}
-            alt={meta?.title || niceHostOrFile(url)}
+            alt={meta?.title || 'Imagen'}
             className="max-h-72 w-full object-contain transition duration-300 group-hover:scale-[1.02]"
             loading="lazy"
           />
-        </div>
-
-        <div className="p-4 text-sm">
-          <div className="truncate font-black text-neutral-900">
-            {meta?.title || niceHostOrFile(url)}
-          </div>
-
-          {meta?.description && (
-            <div className="mt-1 line-clamp-2 text-neutral-600">
-              {meta.description}
-            </div>
-          )}
         </div>
       </a>
     );
@@ -230,13 +249,7 @@ function Composer({
   const [urls, setUrls] = useState<string>('');
   const [busy, setBusy] = useState(false);
 
-  const parseLinks = () =>
-    urls
-      .split(/\n|\s+/)
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .slice(0, 10)
-      .map((url) => ({ url } as PostLink));
+  const parseLinks = () => parseLinksFromText(urls);
 
   const previewLinks = useMemo(() => parseLinks(), [urls]);
 
@@ -360,11 +373,21 @@ function PostItem({
   p,
   canManage,
   onDelete,
+  onUpdate,
 }: {
   p: BoardPost;
   canManage: boolean;
   onDelete: (id: string) => void;
+  onUpdate: (post: BoardPost) => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(p.title || '');
+  const [editBody, setEditBody] = useState(p.body || '');
+  const [editUrls, setEditUrls] = useState(linksToText(p.links));
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const editPreviewLinks = useMemo(() => parseLinksFromText(editUrls), [editUrls]);
+
   const who = useMemo(() => {
     if (!p.author) return { name: '', role: '' };
     if (typeof p.author === 'string') return { name: '', role: '' };
@@ -377,13 +400,44 @@ function PostItem({
 
   const when = p.createdAt ? new Date(p.createdAt) : null;
 
+  const cancelEdit = () => {
+    setEditTitle(p.title || '');
+    setEditBody(p.body || '');
+    setEditUrls(linksToText(p.links));
+    setEditing(false);
+  };
+
+  const saveEdit = async () => {
+    setSavingEdit(true);
+
+    try {
+      const links = parseLinksFromText(editUrls);
+
+      const res = await patchJSON<{ ok: boolean; post: BoardPost }>(
+        `/board/${encodeURIComponent(p._id)}`,
+        {
+          title: editTitle.trim() || undefined,
+          body: editBody.trim() || undefined,
+          links,
+        }
+      );
+
+      onUpdate(res.post);
+      setEditing(false);
+    } catch (e: any) {
+      alert(e?.message || 'No se pudo editar la publicación');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   return (
     <article className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-lg">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="max-w-[60ch] truncate text-lg font-black text-neutral-900">
-              {p.title || 'Comunicado'}
+              {p.title ? renderMarkdownText(p.title) : 'Comunicado'}
             </h3>
 
             {who.role && (
@@ -399,28 +453,107 @@ function PostItem({
           </div>
         </div>
 
-        {canManage && (
-          <button
-            className="rounded-full border border-red-100 bg-red-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-red-600 transition hover:bg-red-100"
-            onClick={() => onDelete(p._id)}
-          >
-            Eliminar
-          </button>
+        {canManage && !editing && (
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              className="rounded-full border border-purple-100 bg-purple-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-purple-700 transition hover:bg-purple-100"
+              onClick={() => setEditing(true)}
+            >
+              Editar
+            </button>
+
+            <button
+              className="rounded-full border border-red-100 bg-red-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-red-600 transition hover:bg-red-100"
+              onClick={() => onDelete(p._id)}
+            >
+              Eliminar
+            </button>
+          </div>
         )}
       </div>
 
-      {p.body && (
-        <div className="whitespace-pre-wrap rounded-2xl bg-neutral-50 p-4 text-[15px] leading-relaxed text-neutral-700">
-          {p.body}
-        </div>
-      )}
+      {editing ? (
+        <div className="grid gap-3">
+          <input
+            className="w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+            placeholder="Título"
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+          />
 
-      {!!(p.links && p.links.length) && (
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          {p.links!.map((l, i) => (
-            <LinkPreview key={i} url={l.url} meta={l.meta} />
-          ))}
+          <textarea
+            className="min-h-[140px] w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+            placeholder="Texto del comunicado"
+            value={editBody}
+            onChange={(e) => setEditBody(e.target.value)}
+          />
+
+          <textarea
+            className="min-h-[85px] w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+            placeholder="Links, uno por línea"
+            value={editUrls}
+            onChange={(e) => setEditUrls(e.target.value)}
+          />
+
+          {editPreviewLinks.length > 0 && (
+            <div className="rounded-3xl border border-purple-100 bg-purple-50/50 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white text-lg shadow-sm">
+                  👀
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-black text-neutral-900">
+                    Vista previa
+                  </h3>
+                  <p className="text-xs text-neutral-500">
+                    Así se verán los enlaces al guardar.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {editPreviewLinks.map((l, i) => (
+                  <LinkPreview key={`${l.url}-${i}`} url={l.url} meta={l.meta} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button
+              className="rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-neutral-700 shadow-sm transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={cancelEdit}
+              disabled={savingEdit}
+            >
+              Cancelar
+            </button>
+
+            <button
+              className="rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+              onClick={saveEdit}
+              disabled={savingEdit || (!editTitle.trim() && !editBody.trim() && !editUrls.trim())}
+            >
+              {savingEdit ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+          </div>
         </div>
+      ) : (
+        <>
+          {p.body && (
+            <div className="whitespace-pre-wrap rounded-2xl bg-neutral-50 p-4 text-[15px] leading-relaxed text-neutral-700">
+              {renderMarkdownText(p.body)}
+            </div>
+          )}
+
+          {!!(p.links && p.links.length) && (
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {p.links!.map((l, i) => (
+                <LinkPreview key={i} url={l.url} meta={l.meta} />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </article>
   );
@@ -439,7 +572,7 @@ export default function CourseBoardPage() {
   const canPost =
     me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin';
 
-  const canManage = me?.role === 'coordinator' || me?.role === 'admin';
+  const canManage = me?.role === 'teacher' || me?.role === 'coordinator';
 
   useEffect(() => {
     (window as any).__courseId = id || '';
@@ -621,6 +754,11 @@ export default function CourseBoardPage() {
               key={p._id}
               p={p}
               canManage={canManage}
+              onUpdate={(updatedPost) => {
+                setRows((prev) =>
+                  prev.map((item) => (item._id === updatedPost._id ? updatedPost : item))
+                );
+              }}
               onDelete={async (idDel) => {
                 if (!confirm('¿Eliminar publicación?')) return;
 
