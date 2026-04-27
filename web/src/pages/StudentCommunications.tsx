@@ -4,13 +4,13 @@ import { api, type Communication } from '../lib/api';
 
 // Mapa con categorías + alias por si llegan variantes viejas
 const CAT_MAP: Record<string, { name: string; color: string }> = {
-  TASK:       { name: 'Tarea',         color: '#0ea5e9' },
-  TASKS:      { name: 'Tarea',         color: '#0ea5e9' },
-  BEHAVIOR:   { name: 'Conducta',      color: '#ef4444' },
-  BEHAVIOUR:  { name: 'Conducta',      color: '#ef4444' },
-  ADMIN:      { name: 'Administrativa',color: '#8b5cf6' },
-  ADMINISTRATIVE:{ name: 'Administrativa', color: '#8b5cf6' },
-  INFO:       { name: 'Información',   color: '#10b981' },
+  TASK: { name: 'Tarea', color: '#0ea5e9' },
+  TASKS: { name: 'Tarea', color: '#0ea5e9' },
+  BEHAVIOR: { name: 'Conducta', color: '#ef4444' },
+  BEHAVIOUR: { name: 'Conducta', color: '#ef4444' },
+  ADMIN: { name: 'Administrativa', color: '#8b5cf6' },
+  ADMINISTRATIVE: { name: 'Administrativa', color: '#8b5cf6' },
+  INFO: { name: 'Información', color: '#10b981' },
 };
 
 // fallback para categorías desconocidas o undefined
@@ -23,8 +23,13 @@ function normalizeCategory(raw?: string | null) {
 }
 
 function ReplyItem({ r }: { r: NonNullable<Communication['replies']>[number] }) {
-  const who = typeof r.user === 'string' ? '' : (r.user?.name || '');
+  const who =
+    !r.user || typeof r.user === 'string'
+      ? ''
+      : r.user?.name || '';
+
   const when = r.createdAt ? new Date(r.createdAt) : null;
+
   return (
     <div
       style={{
@@ -34,8 +39,10 @@ function ReplyItem({ r }: { r: NonNullable<Communication['replies']>[number] }) 
       }}
     >
       <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-        {who ? `${who} • ` : ''}{r.role} • {when ? when.toLocaleString() : ''}
+        {who ? `${who} • ` : ''}
+        {r.role} • {when ? when.toLocaleString() : ''}
       </div>
+
       <div style={{ whiteSpace: 'pre-wrap', marginTop: 2 }}>{r.body}</div>
     </div>
   );
@@ -54,9 +61,16 @@ function Item({
   const tag = normalizeCategory((c as any).category);
 
   const read = !!c.readAt;
+
   const courseName =
-    typeof c.course === 'string' ? '' : `${c.course.name} (${c.course.year})`;
-  const senderName = typeof c.sender === 'string' ? '' : c.sender?.name || '';
+    !c.course || typeof c.course === 'string'
+      ? ''
+      : `${c.course?.name || 'Curso'}${c.course?.year ? ` (${c.course.year})` : ''}`;
+
+  const senderName =
+    !c.sender || typeof c.sender === 'string'
+      ? ''
+      : c.sender?.name || '';
 
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
@@ -99,9 +113,11 @@ function Item({
           >
             {tag.name}
           </span>
+
           {/* 👇 Antes estaba c.title; ahora solo mostramos la categoría como título */}
           <b>{displayTitle || '(Sin asunto)'}</b>
         </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <small style={{ color: 'var(--muted)' }}>
             {created
@@ -111,6 +127,7 @@ function Item({
                 })}`
               : ''}
           </small>
+
           {!read && (
             <button onClick={() => onRead(c._id)} aria-label="Marcar leído">
               Marcar leído
@@ -132,7 +149,9 @@ function Item({
       {/* Hilo de respuestas */}
       {!!(c.replies && c.replies.length) && (
         <div style={{ marginTop: 10 }}>
-          {c.replies!.map((r) => <ReplyItem key={r._id} r={r} />)}
+          {c.replies!.map((r) => (
+            <ReplyItem key={r._id} r={r} />
+          ))}
         </div>
       )}
 
@@ -152,11 +171,13 @@ function Item({
             color: 'var(--text)',
           }}
         />
+
         <div style={{ marginTop: 6, display: 'flex', gap: 8 }}>
           <button
             disabled={!reply.trim() || sending}
             onClick={async () => {
               setSending(true);
+
               try {
                 await onReply(c._id, reply.trim());
                 setReply('');
@@ -182,10 +203,12 @@ export default function StudentCommunications() {
   async function load() {
     try {
       const r = await api.communications.mine();
+
       // orden defensivo por fecha
       const ordered = r.rows.slice().sort((a, b) =>
         String(b.createdAt || '').localeCompare(String(a.createdAt || ''))
       );
+
       setRows(ordered);
       setErr(null);
     } catch (e: any) {
@@ -225,11 +248,15 @@ export default function StudentCommunications() {
         Libro de comunicaciones{' '}
         {unread ? <small style={{ color: '#ef4444' }}>({unread} sin leer)</small> : null}
       </h1>
+
       {err && <div style={{ color: 'red' }}>{err}</div>}
+
       {rows.length === 0 ? (
         <p>Aún no hay mensajes.</p>
       ) : (
-        rows.map((r) => <Item key={r._id} c={r} onRead={markRead} onReply={sendReply} />)
+        rows.map((r) => (
+          <Item key={r._id} c={r} onRead={markRead} onReply={sendReply} />
+        ))
       )}
     </div>
   );
