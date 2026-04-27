@@ -517,21 +517,21 @@ export default function CoordinatorCourses() {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      <ActionLink to={`/coordinator/course/${c._id}/manage`}>Gestionar</ActionLink>
-                      <ActionLink to={`/coordinator/course/${c._id}/schedule`}>Horarios</ActionLink>
-                      <ActionLink to={`/coordinator/course/${c._id}/attendance`}>Asistencia</ActionLink>
-                      <ActionLink to={`/coordinator/course/${c._id}/practice`}>Práctica</ActionLink>
-                      <ActionLink to={`/coordinator/course/${c._id}/topics`}>Libro de temas</ActionLink>
-                      <ActionLink to={`/coordinator/course/${c._id}/materials`}>Material</ActionLink>
-                      <ActionLink to={`/coordinator/course/${c._id}/board`}>Muro</ActionLink>
+                      <ActionLink to={`/coordinator/course/${c._id}/manage`}>AGREGAR ALUMNOS</ActionLink>
+                      <ActionLink to={`/coordinator/course/${c._id}/schedule`}>ASIGNAR DIA/HORARIO</ActionLink>
+                      <ActionLink to={`/coordinator/course/${c._id}/attendance`}>ASISTENCIA</ActionLink>
+                      <ActionLink to={`/coordinator/course/${c._id}/practice`}>PRÁCTICA</ActionLink>
+                      <ActionLink to={`/coordinator/course/${c._id}/topics`}>LIBRO DE TEMAS</ActionLink>
+                      <ActionLink to={`/coordinator/course/${c._id}/materials`}>MATERIAL DEL CURSOl</ActionLink>
+                      <ActionLink to={`/coordinator/course/${c._id}/board`}>MURO DEL CURSO</ActionLink>
                       <ActionLink to={`/coordinator/course/${c._id}/student-materials`}>
-                        Material alumnos
+                        MATERIAL DEL ALUMNO
                       </ActionLink>
                       <ActionLink to={`/coordinator/course/${c._id}/partials`}>
-                        Informes parciales
+                        INFORMES PARCIALES
                       </ActionLink>
-                      <ActionLink to={`/coordinator/course/${c._id}/boletin`}>Boletín</ActionLink>
-                      <ActionLink to={`/coordinator/course/${c._id}/british`}>Británico</ActionLink>
+                      <ActionLink to={`/coordinator/course/${c._id}/boletin`}>BOLETÍN</ActionLink>
+                      <ActionLink to={`/coordinator/course/${c._id}/british`}>NOTAS BRITÁNICO</ActionLink>
                     </div>
                   </div>
                 </div>
