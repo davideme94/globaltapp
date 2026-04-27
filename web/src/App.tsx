@@ -138,7 +138,7 @@ function Shell() {
       { to: '/', label: 'Dashboard', icon: LayoutDashboard, show: true },
       { to: '/coordinator/courses', label: 'Cursos', icon: BookOpen, show: me?.role === 'coordinator' || me?.role === 'admin' },
       { to: '/coordinator/users', label: 'Personas', icon: Users, show: me?.role === 'coordinator' || me?.role === 'admin' },
-      { to: '/teacher/courses', label: 'Mis cursos', icon: ClipboardList, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
+      { to: '/teacher/courses', label: 'Mis cursos', icon: ClipboardList, show: me?.role === 'teacher' },
       { to: '/teacher/students', label: 'Alumnos', icon: Users, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
       /* ➕ NUEVO: Crear Sets (visible para teacher/coord/admin) */
       { to: '/coordinator/practice/sets', label: 'Crear sets', icon: Settings, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
@@ -319,7 +319,7 @@ function Home() {
               {(me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/coordinator/courses">Cursos (coord)</Link>}
               {(me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/coordinator/students">Buscar alumno</Link>}
               {(me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/coordinator/users">Personas</Link>}
-              {(me.role === 'teacher' || me.role === 'coordinator' || me?.role === 'admin') && <Link className="btn btn-secondary" to="/teacher/courses">Mis cursos</Link>}
+              {me.role === 'teacher' && <Link className="btn btn-secondary" to="/teacher/courses">Mis cursos</Link>}
               {(me.role === 'teacher' || me.role === 'coordinator' || me?.role === 'admin') && <Link className="btn btn-secondary" to="/teacher/students">Alumnos</Link>}
               {(me.role === 'teacher' || me.role === 'coordinator' || me?.role === 'admin') && <Link className="btn btn-secondary" to="/communications">Comunicaciones</Link>}
               {/* ➕ NUEVO: Acceso rápido Crear Sets para docentes */}
