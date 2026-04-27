@@ -136,14 +136,19 @@ function Shell() {
   const navItems = useMemo(() => {
     const items: { to:string; label:string; icon:any; show:boolean }[] = [
       { to: '/', label: 'Dashboard', icon: LayoutDashboard, show: true },
-      { to: '/coordinator/courses', label: 'Cursos', icon: BookOpen, show: me?.role === 'coordinator' || me?.role === 'admin' },
+      {
+        to: '/coordinator/courses',
+        label: me?.role === 'admin' ? 'Cursos (Admin)' : 'Cursos',
+        icon: BookOpen,
+        show: me?.role === 'coordinator' || me?.role === 'admin'
+      },
       { to: '/coordinator/users', label: 'Personas', icon: Users, show: me?.role === 'coordinator' || me?.role === 'admin' },
       { to: '/teacher/courses', label: 'Mis cursos', icon: ClipboardList, show: me?.role === 'teacher' },
       { to: '/teacher/students', label: 'Alumnos', icon: Users, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
-      /* ➕ NUEVO: Crear Sets (visible para teacher/coord/admin) */
-      { to: '/coordinator/practice/sets', label: 'Crear sets', icon: Settings, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
-      /* ➕ NUEVO: Práctica (curso) en el sidebar para coord/teacher/admin */
-      { to: '/coordinator/courses', label: 'Práctica (curso)', icon: BookOpen, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
+      /* ➕ NUEVO: Crear Sets (visible para teacher/coord, NO admin) */
+      { to: '/coordinator/practice/sets', label: 'Crear sets', icon: Settings, show: me?.role === 'teacher' || me?.role === 'coordinator' },
+      /* ➕ NUEVO: Práctica (curso) en el sidebar para coord/teacher, NO admin */
+      { to: '/coordinator/courses', label: 'Práctica (curso)', icon: BookOpen, show: me?.role === 'teacher' || me?.role === 'coordinator' },
       /* ➕ NUEVO: Exámenes modelos (visible para TODOS los roles logueados) */
       { to: '/exam-models', label: 'Exámenes modelos', icon: ClipboardList, show: !!me },
       { to: '/communications', label: 'Comunicaciones', icon: Mail, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
@@ -316,14 +321,18 @@ function Home() {
             </div>
 
             <div className="flex gap-2 flex-wrap">
-              {(me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/coordinator/courses">Cursos (coord)</Link>}
+              {(me.role === 'coordinator' || me.role === 'admin') && (
+                <Link className="btn btn-secondary" to="/coordinator/courses">
+                  {me.role === 'admin' ? 'Cursos (Admin)' : 'Cursos (coord)'}
+                </Link>
+              )}
               {(me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/coordinator/students">Buscar alumno</Link>}
               {(me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/coordinator/users">Personas</Link>}
               {me.role === 'teacher' && <Link className="btn btn-secondary" to="/teacher/courses">Mis cursos</Link>}
               {(me.role === 'teacher' || me.role === 'coordinator' || me?.role === 'admin') && <Link className="btn btn-secondary" to="/teacher/students">Alumnos</Link>}
               {(me.role === 'teacher' || me.role === 'coordinator' || me?.role === 'admin') && <Link className="btn btn-secondary" to="/communications">Comunicaciones</Link>}
               {/* ➕ NUEVO: Acceso rápido Crear Sets para docentes */}
-              {(me.role === 'teacher' || me.role === 'coordinator' || me?.role === 'admin') && (
+              {(me.role === 'teacher' || me.role === 'coordinator') && (
                 <Link className="btn btn-secondary" to="/coordinator/practice/sets">Crear sets</Link>
               )}
               {me && <Link className="btn btn-secondary" to="/me">Mi perfil</Link>}
