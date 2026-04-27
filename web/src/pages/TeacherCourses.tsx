@@ -195,10 +195,10 @@ export default function TeacherCourses() {
                   {[
                     { label: 'ASISTENCIA', path: 'attendance' },
                     { label: 'ALUMNOS', path: 'students' },
-                    { label: 'PARCIALES', path: 'partials' },
+                    { label: 'REPORTE PARCIALES', path: 'partials' },
                     { label: 'BOLETÍN', path: 'boletin' },
                     { label: 'BRITÁNICO', path: 'british' },
-                    { label: 'LIBRO', path: 'topics' },
+                    { label: 'LIBRO DE TEMAS', path: 'topics' },
                     { label: 'MATERIAL', path: 'materials' },
                   ].map((btn) => (
                     <Link
