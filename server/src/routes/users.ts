@@ -28,6 +28,12 @@ const createUserSchema = z.object({
   email: z.string().email().optional()
 });
 
+const updateUserSchema = z.object({
+  name: z.string().min(2).optional(),
+  email: z.string().email().or(z.literal('')).optional(),
+  campus: campusSchema.optional()
+});
+
 const setActiveSchema = z.object({ active: z.boolean() });
 
 function genPassword(len = 10) {
@@ -153,6 +159,57 @@ router.post(
       });
 
       res.status(201).json({ user: toPublic(user), password: plain });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/** PUT /users/:id  (editar nombre/email/sede) */
+router.put(
+  '/users/:id',
+  requireAuth,
+  allowRoles('coordinator', 'admin'),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const data = updateUserSchema.parse(req.body);
+
+      const update: any = {};
+
+      if (data.name !== undefined) {
+        update.name = data.name.trim();
+      }
+
+      if (data.email !== undefined) {
+        const email = data.email.trim().toLowerCase();
+
+        if (email) {
+          const exists = await User.findOne({ email, _id: { $ne: id } }).lean();
+          if (exists) return res.status(409).json({ error: 'El email ya está registrado' });
+
+          update.email = email;
+        } else {
+          const current = await User.findById(id).lean();
+          if (!current) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+          update.email = await uniqueEmail(buildDefaultEmail(update.name || current.name));
+        }
+      }
+
+      if (data.campus !== undefined) {
+        update.campus = data.campus;
+      }
+
+      const updated = await User.findByIdAndUpdate(
+        id,
+        { $set: update },
+        { new: true, projection: { passwordHash: 0 } }
+      );
+
+      if (!updated) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+      res.json({ user: toPublic(updated) });
     } catch (e) {
       next(e);
     }
