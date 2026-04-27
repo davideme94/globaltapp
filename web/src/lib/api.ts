@@ -280,6 +280,22 @@ export const api = {
         '/users', { method:'POST', body: JSON.stringify(body) }
       );
     },
+    update: (id: string, payload: { name?: string; email?: string; campus?: Campus }) => {
+      const body: any = { ...payload };
+
+      if (body.name !== undefined) {
+        body.name = String(body.name).trim();
+      }
+
+      if (body.email !== undefined) {
+        body.email = String(body.email).trim();
+      }
+
+      return request<{ user: { _id:string; name:string; email:string; role:'student'|'teacher'; campus:Campus; active:boolean } }>(
+        `/users/${id}`,
+        { method: 'PUT', body: JSON.stringify(body) }
+      );
+    },
     setActive: (id: string, active: boolean) =>
       request<{ user:any }>(`/users/${id}/active`, { method:'PUT', body: JSON.stringify({ active }) }),
     resetPassword: (id: string) =>
