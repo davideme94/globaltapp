@@ -238,6 +238,8 @@ function Composer({
       .slice(0, 10)
       .map((url) => ({ url } as PostLink));
 
+  const previewLinks = useMemo(() => parseLinks(), [urls]);
+
   return (
     <section className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
       <div className="mb-5 flex items-center gap-3">
@@ -276,6 +278,31 @@ function Composer({
           value={urls}
           onChange={(e) => setUrls(e.target.value)}
         />
+
+        {previewLinks.length > 0 && (
+          <div className="rounded-3xl border border-purple-100 bg-purple-50/50 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white text-lg shadow-sm">
+                👀
+              </div>
+
+              <div>
+                <h3 className="text-sm font-black text-neutral-900">
+                  Vista previa
+                </h3>
+                <p className="text-xs text-neutral-500">
+                  Así se verán los enlaces cuando publiques.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {previewLinks.map((l, i) => (
+                <LinkPreview key={`${l.url}-${i}`} url={l.url} meta={l.meta} />
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-end">
           <button
