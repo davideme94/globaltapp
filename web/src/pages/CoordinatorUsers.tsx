@@ -8,6 +8,48 @@ type Row = {
   _id: string; name: string; email: string; role: Role; campus: Campus; active: boolean;
 };
 
+type EditForm = {
+  name: string;
+  email: string;
+  campus: Campus;
+};
+
+function roleLabel(role: Role) {
+  return role === 'teacher' ? 'Docente' : 'Alumno';
+}
+
+function campusLabel(campus: Campus) {
+  return campus === 'DERQUI' ? 'Derqui' : 'José C. Paz';
+}
+
+function StatusBadge({ active }: { active: boolean }) {
+  return (
+    <span
+      className={
+        active
+          ? 'inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700'
+          : 'inline-flex rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-700'
+      }
+    >
+      {active ? 'Activo' : 'Inactivo'}
+    </span>
+  );
+}
+
+function RoleBadge({ role }: { role: Role }) {
+  return (
+    <span
+      className={
+        role === 'teacher'
+          ? 'inline-flex rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700'
+          : 'inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-700'
+      }
+    >
+      {roleLabel(role)}
+    </span>
+  );
+}
+
 export default function CoordinatorUsers() {
   const [role, setRole] = useState<Role>('student');
   const [q, setQ] = useState('');
@@ -24,6 +66,14 @@ export default function CoordinatorUsers() {
     campus: 'DERQUI',
     role: 'student',
   });
+
+  const [editingUser, setEditingUser] = useState<Row | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>({
+    name: '',
+    email: '',
+    campus: 'DERQUI',
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const [justCreated, setJustCreated] = useState<{ email: string; password: string } | null>(null);
 
@@ -51,9 +101,12 @@ export default function CoordinatorUsers() {
       setStudentCourses({});
       return;
     }
+
     let alive = true;
+
     (async () => {
       setLoadingStudentCourses(true);
+
       try {
         const year = new Date().getFullYear();
         const ids = new Set(rows.map(r => String(r._id)));
@@ -62,8 +115,10 @@ export default function CoordinatorUsers() {
 
         for (const c of courses) {
           if (!alive) return;
+
           try {
             const { roster } = await api.courses.roster(c._id);
+
             for (const item of (roster || [])) {
               const sid = String(item?.student?._id || '');
               if (!sid || !ids.has(sid)) continue;
@@ -79,6 +134,7 @@ export default function CoordinatorUsers() {
         if (alive) setLoadingStudentCourses(false);
       }
     })();
+
     return () => { alive = false; };
   }, [role, rows]);
 
@@ -104,6 +160,45 @@ export default function CoordinatorUsers() {
 
     } catch (err: any) {
       alert(err.message || 'No se pudo crear');
+    }
+  }
+
+  function openEdit(u: Row) {
+    setEditingUser(u);
+    setEditForm({
+      name: u.name || '',
+      email: u.email || '',
+      campus: u.campus,
+    });
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!editingUser) return;
+    if (!editForm.name.trim()) {
+      alert('El nombre no puede estar vacío');
+      return;
+    }
+
+    setSavingEdit(true);
+
+    try {
+      const { user } = await api.users.update(editingUser._id, {
+        name: editForm.name.trim(),
+        email: editForm.email.trim(),
+        campus: editForm.campus,
+      });
+
+      setRows(prev =>
+        prev.map(r => r._id === editingUser._id ? (user as Row) : r)
+      );
+
+      setEditingUser(null);
+    } catch (e: any) {
+      alert(e.message || 'No se pudo editar el usuario');
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -143,148 +238,404 @@ export default function CoordinatorUsers() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-4">Usuarios</h1>
+    <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
+      {/* Header */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-pink-500 p-[2px] shadow-xl">
+        <div className="relative rounded-3xl bg-white/95 p-6 md:p-8">
+          <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-purple-200/60 blur-3xl" />
+          <div className="absolute -bottom-12 -left-10 h-40 w-40 rounded-full bg-pink-200/60 blur-3xl" />
 
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <select
-          className="border rounded px-3 py-2"
-          value={role}
-          onChange={e => { const r = e.target.value as Role; setRole(r); setForm(f => ({ ...f, role: r })); }}
-        >
-          <option value="student">Alumnos</option>
-          <option value="teacher">Docentes</option>
-        </select>
+          <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="mb-3 w-fit rounded-full border border-purple-100 bg-purple-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-purple-700">
+                Gestión institucional
+              </div>
 
-        <input
-          className="border rounded px-3 py-2 flex-1 min-w-[220px]"
-          placeholder="Buscar por nombre o email..."
-          value={q}
-          onChange={e => setQ(e.target.value)}
-        />
+              <h1 className="font-heading text-3xl font-black tracking-tight text-neutral-900 md:text-4xl">
+                Personas
+              </h1>
 
-        <button
-          onClick={() => { setForm(f => ({ ...f, role })); setShowCreate(true); }}
-          className="bg-indigo-600 text-white px-4 py-2 rounded"
-        >
-          Crear {role === 'teacher' ? 'docente' : 'alumno'}
-        </button>
-      </div>
-
-      <div className="overflow-x-auto -mx-2 sm:mx-0">
-        <div className="inline-block min-w-[980px] align-middle">
-          <div className="bg-white rounded shadow">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left border-b">
-                  <th className="p-3">Nombre</th>
-                  <th className="p-3">Email</th>
-                  <th className="p-3">Rol</th>
-                  <th className="p-3">Sede</th>
-                  <th className="p-3">Curso(s)</th>
-                  <th className="p-3">Estado</th>
-                  <th className="p-3">Acciones</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {loading && (<tr><td className="p-3" colSpan={7}>Cargando...</td></tr>)}
-
-                {!loading && filtered.length === 0 && (
-                  <tr><td className="p-3" colSpan={7}>Sin resultados.</td></tr>
-                )}
-
-                {!loading && filtered.map(u => (
-                  <tr key={u._id} className="border-t">
-                    <td className="p-3 font-medium">{u.name}</td>
-                    <td className="p-3">{u.email || <span className="text-slate-500">—</span>}</td>
-                    <td className="p-3">{u.role}</td>
-                    <td className="p-3">{u.campus}</td>
-
-                    <td className="p-3">
-                      {u.role === 'student'
-                        ? (studentCourses[u._id]?.join(', ') || (loadingStudentCourses ? '...' : ''))
-                        : ''}
-                    </td>
-
-                    <td className="p-3">{u.active ? 'Activo' : 'Inactivo'}</td>
-
-                    <td className="p-3 space-x-3 whitespace-nowrap">
-                      <button className="underline text-indigo-700" onClick={() => handleReset(u)}>Reset clave</button>
-                      <button className="underline text-emerald-700" onClick={() => handleToggleActive(u)}>
-                        {u.active ? 'Desactivar' : 'Activar'}
-                      </button>
-                      <button className="underline text-rose-700" onClick={() => handleDelete(u)}>Eliminar</button>
-                    </td>
-
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {showCreate && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
-          <form
-            onSubmit={handleCreate}
-            className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-screen overflow-y-auto"
-          >
-            <div className="p-4 border-b flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Crear {role === 'teacher' ? 'docente' : 'alumno'}</h2>
-              <button type="button" onClick={() => setShowCreate(false)}>✕</button>
+              <p className="mt-2 max-w-2xl text-sm text-neutral-600 md:text-base">
+                Administrá alumnos y docentes. Podés crear usuarios, editar información,
+                resetear claves, activar/desactivar cuentas y eliminar registros cuando corresponda.
+              </p>
             </div>
 
-            <div className="p-4 space-y-3">
+            <div className="w-fit rounded-2xl border border-purple-100 bg-purple-50 px-4 py-3 text-sm shadow-sm">
+              <p className="font-black text-purple-800">
+                {filtered.length} {role === 'teacher' ? 'docente' : 'alumno'}
+                {filtered.length === 1 ? '' : 's'}
+              </p>
+              <p className="text-xs text-purple-500">
+                Vista actual: {roleLabel(role)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
+      {/* Filtros */}
+      <section className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-100 text-2xl">
+            🔎
+          </div>
+
+          <div>
+            <h2 className="text-lg font-black text-neutral-900">
+              Buscar y filtrar
+            </h2>
+            <p className="text-sm text-neutral-500">
+              Elegí si querés ver alumnos o docentes y buscá por nombre o email.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-[220px_1fr_auto]">
+          <select
+            className="w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+            value={role}
+            onChange={e => {
+              const r = e.target.value as Role;
+              setRole(r);
+              setForm(f => ({ ...f, role: r }));
+            }}
+          >
+            <option value="student">Alumnos</option>
+            <option value="teacher">Docentes</option>
+          </select>
+
+          <input
+            className="w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+            placeholder="Buscar por nombre o email..."
+            value={q}
+            onChange={e => setQ(e.target.value)}
+          />
+
+          <button
+            onClick={() => { setForm(f => ({ ...f, role })); setShowCreate(true); }}
+            className="rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-5 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200 transition hover:-translate-y-0.5 hover:shadow-xl"
+          >
+            Crear {role === 'teacher' ? 'docente' : 'alumno'}
+          </button>
+        </div>
+      </section>
+
+      {/* Lista */}
+      <section className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-black text-neutral-900">
+              Listado de {role === 'teacher' ? 'docentes' : 'alumnos'}
+            </h2>
+            <p className="text-sm text-neutral-500">
+              {loading
+                ? 'Cargando registros...'
+                : filtered.length
+                  ? 'Usá las acciones para editar información, activar, resetear clave o eliminar.'
+                  : 'No hay resultados para mostrar.'}
+            </p>
+          </div>
+
+          <span className="w-fit rounded-full border border-purple-100 bg-purple-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-purple-700">
+            {filtered.length} resultado{filtered.length === 1 ? '' : 's'}
+          </span>
+        </div>
+
+        {loading ? (
+          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-8 text-center">
+            <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-4 border-purple-200 border-t-purple-600" />
+            <p className="text-sm font-semibold text-neutral-600">Cargando...</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-10 text-center">
+            <div className="mb-3 text-5xl">📭</div>
+            <h3 className="text-lg font-black text-neutral-800">
+              Sin resultados
+            </h3>
+            <p className="mt-1 text-sm text-neutral-500">
+              Probá cambiar el filtro o crear un nuevo usuario.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {filtered.map(u => (
+              <article
+                key={u._id}
+                className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-lg"
+              >
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-black text-neutral-900">
+                        {u.name}
+                      </h3>
+
+                      <RoleBadge role={u.role} />
+                      <StatusBadge active={u.active} />
+                    </div>
+
+                    <div className="mt-2 grid gap-2 text-sm text-neutral-600 md:grid-cols-2">
+                      <div>
+                        <span className="font-bold text-neutral-700">Email:</span>{' '}
+                        {u.email || <span className="text-neutral-400">—</span>}
+                      </div>
+
+                      <div>
+                        <span className="font-bold text-neutral-700">Sede:</span>{' '}
+                        {campusLabel(u.campus)}
+                      </div>
+
+                      {u.role === 'student' && (
+                        <div className="md:col-span-2">
+                          <span className="font-bold text-neutral-700">Curso(s):</span>{' '}
+                          {studentCourses[u._id]?.join(', ') ||
+                            (loadingStudentCourses ? '...' : 'Sin cursos asignados')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 lg:justify-end">
+                    <button
+                      className="rounded-xl border border-purple-100 bg-purple-50 px-3 py-2 text-xs font-black uppercase tracking-wide text-purple-700 transition hover:bg-purple-100"
+                      onClick={() => openEdit(u)}
+                    >
+                      {u.role === 'student'
+                        ? 'Editar información del alumno'
+                        : 'Editar información del docente'}
+                    </button>
+
+                    <button
+                      className="rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-black uppercase tracking-wide text-indigo-700 transition hover:bg-indigo-100"
+                      onClick={() => handleReset(u)}
+                    >
+                      Reset clave
+                    </button>
+
+                    <button
+                      className={
+                        u.active
+                          ? 'rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-black uppercase tracking-wide text-amber-700 transition hover:bg-amber-100'
+                          : 'rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-black uppercase tracking-wide text-emerald-700 transition hover:bg-emerald-100'
+                      }
+                      onClick={() => handleToggleActive(u)}
+                    >
+                      {u.active ? 'Desactivar' : 'Activar'}
+                    </button>
+
+                    <button
+                      className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs font-black uppercase tracking-wide text-rose-700 transition hover:bg-rose-100"
+                      onClick={() => handleDelete(u)}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Modal crear */}
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form
+            onSubmit={handleCreate}
+            className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-neutral-200 p-5">
               <div>
-                <label className="text-sm block mb-1">Nombre</label>
-                <input className="border rounded px-3 py-2 w-full" value={form.name} onChange={e => onChange('name', e.target.value)} required />
+                <h2 className="text-lg font-black text-neutral-900">
+                  Crear {role === 'teacher' ? 'docente' : 'alumno'}
+                </h2>
+                <p className="text-sm text-neutral-500">
+                  Completá los datos principales del usuario.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowCreate(false)}
+                className="rounded-full border border-neutral-200 px-3 py-1 text-sm font-bold text-neutral-600 hover:bg-neutral-50"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid gap-4 p-5">
+              <div>
+                <label className="mb-1 block text-sm font-bold text-neutral-700">
+                  Nombre
+                </label>
+                <input
+                  className="w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+                  value={form.name}
+                  onChange={e => onChange('name', e.target.value)}
+                  required
+                />
               </div>
 
               <div>
-                <label className="text-sm block mb-1">Email (opcional)</label>
-                <input className="border rounded px-3 py-2 w-full" value={form.email || ''} onChange={e => onChange('email', e.target.value)} />
+                <label className="mb-1 block text-sm font-bold text-neutral-700">
+                  Email (opcional)
+                </label>
+                <input
+                  className="w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+                  value={form.email || ''}
+                  onChange={e => onChange('email', e.target.value)}
+                />
               </div>
 
               <div>
-                <label className="text-sm block mb-1">Sede</label>
-                <select className="border rounded px-3 py-2 w-full" value={form.campus} onChange={e => onChange('campus', e.target.value as Campus)}>
+                <label className="mb-1 block text-sm font-bold text-neutral-700">
+                  Sede
+                </label>
+                <select
+                  className="w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+                  value={form.campus}
+                  onChange={e => onChange('campus', e.target.value as Campus)}
+                >
                   <option value="DERQUI">DERQUI</option>
                   <option value="JOSE_C_PAZ">JOSE_C_PAZ</option>
                 </select>
               </div>
-
             </div>
 
-            <div className="p-4 border-t flex justify-end gap-2">
-              <button type="button" className="px-3 py-2 rounded border" onClick={() => setShowCreate(false)}>Cancelar</button>
-              <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded">Crear</button>
-            </div>
+            <div className="flex justify-end gap-2 border-t border-neutral-200 p-5">
+              <button
+                type="button"
+                className="rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-neutral-700 shadow-sm transition hover:bg-neutral-50"
+                onClick={() => setShowCreate(false)}
+              >
+                Cancelar
+              </button>
 
+              <button
+                type="submit"
+                className="rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200 transition hover:-translate-y-0.5 hover:shadow-xl"
+              >
+                Crear
+              </button>
+            </div>
           </form>
         </div>
       )}
 
-      {justCreated && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+      {/* Modal editar */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form
+            onSubmit={handleEdit}
+            className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-neutral-200 p-5">
+              <div>
+                <h2 className="text-lg font-black text-neutral-900">
+                  {editingUser.role === 'student'
+                    ? 'Editar información del alumno'
+                    : 'Editar información del docente'}
+                </h2>
+                <p className="text-sm text-neutral-500">
+                  Modificá nombre, email o sede sin crear un usuario nuevo.
+                </p>
+              </div>
 
-            <div className="p-4 border-b">
-              <h2 className="text-lg font-semibold">Credenciales</h2>
+              <button
+                type="button"
+                onClick={() => setEditingUser(null)}
+                className="rounded-full border border-neutral-200 px-3 py-1 text-sm font-bold text-neutral-600 hover:bg-neutral-50"
+              >
+                ✕
+              </button>
             </div>
 
-            <div className="p-4 space-y-3 text-sm">
-
-              <div><b>Email:</b> {justCreated.email}</div>
+            <div className="grid gap-4 p-5">
+              <div>
+                <label className="mb-1 block text-sm font-bold text-neutral-700">
+                  Nombre
+                </label>
+                <input
+                  className="w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+                  value={editForm.name}
+                  onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
+                  required
+                />
+              </div>
 
               <div>
+                <label className="mb-1 block text-sm font-bold text-neutral-700">
+                  Email
+                </label>
+                <input
+                  className="w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+                  value={editForm.email}
+                  onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))}
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-bold text-neutral-700">
+                  Sede
+                </label>
+                <select
+                  className="w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+                  value={editForm.campus}
+                  onChange={e => setEditForm(p => ({ ...p, campus: e.target.value as Campus }))}
+                >
+                  <option value="DERQUI">DERQUI</option>
+                  <option value="JOSE_C_PAZ">JOSE_C_PAZ</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-neutral-200 p-5">
+              <button
+                type="button"
+                className="rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-neutral-700 shadow-sm transition hover:bg-neutral-50 disabled:opacity-60"
+                onClick={() => setEditingUser(null)}
+                disabled={savingEdit}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="submit"
+                className="rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-60"
+                disabled={savingEdit}
+              >
+                {savingEdit ? 'Guardando...' : 'Guardar cambios'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Modal credenciales */}
+      {justCreated && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="border-b border-neutral-200 p-5">
+              <h2 className="text-lg font-black text-neutral-900">
+                Credenciales
+              </h2>
+              <p className="text-sm text-neutral-500">
+                Guardá estos datos antes de cerrar.
+              </p>
+            </div>
+
+            <div className="space-y-3 p-5 text-sm">
+              <div className="rounded-2xl bg-neutral-50 p-4">
+                <b>Email:</b> {justCreated.email}
+              </div>
+
+              <div className="rounded-2xl bg-neutral-50 p-4">
                 <b>Contraseña:</b> <code>{justCreated.password}</code>
               </div>
 
               <button
-                className="px-3 py-2 border rounded"
+                className="rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-neutral-700 shadow-sm transition hover:bg-neutral-50"
                 onClick={() => {
                   const text = `Email: ${justCreated.email}
 Contraseña: ${justCreated.password}`;
@@ -293,19 +644,19 @@ Contraseña: ${justCreated.password}`;
               >
                 Copiar
               </button>
-
             </div>
 
-            <div className="p-4 border-t text-right">
-              <button className="px-3 py-2 rounded border" onClick={() => setJustCreated(null)}>
+            <div className="border-t border-neutral-200 p-5 text-right">
+              <button
+                className="rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200"
+                onClick={() => setJustCreated(null)}
+              >
                 Cerrar
               </button>
             </div>
-
           </div>
         </div>
       )}
-
     </div>
   );
 }
