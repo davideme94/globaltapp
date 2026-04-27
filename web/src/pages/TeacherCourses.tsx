@@ -195,7 +195,7 @@ export default function TeacherCourses() {
                   {[
                     { label: 'ASISTENCIA', path: 'attendance' },
                     { label: 'ALUMNOS', path: 'students' },
-                    { label: 'REPORTE PARCIALES', path: 'partials' },
+                    { label: 'REPORTES PARCIALES', path: 'partials' },
                     { label: 'BOLETÍN', path: 'boletin' },
                     { label: 'BRITÁNICO', path: 'british' },
                     { label: 'LIBRO DE TEMAS', path: 'topics' },
