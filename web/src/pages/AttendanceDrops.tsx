@@ -19,6 +19,19 @@ const STATUS_LABEL: Record<AttendanceFollowUpStatus, string> = {
   RESOLVED: 'Resuelto',
 };
 
+type NoRecordRow = {
+  _id: string;
+  course: AttendanceFollowUp['course'];
+  student: AttendanceFollowUp['student'];
+  attendanceCount: number;
+  enrollment?: {
+    _id: string;
+    status: string;
+    createdAt?: string;
+    updatedAt?: string;
+  };
+};
+
 function statusClass(status: AttendanceFollowUpStatus) {
   if (status === 'PENDING') return 'bg-amber-100 text-amber-700 border-amber-200';
   if (status === 'CONTACTED') return 'bg-sky-100 text-sky-700 border-sky-200';
@@ -42,7 +55,14 @@ function fmtDate(s?: string | null) {
   return clean;
 }
 
-function teacherName(item: AttendanceFollowUp) {
+function campusLabel(campus?: string | null) {
+  if (!campus) return 'Sede no disponible';
+  if (campus === 'DERQUI') return 'Derqui';
+  if (campus === 'JOSE_C_PAZ') return 'José C. Paz';
+  return campus;
+}
+
+function teacherName(item: AttendanceFollowUp | NoRecordRow) {
   const teacher = item.course?.teacher;
 
   if (!teacher) return 'Sin docente';
@@ -51,14 +71,18 @@ function teacherName(item: AttendanceFollowUp) {
   return teacher.name || teacher.email || 'Sin docente';
 }
 
-function courseName(item: AttendanceFollowUp) {
+function courseName(item: AttendanceFollowUp | NoRecordRow) {
   if (!item.course) return 'Curso no disponible';
 
   const year = item.course.year ? ` — ${item.course.year}` : '';
   return `${item.course.name}${year}`;
 }
 
-function studentName(item: AttendanceFollowUp) {
+function courseCampus(item: AttendanceFollowUp | NoRecordRow) {
+  return campusLabel(item.course?.campus);
+}
+
+function studentName(item: AttendanceFollowUp | NoRecordRow) {
   return item.student?.name || 'Alumno no disponible';
 }
 
@@ -89,6 +113,10 @@ export default function AttendanceDrops() {
   const [droppingId, setDroppingId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [detected, setDetected] = useState(0);
+
+  const [noRecordsRows, setNoRecordsRows] = useState<NoRecordRow[]>([]);
+  const [loadingNoRecords, setLoadingNoRecords] = useState(true);
+  const [errNoRecords, setErrNoRecords] = useState<string | null>(null);
 
   const stats = useMemo(() => {
     return {
@@ -130,9 +158,37 @@ export default function AttendanceDrops() {
     }
   }
 
+  async function loadNoRecords() {
+    setLoadingNoRecords(true);
+    setErrNoRecords(null);
+
+    try {
+      const res = await api.attendanceFollowups.noRecords({
+        year,
+      });
+
+      setNoRecordsRows(res.rows || []);
+    } catch (e: any) {
+      setErrNoRecords(e?.message || 'No se pudo cargar alumnos sin registros');
+    } finally {
+      setLoadingNoRecords(false);
+    }
+  }
+
+  async function loadAll() {
+    await Promise.all([
+      load(),
+      loadNoRecords(),
+    ]);
+  }
+
   useEffect(() => {
     load();
   }, [year, status]);
+
+  useEffect(() => {
+    loadNoRecords();
+  }, [year]);
 
   function updateDraft(id: string, patch: Partial<DraftState[string]>) {
     setDrafts(prev => ({
@@ -210,6 +266,8 @@ export default function AttendanceDrops() {
           notes: res.item.notes || '',
         },
       }));
+
+      await loadNoRecords();
 
       alert(
         res.removedFromCourse > 0
@@ -308,18 +366,18 @@ export default function AttendanceDrops() {
 
           <div className="flex items-end">
             <button
-              onClick={load}
-              disabled={loading}
+              onClick={loadAll}
+              disabled={loading || loadingNoRecords}
               className="w-full rounded-2xl bg-gradient-to-r from-rose-500 to-orange-500 px-5 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-orange-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
             >
-              {loading ? 'Actualizando…' : 'Actualizar'}
+              {loading || loadingNoRecords ? 'Actualizando…' : 'Actualizar'}
             </button>
           </div>
         </div>
       </section>
 
       {/* RESUMEN */}
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-black uppercase tracking-wide text-neutral-500">Total</p>
           <p className="mt-1 text-3xl font-black text-neutral-900">{stats.total}</p>
@@ -338,6 +396,11 @@ export default function AttendanceDrops() {
         <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
           <p className="text-xs font-black uppercase tracking-wide text-emerald-700">Cerrados</p>
           <p className="mt-1 text-3xl font-black text-emerald-800">{stats.resolved}</p>
+        </div>
+
+        <div className="rounded-3xl border border-sky-200 bg-sky-50 p-4 shadow-sm">
+          <p className="text-xs font-black uppercase tracking-wide text-sky-700">Sin registros</p>
+          <p className="mt-1 text-3xl font-black text-sky-800">{noRecordsRows.length}</p>
         </div>
       </section>
 
@@ -401,12 +464,21 @@ export default function AttendanceDrops() {
                         <span className={`rounded-full border px-3 py-1 text-xs font-black uppercase tracking-wide ${statusClass(item.status)}`}>
                           {STATUS_LABEL[item.status]}
                         </span>
+
+                        <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-neutral-700">
+                          {courseCampus(item)}
+                        </span>
                       </div>
 
                       <div className="mt-3 grid gap-2 text-sm text-neutral-600 md:grid-cols-2">
                         <div className="break-words">
                           <span className="font-bold text-neutral-800">Curso:</span>{' '}
                           {courseName(item)}
+                        </div>
+
+                        <div className="break-words">
+                          <span className="font-bold text-neutral-800">Sede:</span>{' '}
+                          {courseCampus(item)}
                         </div>
 
                         <div className="break-words">
@@ -512,6 +584,114 @@ export default function AttendanceDrops() {
                 </article>
               );
             })}
+          </div>
+        )}
+      </section>
+
+      {/* SIN REGISTROS */}
+      <section className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-xl font-black text-neutral-900">
+              Alumnos sin registros de asistencia
+            </h2>
+            <p className="text-sm text-neutral-500">
+              Alumnos inscriptos que todavía no tienen ninguna asistencia cargada en ese curso.
+              Revisar manualmente antes de tomar una decisión.
+            </p>
+          </div>
+
+          <span className="w-fit rounded-full border border-sky-100 bg-sky-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-sky-700">
+            Sin inicio / sin carga
+          </span>
+        </div>
+
+        {loadingNoRecords ? (
+          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-8 text-center">
+            <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-4 border-sky-200 border-t-sky-600" />
+            <p className="text-sm font-semibold text-neutral-600">Buscando alumnos sin registros...</p>
+          </div>
+        ) : errNoRecords ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm font-bold text-rose-700">
+            {errNoRecords}
+          </div>
+        ) : noRecordsRows.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-10 text-center">
+            <div className="mb-3 text-5xl">📋</div>
+            <h3 className="text-lg font-black text-neutral-800">
+              No hay alumnos sin registros
+            </h3>
+            <p className="mt-1 text-sm text-neutral-500">
+              Todos los alumnos activos tienen al menos una asistencia cargada.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {noRecordsRows.map(item => (
+              <article
+                key={item._id}
+                className="overflow-hidden rounded-3xl border border-sky-100 bg-white p-4 shadow-sm transition hover:border-sky-200 hover:shadow-lg sm:p-5"
+              >
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="break-words text-xl font-black uppercase leading-tight text-neutral-900">
+                        {studentName(item)}
+                      </h3>
+
+                      <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-sky-700">
+                        0 asistencias
+                      </span>
+
+                      <span className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-neutral-700">
+                        {courseCampus(item)}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 grid gap-2 text-sm text-neutral-600 md:grid-cols-2">
+                      <div className="break-words">
+                        <span className="font-bold text-neutral-800">Curso:</span>{' '}
+                        {courseName(item)}
+                      </div>
+
+                      <div className="break-words">
+                        <span className="font-bold text-neutral-800">Sede:</span>{' '}
+                        {courseCampus(item)}
+                      </div>
+
+                      <div className="break-words">
+                        <span className="font-bold text-neutral-800">Profesora/docente:</span>{' '}
+                        {teacherName(item)}
+                      </div>
+
+                      <div className="break-words">
+                        <span className="font-bold text-neutral-800">Estado de inscripción:</span>{' '}
+                        {item.enrollment?.status || 'active'}
+                      </div>
+
+                      <div className="break-words">
+                        <span className="font-bold text-neutral-800">Inscripto desde:</span>{' '}
+                        {fmtDate(item.enrollment?.createdAt)}
+                      </div>
+
+                      <div>
+                        <span className="font-bold text-neutral-800">Asistencias cargadas:</span>{' '}
+                        {item.attendanceCount}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm">
+                    <p className="font-black text-sky-700">
+                      Revisar manualmente
+                    </p>
+                    <p className="text-xs text-sky-500">
+                      Puede ser que no inició o que falte cargar asistencia
+                    </p>
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </section>
