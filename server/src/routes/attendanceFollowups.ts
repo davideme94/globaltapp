@@ -24,6 +24,11 @@ const listQuerySchema = z.object({
   status: followUpStatusSchema.optional(),
 });
 
+const noRecordsQuerySchema = z.object({
+  year: z.coerce.number().int().optional(),
+  courseId: z.string().optional(),
+});
+
 const updateSchema = z.object({
   status: followUpStatusSchema.optional(),
   reason: z.string().optional(),
@@ -88,6 +93,89 @@ function normalizeFollowUp(doc: any) {
     updatedAt: doc.updatedAt,
   };
 }
+
+/**
+ * GET /attendance/followups/no-records
+ *
+ * Detecta alumnos inscriptos activamente que no tienen ningún registro de asistencia.
+ * Importante:
+ * - No borra nada
+ * - No modifica nada
+ * - Solo lista posibles casos de "no inició" o "sin asistencia cargada"
+ */
+router.get(
+  '/attendance/followups/no-records',
+  requireAuth,
+  allowRoles('coordinator', 'admin'),
+  async (req, res, next) => {
+    try {
+      const { year, courseId } = noRecordsQuerySchema.parse(req.query);
+
+      const courseWhere: any = {};
+      if (year) courseWhere.year = year;
+      if (courseId) courseWhere._id = courseId;
+
+      const courses = await Course.find(courseWhere)
+        .populate('teacher', 'name email')
+        .sort({ year: -1, name: 1 })
+        .lean();
+
+      const rows: any[] = [];
+
+      for (const course of courses as any[]) {
+        const enrollments = await Enrollment.find({
+          course: course._id,
+          status: 'active',
+        })
+          .populate('student', 'name email campus active')
+          .lean();
+
+        for (const enrollment of enrollments as any[]) {
+          const student = enrollment.student;
+          if (!student?._id) continue;
+
+          const attendanceCount = await Attendance.countDocuments({
+            course: course._id,
+            student: student._id,
+          });
+
+          if (attendanceCount !== 0) continue;
+
+          rows.push({
+            _id: `${String(course._id)}_${String(student._id)}`,
+            course: normalizeCourse(course),
+            student: normalizeStudent(student),
+            attendanceCount: 0,
+            enrollment: {
+              _id: String(enrollment._id),
+              status: enrollment.status,
+              createdAt: enrollment.createdAt,
+              updatedAt: enrollment.updatedAt,
+            },
+          });
+        }
+      }
+
+      rows.sort((a, b) => {
+        const courseA = `${a.course?.year || ''} ${a.course?.name || ''}`;
+        const courseB = `${b.course?.year || ''} ${b.course?.name || ''}`;
+        const byCourse = courseA.localeCompare(courseB);
+        if (byCourse !== 0) return byCourse;
+
+        const studentA = a.student?.name || '';
+        const studentB = b.student?.name || '';
+        return studentA.localeCompare(studentB);
+      });
+
+      res.json({
+        rows,
+        total: rows.length,
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
 
 /**
  * GET /attendance/followups
