@@ -38,9 +38,24 @@ export default function AttendancePage() {
   const [to, setTo] = useState<string>('');
   const [grid, setGrid] = useState<{ dates: string[]; rows: any[] } | null>(null);
 
+  // NUEVO
+  const [courseName, setCourseName] = useState<string>('Curso');
+  const [courseYear, setCourseYear] = useState<string>('');
+
   useEffect(() => {
     (async () => {
       if (!id) return;
+
+      // NUEVO: traer nombre del curso
+      try {
+        const c = await api.courses.get(id);
+        const course = c?.course ?? c;
+        setCourseName(course?.name || 'Curso');
+        setCourseYear(course?.year ? String(course.year) : '');
+      } catch {
+        setCourseName('Curso');
+        setCourseYear('');
+      }
 
       const r = await api.courses.roster(id);
       setRoster(r.roster);
@@ -123,7 +138,12 @@ export default function AttendancePage() {
       <div style={heroWrap}>
         <div style={heroInner}>
           <div style={{ flex: 1, minWidth: 260 }}>
-            <div style={badge}>📚 Gestión de asistencia</div>
+            <div style={badge}>📚 GESTIÓN DE ASISTENCIA</div>
+
+            {/* NUEVO: curso visible */}
+            <div style={coursePill}>
+              📘 {courseName}{courseYear ? ` · ${courseYear}` : ''}
+            </div>
 
             <h1 style={heroTitle}>📋 Tomar asistencia</h1>
 
@@ -146,12 +166,12 @@ export default function AttendancePage() {
 
           <div style={heroStats}>
             <div style={statCard}>
-              <div style={statLabel}>Alumnos</div>
+              <div style={statLabel}>ALUMNOS</div>
               <div style={statValue}>{roster.length}</div>
             </div>
 
             <div style={statCard}>
-              <div style={statLabel}>Fecha</div>
+              <div style={statLabel}>FECHA</div>
               <div style={statValueSmall}>{fmtFullDate(date)}</div>
             </div>
           </div>
@@ -437,6 +457,19 @@ const badge = {
   letterSpacing: 0.4,
   marginBottom: 10,
   textTransform: 'uppercase' as const,
+};
+
+// NUEVO
+const coursePill = {
+  display: 'inline-block',
+  marginBottom: 12,
+  padding: '8px 14px',
+  borderRadius: 999,
+  background: '#ede9fe',
+  border: '1px solid #c4b5fd',
+  color: '#5b21b6',
+  fontSize: 14,
+  fontWeight: 800,
 };
 
 const heroTitle = {
