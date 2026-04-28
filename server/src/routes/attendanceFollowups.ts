@@ -30,6 +30,11 @@ const updateSchema = z.object({
   notes: z.string().optional(),
 });
 
+const dropAndUnenrollSchema = z.object({
+  reason: z.string().optional(),
+  notes: z.string().optional(),
+});
+
 function getReqUserId(req: any) {
   return req.user?._id || req.user?.id || req.auth?._id || req.auth?.id;
 }
@@ -226,6 +231,61 @@ router.get(
       res.json({
         rows,
         detected: detectedIds.length,
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/**
+ * PUT /attendance/followups/:id/drop-and-unenroll
+ *
+ * Marca el seguimiento como BAJA y saca al alumno del curso.
+ */
+router.put(
+  '/attendance/followups/:id/drop-and-unenroll',
+  requireAuth,
+  allowRoles('coordinator', 'admin'),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const data = dropAndUnenrollSchema.parse(req.body);
+
+      const followUp = await AttendanceFollowUp.findById(id);
+
+      if (!followUp) {
+        return res.status(404).json({ error: 'Seguimiento no encontrado' });
+      }
+
+      const courseId = followUp.course;
+      const studentId = followUp.student;
+
+      const deletedEnrollment = await Enrollment.deleteMany({
+        course: courseId,
+        student: studentId,
+      });
+
+      followUp.status = 'DROPPED';
+      followUp.reason = data.reason?.trim() || followUp.reason || 'Baja administrativa';
+      followUp.notes = data.notes?.trim() || followUp.notes || 'Alumno marcado como baja y retirado del curso.';
+      followUp.resolvedAt = new Date();
+      followUp.updatedBy = getReqUserId(req);
+
+      await followUp.save();
+
+      const updated = await AttendanceFollowUp.findById(followUp._id)
+        .populate({
+          path: 'course',
+          select: 'name year campus teacher',
+          populate: { path: 'teacher', select: 'name email' },
+        })
+        .populate('student', 'name email campus active');
+
+      res.json({
+        ok: true,
+        removedFromCourse: deletedEnrollment.deletedCount || 0,
+        item: normalizeFollowUp(updated),
       });
     } catch (e) {
       next(e);
