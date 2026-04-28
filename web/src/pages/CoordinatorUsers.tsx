@@ -238,20 +238,20 @@ export default function CoordinatorUsers() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
+    <div className="mx-auto w-full max-w-6xl space-y-5 px-3 py-4 sm:px-4 md:space-y-6 md:px-6">
       {/* Header */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-pink-500 p-[2px] shadow-xl">
-        <div className="relative rounded-3xl bg-white/95 p-6 md:p-8">
+        <div className="relative rounded-3xl bg-white/95 p-5 sm:p-6 md:p-8">
           <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-purple-200/60 blur-3xl" />
           <div className="absolute -bottom-12 -left-10 h-40 w-40 rounded-full bg-pink-200/60 blur-3xl" />
 
           <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="mb-3 w-fit rounded-full border border-purple-100 bg-purple-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-purple-700">
+            <div className="min-w-0">
+              <div className="mb-3 w-fit rounded-full border border-purple-100 bg-purple-50 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-purple-700 sm:text-xs">
                 Gestión institucional
               </div>
 
-              <h1 className="font-heading text-3xl font-black tracking-tight text-neutral-900 md:text-4xl">
+              <h1 className="text-2xl font-black tracking-tight text-neutral-900 sm:text-3xl md:text-4xl">
                 Personas
               </h1>
 
@@ -275,13 +275,13 @@ export default function CoordinatorUsers() {
       </section>
 
       {/* Filtros */}
-      <section className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-100 text-2xl">
+      <section className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="mb-5 flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-purple-100 text-2xl">
             🔎
           </div>
 
-          <div>
+          <div className="min-w-0">
             <h2 className="text-lg font-black text-neutral-900">
               Buscar y filtrar
             </h2>
@@ -314,7 +314,7 @@ export default function CoordinatorUsers() {
 
           <button
             onClick={() => { setForm(f => ({ ...f, role })); setShowCreate(true); }}
-            className="rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-5 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200 transition hover:-translate-y-0.5 hover:shadow-xl"
+            className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-5 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200 transition hover:-translate-y-0.5 hover:shadow-xl md:w-auto"
           >
             Crear {role === 'teacher' ? 'docente' : 'alumno'}
           </button>
@@ -322,10 +322,10 @@ export default function CoordinatorUsers() {
       </section>
 
       {/* Lista */}
-      <section className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+      <section className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-black text-neutral-900">
+          <div className="min-w-0">
+            <h2 className="text-xl font-black text-neutral-900 sm:text-2xl">
               Listado de {role === 'teacher' ? 'docentes' : 'alumnos'}
             </h2>
             <p className="text-sm text-neutral-500">
@@ -362,21 +362,23 @@ export default function CoordinatorUsers() {
             {filtered.map(u => (
               <article
                 key={u._id}
-                className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-lg"
+                className="w-full overflow-hidden rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-lg sm:p-5"
               >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex flex-col gap-4">
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-black text-neutral-900">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                      <h3 className="break-words text-2xl font-black uppercase leading-tight text-neutral-900 sm:text-xl md:text-2xl">
                         {u.name}
                       </h3>
 
-                      <RoleBadge role={u.role} />
-                      <StatusBadge active={u.active} />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <RoleBadge role={u.role} />
+                        <StatusBadge active={u.active} />
+                      </div>
                     </div>
 
-                    <div className="mt-2 grid gap-2 text-sm text-neutral-600 md:grid-cols-2">
-                      <div>
+                    <div className="mt-4 grid gap-2 text-sm text-neutral-600">
+                      <div className="break-words">
                         <span className="font-bold text-neutral-700">Email:</span>{' '}
                         {u.email || <span className="text-neutral-400">—</span>}
                       </div>
@@ -387,7 +389,7 @@ export default function CoordinatorUsers() {
                       </div>
 
                       {u.role === 'student' && (
-                        <div className="md:col-span-2">
+                        <div className="break-words">
                           <span className="font-bold text-neutral-700">Curso(s):</span>{' '}
                           {studentCourses[u._id]?.join(', ') ||
                             (loadingStudentCourses ? '...' : 'Sin cursos asignados')}
@@ -396,9 +398,9 @@ export default function CoordinatorUsers() {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 lg:justify-end">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                     <button
-                      className="rounded-xl border border-purple-100 bg-purple-50 px-3 py-2 text-xs font-black uppercase tracking-wide text-purple-700 transition hover:bg-purple-100"
+                      className="w-full rounded-2xl border border-purple-100 bg-purple-50 px-4 py-3 text-center text-sm font-black uppercase tracking-wide text-purple-700 transition hover:bg-purple-100 sm:col-span-2 lg:col-span-1"
                       onClick={() => openEdit(u)}
                     >
                       {u.role === 'student'
@@ -407,7 +409,7 @@ export default function CoordinatorUsers() {
                     </button>
 
                     <button
-                      className="rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-black uppercase tracking-wide text-indigo-700 transition hover:bg-indigo-100"
+                      className="w-full rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-center text-sm font-black uppercase tracking-wide text-indigo-700 transition hover:bg-indigo-100"
                       onClick={() => handleReset(u)}
                     >
                       Reset clave
@@ -416,8 +418,8 @@ export default function CoordinatorUsers() {
                     <button
                       className={
                         u.active
-                          ? 'rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-black uppercase tracking-wide text-amber-700 transition hover:bg-amber-100'
-                          : 'rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-black uppercase tracking-wide text-emerald-700 transition hover:bg-emerald-100'
+                          ? 'w-full rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-center text-sm font-black uppercase tracking-wide text-amber-700 transition hover:bg-amber-100'
+                          : 'w-full rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-center text-sm font-black uppercase tracking-wide text-emerald-700 transition hover:bg-emerald-100'
                       }
                       onClick={() => handleToggleActive(u)}
                     >
@@ -425,7 +427,7 @@ export default function CoordinatorUsers() {
                     </button>
 
                     <button
-                      className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs font-black uppercase tracking-wide text-rose-700 transition hover:bg-rose-100"
+                      className="w-full rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-center text-sm font-black uppercase tracking-wide text-rose-700 transition hover:bg-rose-100"
                       onClick={() => handleDelete(u)}
                     >
                       Eliminar
@@ -440,13 +442,13 @@ export default function CoordinatorUsers() {
 
       {/* Modal crear */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
           <form
             onSubmit={handleCreate}
             className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl"
           >
-            <div className="flex items-center justify-between border-b border-neutral-200 p-5">
-              <div>
+            <div className="flex items-center justify-between border-b border-neutral-200 p-4 sm:p-5">
+              <div className="min-w-0">
                 <h2 className="text-lg font-black text-neutral-900">
                   Crear {role === 'teacher' ? 'docente' : 'alumno'}
                 </h2>
@@ -464,7 +466,7 @@ export default function CoordinatorUsers() {
               </button>
             </div>
 
-            <div className="grid gap-4 p-5">
+            <div className="grid gap-4 p-4 sm:p-5">
               <div>
                 <label className="mb-1 block text-sm font-bold text-neutral-700">
                   Nombre
@@ -503,10 +505,10 @@ export default function CoordinatorUsers() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-neutral-200 p-5">
+            <div className="flex flex-col-reverse gap-2 border-t border-neutral-200 p-4 sm:flex-row sm:justify-end sm:p-5">
               <button
                 type="button"
-                className="rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-neutral-700 shadow-sm transition hover:bg-neutral-50"
+                className="w-full rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-neutral-700 shadow-sm transition hover:bg-neutral-50 sm:w-auto"
                 onClick={() => setShowCreate(false)}
               >
                 Cancelar
@@ -514,7 +516,7 @@ export default function CoordinatorUsers() {
 
               <button
                 type="submit"
-                className="rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200 transition hover:-translate-y-0.5 hover:shadow-xl"
+                className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200 transition hover:-translate-y-0.5 hover:shadow-xl sm:w-auto"
               >
                 Crear
               </button>
@@ -525,13 +527,13 @@ export default function CoordinatorUsers() {
 
       {/* Modal editar */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
           <form
             onSubmit={handleEdit}
             className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl"
           >
-            <div className="flex items-center justify-between border-b border-neutral-200 p-5">
-              <div>
+            <div className="flex items-center justify-between border-b border-neutral-200 p-4 sm:p-5">
+              <div className="min-w-0">
                 <h2 className="text-lg font-black text-neutral-900">
                   {editingUser.role === 'student'
                     ? 'Editar información del alumno'
@@ -551,7 +553,7 @@ export default function CoordinatorUsers() {
               </button>
             </div>
 
-            <div className="grid gap-4 p-5">
+            <div className="grid gap-4 p-4 sm:p-5">
               <div>
                 <label className="mb-1 block text-sm font-bold text-neutral-700">
                   Nombre
@@ -590,10 +592,10 @@ export default function CoordinatorUsers() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-neutral-200 p-5">
+            <div className="flex flex-col-reverse gap-2 border-t border-neutral-200 p-4 sm:flex-row sm:justify-end sm:p-5">
               <button
                 type="button"
-                className="rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-neutral-700 shadow-sm transition hover:bg-neutral-50 disabled:opacity-60"
+                className="w-full rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-neutral-700 shadow-sm transition hover:bg-neutral-50 disabled:opacity-60 sm:w-auto"
                 onClick={() => setEditingUser(null)}
                 disabled={savingEdit}
               >
@@ -602,7 +604,7 @@ export default function CoordinatorUsers() {
 
               <button
                 type="submit"
-                className="rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-60"
+                className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-60 sm:w-auto"
                 disabled={savingEdit}
               >
                 {savingEdit ? 'Guardando...' : 'Guardar cambios'}
@@ -614,9 +616,9 @@ export default function CoordinatorUsers() {
 
       {/* Modal credenciales */}
       {justCreated && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4">
           <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <div className="border-b border-neutral-200 p-5">
+            <div className="border-b border-neutral-200 p-4 sm:p-5">
               <h2 className="text-lg font-black text-neutral-900">
                 Credenciales
               </h2>
@@ -625,17 +627,17 @@ export default function CoordinatorUsers() {
               </p>
             </div>
 
-            <div className="space-y-3 p-5 text-sm">
-              <div className="rounded-2xl bg-neutral-50 p-4">
+            <div className="space-y-3 p-4 text-sm sm:p-5">
+              <div className="break-words rounded-2xl bg-neutral-50 p-4">
                 <b>Email:</b> {justCreated.email}
               </div>
 
-              <div className="rounded-2xl bg-neutral-50 p-4">
+              <div className="break-words rounded-2xl bg-neutral-50 p-4">
                 <b>Contraseña:</b> <code>{justCreated.password}</code>
               </div>
 
               <button
-                className="rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-neutral-700 shadow-sm transition hover:bg-neutral-50"
+                className="w-full rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-neutral-700 shadow-sm transition hover:bg-neutral-50 sm:w-auto"
                 onClick={() => {
                   const text = `Email: ${justCreated.email}
 Contraseña: ${justCreated.password}`;
@@ -646,9 +648,9 @@ Contraseña: ${justCreated.password}`;
               </button>
             </div>
 
-            <div className="border-t border-neutral-200 p-5 text-right">
+            <div className="border-t border-neutral-200 p-4 text-right sm:p-5">
               <button
-                className="rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200"
+                className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200 sm:w-auto"
                 onClick={() => setJustCreated(null)}
               >
                 Cerrar
