@@ -8,6 +8,7 @@ const STATUS_OPTIONS: { value: AttendanceFollowUpStatus | ''; label: string }[] 
   { value: 'JUSTIFIED', label: 'Justificado' },
   { value: 'DROP_REQUEST', label: 'Posible baja' },
   { value: 'DROPPED', label: 'Baja' },
+  { value: 'RESOLVED', label: 'Resuelto' },
 ];
 
 const STATUS_LABEL: Record<AttendanceFollowUpStatus, string> = {
@@ -92,6 +93,46 @@ function absenceDatesText(item: AttendanceFollowUp) {
     : fmtDate(item.lastAbsenceDate);
 }
 
+function followUpStatusBox(status: AttendanceFollowUpStatus) {
+  if (status === 'DROPPED') {
+    return {
+      boxClass: 'border-emerald-100 bg-emerald-50',
+      titleClass: 'text-emerald-700',
+      textClass: 'text-emerald-500',
+      title: 'Baja registrada',
+      text: 'No requiere atención',
+    };
+  }
+
+  if (status === 'RESOLVED') {
+    return {
+      boxClass: 'border-purple-100 bg-purple-50',
+      titleClass: 'text-purple-700',
+      textClass: 'text-purple-500',
+      title: 'Caso resuelto',
+      text: 'No requiere atención',
+    };
+  }
+
+  if (status === 'JUSTIFIED') {
+    return {
+      boxClass: 'border-sky-100 bg-sky-50',
+      titleClass: 'text-sky-700',
+      textClass: 'text-sky-500',
+      title: 'Ausencias justificadas',
+      text: 'No requiere atención',
+    };
+  }
+
+  return {
+    boxClass: 'border-rose-100 bg-rose-50',
+    titleClass: 'text-rose-700',
+    textClass: 'text-rose-500',
+    title: 'Atención requerida',
+    text: 'Revisar causa o posible baja',
+  };
+}
+
 type DraftState = Record<
   string,
   {
@@ -123,7 +164,7 @@ export default function AttendanceDrops() {
       total: rows.length,
       pending: rows.filter(r => r.status === 'PENDING').length,
       drop: rows.filter(r => r.status === 'DROP_REQUEST' || r.status === 'DROPPED').length,
-      resolved: rows.filter(r => r.status === 'JUSTIFIED' || r.status === 'DROPPED').length,
+      resolved: rows.filter(r => r.status === 'JUSTIFIED' || r.status === 'DROPPED' || r.status === 'RESOLVED').length,
     };
   }, [rows]);
 
@@ -441,7 +482,7 @@ export default function AttendanceDrops() {
             </p>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-5">
             {rows.map(item => {
               const draft = drafts[item._id] || {
                 status: item.status,
@@ -449,15 +490,17 @@ export default function AttendanceDrops() {
                 notes: item.notes || '',
               };
 
+              const statusBox = followUpStatusBox(draft.status);
+
               return (
                 <article
                   key={item._id}
-                  className="overflow-hidden rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-orange-200 hover:shadow-lg sm:p-5"
+                  className="overflow-hidden rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:border-orange-200 hover:shadow-lg sm:p-6 md:p-7"
                 >
-                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="break-words text-xl font-black uppercase leading-tight text-neutral-900">
+                        <h3 className="break-words text-2xl font-black uppercase leading-tight text-neutral-900">
                           {studentName(item)}
                         </h3>
 
@@ -470,7 +513,7 @@ export default function AttendanceDrops() {
                         </span>
                       </div>
 
-                      <div className="mt-3 grid gap-2 text-sm text-neutral-600 md:grid-cols-2">
+                      <div className="mt-4 grid gap-3 text-base text-neutral-600 md:grid-cols-2">
                         <div className="break-words">
                           <span className="font-bold text-neutral-800">Curso:</span>{' '}
                           {courseName(item)}
@@ -498,23 +541,23 @@ export default function AttendanceDrops() {
                       </div>
                     </div>
 
-                    <div className="shrink-0 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm">
-                      <p className="font-black text-rose-700">
-                        Atención requerida
+                    <div className={`shrink-0 rounded-2xl border px-5 py-4 text-sm xl:min-w-[260px] ${statusBox.boxClass}`}>
+                      <p className={`text-base font-black ${statusBox.titleClass}`}>
+                        {statusBox.title}
                       </p>
-                      <p className="text-xs text-rose-500">
-                        Revisar causa o posible baja
+                      <p className={`mt-1 text-sm ${statusBox.textClass}`}>
+                        {statusBox.text}
                       </p>
                     </div>
                   </div>
 
-                  <div className="mt-5 grid gap-3 lg:grid-cols-[240px_1fr_1fr_auto] lg:items-end">
+                  <div className="mt-6 grid gap-4 xl:grid-cols-[280px_minmax(260px,1fr)_minmax(260px,1fr)_auto] xl:items-end">
                     <div>
                       <label className="mb-1 block text-sm font-bold text-neutral-700">
                         Estado actual / editar seguimiento
                       </label>
                       <select
-                        className="w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                        className="min-h-[58px] w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-4 text-base font-semibold text-neutral-700 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                         value={draft.status}
                         onChange={e => updateDraft(item._id, { status: e.target.value as AttendanceFollowUpStatus })}
                       >
@@ -530,8 +573,9 @@ export default function AttendanceDrops() {
                       <label className="mb-1 block text-sm font-bold text-neutral-700">
                         Causa
                       </label>
-                      <input
-                        className="w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                      <textarea
+                        rows={3}
+                        className="min-h-[92px] w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-base font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                         placeholder="Ej: enfermedad, viaje, no responde, posible baja..."
                         value={draft.reason}
                         onChange={e => updateDraft(item._id, { reason: e.target.value })}
@@ -542,8 +586,9 @@ export default function AttendanceDrops() {
                       <label className="mb-1 block text-sm font-bold text-neutral-700">
                         Notas internas
                       </label>
-                      <input
-                        className="w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                      <textarea
+                        rows={3}
+                        className="min-h-[92px] w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-base font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                         placeholder="Ej: se contactó a la familia..."
                         value={draft.notes}
                         onChange={e => updateDraft(item._id, { notes: e.target.value })}
@@ -553,14 +598,14 @@ export default function AttendanceDrops() {
                     <button
                       onClick={() => save(item)}
                       disabled={savingId === item._id || droppingId === item._id}
-                      className="w-full rounded-2xl bg-gradient-to-r from-rose-500 to-orange-500 px-5 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-orange-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
+                      className="min-h-[58px] w-full rounded-2xl bg-gradient-to-r from-rose-500 to-orange-500 px-6 py-4 text-base font-black uppercase tracking-wide text-white shadow-lg shadow-orange-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 xl:w-auto"
                     >
                       {savingId === item._id ? 'Guardando…' : 'Guardar cambios'}
                     </button>
                   </div>
 
                   {item.status !== 'DROPPED' && (
-                    <div className="mt-4 rounded-3xl border border-rose-200 bg-rose-50 p-4">
+                    <div className="mt-5 rounded-3xl border border-rose-200 bg-rose-50 p-4">
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div className="min-w-0">
                           <p className="text-sm font-black text-rose-800">
