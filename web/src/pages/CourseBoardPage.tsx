@@ -159,13 +159,13 @@ function LinkPreview({ url, meta }: { url: string; meta?: LinkMeta }) {
         href={`https://www.youtube.com/watch?v=${id}`}
         target="_blank"
         rel="noreferrer"
-        className="group block max-w-xl overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+        className="group block w-full max-w-full overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:max-w-xl"
       >
         <div className="relative aspect-video overflow-hidden bg-neutral-100">
           <img
             src={thumb}
             alt="YouTube thumbnail"
-            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+            className="h-full w-full max-w-full object-cover transition duration-300 group-hover:scale-105"
             loading="lazy"
           />
 
@@ -185,13 +185,13 @@ function LinkPreview({ url, meta }: { url: string; meta?: LinkMeta }) {
         href={url}
         target="_blank"
         rel="noreferrer"
-        className="group block max-w-xl overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+        className="group block w-full max-w-full overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:max-w-xl"
       >
         <div className="bg-neutral-50">
           <img
             src={url}
             alt={meta?.title || 'Imagen'}
-            className="max-h-72 w-full object-contain transition duration-300 group-hover:scale-[1.02]"
+            className="max-h-72 w-full max-w-full object-contain transition duration-300 group-hover:scale-[1.02]"
             loading="lazy"
           />
         </div>
@@ -204,13 +204,13 @@ function LinkPreview({ url, meta }: { url: string; meta?: LinkMeta }) {
       href={url}
       target="_blank"
       rel="noreferrer"
-      className="group block max-w-xl overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+      className="group block w-full max-w-full overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:max-w-xl"
     >
       {meta?.image && (
         <img
           src={meta.image}
           alt="Preview"
-          className="max-h-56 w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+          className="max-h-56 w-full max-w-full object-cover transition duration-300 group-hover:scale-[1.02]"
           loading="lazy"
         />
       )}
@@ -254,13 +254,13 @@ function Composer({
   const previewLinks = useMemo(() => parseLinks(), [urls]);
 
   return (
-    <section className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
+    <section className="w-full max-w-full overflow-hidden rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="mb-5 flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-100 text-2xl">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-100 text-2xl">
           📣
         </div>
 
-        <div>
+        <div className="min-w-0">
           <h2 className="text-lg font-black text-neutral-900">
             Nuevo comunicado
           </h2>
@@ -270,36 +270,36 @@ function Composer({
         </div>
       </div>
 
-      <div className="grid gap-3">
+      <div className="grid min-w-0 gap-3">
         <input
-          className="w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+          className="w-full max-w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
           placeholder="Título (opcional)"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
 
         <textarea
-          className="min-h-[115px] w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+          className="min-h-[115px] w-full max-w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
           placeholder="Escribí el texto del comunicado…"
           value={body}
           onChange={(e) => setBody(e.target.value)}
         />
 
         <textarea
-          className="min-h-[85px] w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+          className="min-h-[85px] w-full max-w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
           placeholder="Pegá links: YouTube, artículos, Drive, imágenes… uno por línea"
           value={urls}
           onChange={(e) => setUrls(e.target.value)}
         />
 
         {previewLinks.length > 0 && (
-          <div className="rounded-3xl border border-purple-100 bg-purple-50/50 p-4">
+          <div className="w-full max-w-full overflow-hidden rounded-3xl border border-purple-100 bg-purple-50/50 p-4">
             <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white text-lg shadow-sm">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white text-lg shadow-sm">
                 👀
               </div>
 
-              <div>
+              <div className="min-w-0">
                 <h3 className="text-sm font-black text-neutral-900">
                   Vista previa
                 </h3>
@@ -309,7 +309,7 @@ function Composer({
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid w-full max-w-full grid-cols-1 gap-4 sm:grid-cols-2">
               {previewLinks.map((l, i) => (
                 <LinkPreview key={`${l.url}-${i}`} url={l.url} meta={l.meta} />
               ))}
@@ -319,7 +319,7 @@ function Composer({
 
         <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-end">
           <button
-            className="rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-neutral-700 shadow-sm transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-neutral-700 shadow-sm transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             onClick={() => {
               setTitle('');
               setBody('');
@@ -331,7 +331,7 @@ function Composer({
           </button>
 
           <button
-            className="rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+            className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 sm:w-auto"
             disabled={busy || !canPost || (!body.trim() && !title.trim() && !urls.trim())}
             onClick={async () => {
               setBusy(true);
@@ -432,11 +432,11 @@ function PostItem({
   };
 
   return (
-    <article className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-lg">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <article className="w-full max-w-full overflow-hidden rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-purple-200 hover:shadow-lg sm:p-5">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="max-w-[60ch] truncate text-lg font-black text-neutral-900">
+            <h3 className="min-w-0 max-w-full break-words text-lg font-black leading-snug text-neutral-900">
               {p.title ? renderMarkdownText(p.title) : 'Comunicado'}
             </h3>
 
@@ -447,14 +447,14 @@ function PostItem({
             )}
           </div>
 
-          <div className="mt-1 text-xs font-medium text-neutral-500">
+          <div className="mt-1 break-words text-xs font-medium text-neutral-500">
             {who.name || 'Autor no disponible'}
             {when ? ` • ${when.toLocaleString()}` : ''}
           </div>
         </div>
 
         {canManage && !editing && (
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex flex-wrap gap-2 sm:justify-end">
             <button
               className="rounded-full border border-purple-100 bg-purple-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-purple-700 transition hover:bg-purple-100"
               onClick={() => setEditing(true)}
@@ -473,36 +473,36 @@ function PostItem({
       </div>
 
       {editing ? (
-        <div className="grid gap-3">
+        <div className="grid min-w-0 gap-3">
           <input
-            className="w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+            className="w-full max-w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
             placeholder="Título"
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
           />
 
           <textarea
-            className="min-h-[140px] w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+            className="min-h-[140px] w-full max-w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
             placeholder="Texto del comunicado"
             value={editBody}
             onChange={(e) => setEditBody(e.target.value)}
           />
 
           <textarea
-            className="min-h-[85px] w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+            className="min-h-[85px] w-full max-w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
             placeholder="Links, uno por línea"
             value={editUrls}
             onChange={(e) => setEditUrls(e.target.value)}
           />
 
           {editPreviewLinks.length > 0 && (
-            <div className="rounded-3xl border border-purple-100 bg-purple-50/50 p-4">
+            <div className="w-full max-w-full overflow-hidden rounded-3xl border border-purple-100 bg-purple-50/50 p-4">
               <div className="mb-3 flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white text-lg shadow-sm">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white text-lg shadow-sm">
                   👀
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-sm font-black text-neutral-900">
                     Vista previa
                   </h3>
@@ -512,7 +512,7 @@ function PostItem({
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid w-full max-w-full grid-cols-1 gap-4 sm:grid-cols-2">
                 {editPreviewLinks.map((l, i) => (
                   <LinkPreview key={`${l.url}-${i}`} url={l.url} meta={l.meta} />
                 ))}
@@ -522,7 +522,7 @@ function PostItem({
 
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button
-              className="rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-neutral-700 shadow-sm transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-2xl border border-neutral-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-neutral-700 shadow-sm transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               onClick={cancelEdit}
               disabled={savingEdit}
             >
@@ -530,7 +530,7 @@ function PostItem({
             </button>
 
             <button
-              className="rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+              className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-purple-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 sm:w-auto"
               onClick={saveEdit}
               disabled={savingEdit || (!editTitle.trim() && !editBody.trim() && !editUrls.trim())}
             >
@@ -541,13 +541,13 @@ function PostItem({
       ) : (
         <>
           {p.body && (
-            <div className="whitespace-pre-wrap rounded-2xl bg-neutral-50 p-4 text-[15px] leading-relaxed text-neutral-700">
+            <div className="max-w-full overflow-hidden break-words whitespace-pre-wrap rounded-2xl bg-neutral-50 p-4 text-[15px] leading-relaxed text-neutral-700">
               {renderMarkdownText(p.body)}
             </div>
           )}
 
           {!!(p.links && p.links.length) && (
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="mt-4 grid w-full max-w-full grid-cols-1 gap-4 sm:grid-cols-2">
               {p.links!.map((l, i) => (
                 <LinkPreview key={i} url={l.url} meta={l.meta} />
               ))}
@@ -672,24 +672,24 @@ export default function CourseBoardPage() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-6">
+    <div className="mx-auto w-full max-w-6xl space-y-5 overflow-hidden px-3 py-4 sm:px-4 md:space-y-6 md:px-6 md:py-6">
       {/* Hero */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-purple-600 via-fuchsia-500 to-pink-500 p-[2px] shadow-xl">
-        <div className="relative rounded-3xl bg-white/95 p-6 md:p-8">
+        <div className="relative rounded-3xl bg-white/95 p-5 sm:p-6 md:p-8">
           <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-purple-200/60 blur-3xl" />
           <div className="absolute -bottom-12 -left-10 h-40 w-40 rounded-full bg-pink-200/60 blur-3xl" />
 
           <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
+            <div className="min-w-0">
               <div className="mb-3 w-fit rounded-full border border-purple-100 bg-purple-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-purple-700">
                 💬 Espacio de comunicación
               </div>
 
-              <h1 className="font-heading text-3xl font-black tracking-tight text-neutral-900 md:text-4xl">
+              <h1 className="text-2xl font-black tracking-tight text-neutral-900 sm:text-3xl md:text-4xl">
                 Muro del curso
               </h1>
 
-              <p className="mt-2 text-base font-semibold text-neutral-600">
+              <p className="mt-2 break-words text-base font-semibold text-neutral-600">
                 {courseTitle}
               </p>
             </div>
@@ -733,9 +733,9 @@ export default function CourseBoardPage() {
           </p>
         </section>
       ) : (
-        <section className="grid gap-4">
+        <section className="grid min-w-0 gap-4">
           <div className="flex items-center justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <h2 className="text-lg font-black text-neutral-900">
                 Publicaciones
               </h2>
@@ -744,7 +744,7 @@ export default function CourseBoardPage() {
               </p>
             </div>
 
-            <span className="rounded-full border border-purple-100 bg-purple-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-purple-700">
+            <span className="shrink-0 rounded-full border border-purple-100 bg-purple-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-purple-700">
               {rows.length} publicación{rows.length === 1 ? '' : 'es'}
             </span>
           </div>
