@@ -430,7 +430,7 @@ export default function AttendanceDrops() {
         </div>
 
         <div className="rounded-3xl border border-rose-200 bg-rose-50 p-4 shadow-sm">
-          <p className="text-xs font-black uppercase tracking-wide text-rose-700">Posibles bajas</p>
+          <p className="text-xs font-black uppercase tracking-wide text-rose-700">bajas</p>
           <p className="mt-1 text-3xl font-black text-rose-800">{stats.drop}</p>
         </div>
 
