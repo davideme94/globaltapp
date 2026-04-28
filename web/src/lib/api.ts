@@ -456,46 +456,68 @@ export const api = {
       }>(`/attendance/mine${qs(opts)}`),
   },
 
-    // ASISTENCIA / BAJAS
-  attendanceFollowups: {
-    list: (filters?: {
-      year?: number;
-      courseId?: string;
+   // ASISTENCIA / BAJAS
+attendanceFollowups: {
+  list: (filters?: {
+    year?: number;
+    courseId?: string;
+    status?: AttendanceFollowUpStatus;
+  }) =>
+    request<{ rows: AttendanceFollowUp[]; detected: number }>(
+      `/attendance/followups${qs(filters)}`
+    ),
+
+  noRecords: (filters?: {
+    year?: number;
+    courseId?: string;
+  }) =>
+    request<{
+      rows: {
+        _id: string;
+        course: AttendanceFollowUp['course'];
+        student: AttendanceFollowUp['student'];
+        attendanceCount: number;
+        enrollment?: {
+          _id: string;
+          status: string;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+      }[];
+      total: number;
+    }>(
+      `/attendance/followups/no-records${qs(filters)}`
+    ),
+
+  update: (
+    id: string,
+    payload: {
       status?: AttendanceFollowUpStatus;
-    }) =>
-      request<{ rows: AttendanceFollowUp[]; detected: number }>(
-        `/attendance/followups${qs(filters)}`
-      ),
+      reason?: string;
+      notes?: string;
+    }
+  ) =>
+    request<{ ok: true; item: AttendanceFollowUp }>(
+      `/attendance/followups/${id}`,
+      { method: 'PUT', body: JSON.stringify(payload) }
+    ),
 
-    update: (
-      id: string,
-      payload: {
-        status?: AttendanceFollowUpStatus;
-        reason?: string;
-        notes?: string;
-      }
-    ) =>
-      request<{ ok: true; item: AttendanceFollowUp }>(
-        `/attendance/followups/${id}`,
-        { method: 'PUT', body: JSON.stringify(payload) }
-      ),
-
-    dropAndUnenroll: (
-      id: string,
-      payload?: {
-        reason?: string;
-        notes?: string;
-      }
-    ) =>
-      request<{
-        ok: true;
-        removedFromCourse: number;
-        item: AttendanceFollowUp;
-      }>(
-        `/attendance/followups/${id}/drop-and-unenroll`,
-        { method: 'PUT', body: JSON.stringify(payload || {}) }
-      ),
-  },
+  dropAndUnenroll: (
+    id: string,
+    payload?: {
+      reason?: string;
+      notes?: string;
+    }
+  ) =>
+    request<{
+      ok: true;
+      removedFromCourse: number;
+      item: AttendanceFollowUp;
+    }>(
+      `/attendance/followups/${id}/drop-and-unenroll`,
+      { method: 'PUT', body: JSON.stringify(payload || {}) }
+    ),
+},
 
   // TOPICS
   topics: {
