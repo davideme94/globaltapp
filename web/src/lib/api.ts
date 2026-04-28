@@ -456,7 +456,7 @@ export const api = {
       }>(`/attendance/mine${qs(opts)}`),
   },
 
-  // ASISTENCIA / BAJAS
+    // ASISTENCIA / BAJAS
   attendanceFollowups: {
     list: (filters?: {
       year?: number;
@@ -478,6 +478,22 @@ export const api = {
       request<{ ok: true; item: AttendanceFollowUp }>(
         `/attendance/followups/${id}`,
         { method: 'PUT', body: JSON.stringify(payload) }
+      ),
+
+    dropAndUnenroll: (
+      id: string,
+      payload?: {
+        reason?: string;
+        notes?: string;
+      }
+    ) =>
+      request<{
+        ok: true;
+        removedFromCourse: number;
+        item: AttendanceFollowUp;
+      }>(
+        `/attendance/followups/${id}/drop-and-unenroll`,
+        { method: 'PUT', body: JSON.stringify(payload || {}) }
       ),
   },
 
