@@ -38,22 +38,30 @@ export default function AttendancePage() {
   const [to, setTo] = useState<string>('');
   const [grid, setGrid] = useState<{ dates: string[]; rows: any[] } | null>(null);
 
-  // NUEVO
   const [courseName, setCourseName] = useState<string>('Curso');
+  const [courseCampus, setCourseCampus] = useState<string>('');
   const [courseYear, setCourseYear] = useState<string>('');
 
   useEffect(() => {
     (async () => {
       if (!id) return;
 
-      // NUEVO: traer nombre del curso
       try {
-        const c = await api.courses.get(id);
-        const course = c?.course ?? c;
-        setCourseName(course?.name || 'Curso');
-        setCourseYear(course?.year ? String(course.year) : '');
+        const c = await api.courses.list();
+        const found = c.courses.find((course: any) => course._id === id);
+
+        if (found) {
+          setCourseName(found.name || 'Curso');
+          setCourseCampus(found.campus || '');
+          setCourseYear(found.year ? String(found.year) : '');
+        } else {
+          setCourseName('Curso');
+          setCourseCampus('');
+          setCourseYear('');
+        }
       } catch {
         setCourseName('Curso');
+        setCourseCampus('');
         setCourseYear('');
       }
 
@@ -140,9 +148,20 @@ export default function AttendancePage() {
           <div style={{ flex: 1, minWidth: 260 }}>
             <div style={badge}>📚 GESTIÓN DE ASISTENCIA</div>
 
-            {/* NUEVO: curso visible */}
-            <div style={coursePill}>
-              📘 {courseName}{courseYear ? ` · ${courseYear}` : ''}
+            <div style={courseBox}>
+              <div style={courseIcon}>📚</div>
+
+              <div>
+                <div style={courseTitle}>
+                  {courseName}{courseYear ? ` ${courseYear}` : ''}
+                </div>
+
+                {courseCampus && (
+                  <div style={courseCampusText}>
+                    {courseCampus === 'JOSE_C_PAZ' ? 'JOSÉ C. PAZ' : courseCampus}
+                  </div>
+                )}
+              </div>
             </div>
 
             <h1 style={heroTitle}>📋 Tomar asistencia</h1>
@@ -459,17 +478,41 @@ const badge = {
   textTransform: 'uppercase' as const,
 };
 
-// NUEVO
-const coursePill = {
-  display: 'inline-block',
-  marginBottom: 12,
-  padding: '8px 14px',
-  borderRadius: 999,
+const courseBox = {
+  marginTop: 10,
+  marginBottom: 16,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+};
+
+const courseIcon = {
+  width: 42,
+  height: 42,
+  borderRadius: 14,
   background: '#ede9fe',
   border: '1px solid #c4b5fd',
-  color: '#5b21b6',
-  fontSize: 14,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: 22,
+  flexShrink: 0,
+};
+
+const courseTitle = {
+  fontSize: 26,
+  fontWeight: 900,
+  color: '#111827',
+  lineHeight: 1.1,
+  textTransform: 'uppercase' as const,
+};
+
+const courseCampusText = {
+  marginTop: 4,
+  fontSize: 15,
   fontWeight: 800,
+  color: '#111827',
+  letterSpacing: 0.3,
 };
 
 const heroTitle = {
