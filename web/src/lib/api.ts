@@ -241,6 +241,42 @@ export type StaffCase = {
   updatedAt: string;
 };
 
+// --- NUEVO: Tipos Asistencia/Bajas ---
+export type AttendanceFollowUpStatus =
+  | 'PENDING'
+  | 'CONTACTED'
+  | 'JUSTIFIED'
+  | 'DROP_REQUEST'
+  | 'DROPPED'
+  | 'RESOLVED';
+
+export type AttendanceFollowUp = {
+  _id: string;
+  course: {
+    _id: string;
+    name: string;
+    year: number;
+    campus: Campus;
+    teacher?: { _id: string; name: string; email: string } | string | null;
+  } | null;
+  student: {
+    _id: string;
+    name: string;
+    email: string;
+    campus: Campus;
+    active: boolean;
+  } | null;
+  streakCount: number;
+  absenceDates: string[];
+  lastAbsenceDate: string;
+  status: AttendanceFollowUpStatus;
+  reason: string;
+  notes: string;
+  resolvedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export const api = {
   // AUTH / Perfil actual
   me: () => request<Me>('/auth/me'),
@@ -418,6 +454,31 @@ export const api = {
           resume: { P:number; A:number; J:number; T:number; total:number; percent:number };
         };
       }>(`/attendance/mine${qs(opts)}`),
+  },
+
+  // ASISTENCIA / BAJAS
+  attendanceFollowups: {
+    list: (filters?: {
+      year?: number;
+      courseId?: string;
+      status?: AttendanceFollowUpStatus;
+    }) =>
+      request<{ rows: AttendanceFollowUp[]; detected: number }>(
+        `/attendance/followups${qs(filters)}`
+      ),
+
+    update: (
+      id: string,
+      payload: {
+        status?: AttendanceFollowUpStatus;
+        reason?: string;
+        notes?: string;
+      }
+    ) =>
+      request<{ ok: true; item: AttendanceFollowUp }>(
+        `/attendance/followups/${id}`,
+        { method: 'PUT', body: JSON.stringify(payload) }
+      ),
   },
 
   // TOPICS
