@@ -8,7 +8,6 @@ const STATUS_OPTIONS: { value: AttendanceFollowUpStatus | ''; label: string }[] 
   { value: 'JUSTIFIED', label: 'Justificado' },
   { value: 'DROP_REQUEST', label: 'Posible baja' },
   { value: 'DROPPED', label: 'Baja' },
-  { value: 'RESOLVED', label: 'Resuelto' },
 ];
 
 const STATUS_LABEL: Record<AttendanceFollowUpStatus, string> = {
@@ -95,7 +94,7 @@ export default function AttendanceDrops() {
       total: rows.length,
       pending: rows.filter(r => r.status === 'PENDING').length,
       drop: rows.filter(r => r.status === 'DROP_REQUEST' || r.status === 'DROPPED').length,
-      resolved: rows.filter(r => r.status === 'JUSTIFIED' || r.status === 'RESOLVED').length,
+      resolved: rows.filter(r => r.status === 'JUSTIFIED' || r.status === 'DROPPED').length,
     };
   }, [rows]);
 
@@ -290,7 +289,7 @@ export default function AttendanceDrops() {
         </div>
 
         <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
-          <p className="text-xs font-black uppercase tracking-wide text-emerald-700">Resueltos</p>
+          <p className="text-xs font-black uppercase tracking-wide text-emerald-700">Cerrados</p>
           <p className="mt-1 text-3xl font-black text-emerald-800">{stats.resolved}</p>
         </div>
       </section>
@@ -393,7 +392,7 @@ export default function AttendanceDrops() {
                   <div className="mt-5 grid gap-3 lg:grid-cols-[240px_1fr_1fr_auto] lg:items-end">
                     <div>
                       <label className="mb-1 block text-sm font-bold text-neutral-700">
-                        Estado
+                        Estado actual / editar seguimiento
                       </label>
                       <select
                         className="w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
@@ -437,7 +436,7 @@ export default function AttendanceDrops() {
                       disabled={savingId === item._id}
                       className="w-full rounded-2xl bg-gradient-to-r from-rose-500 to-orange-500 px-5 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-orange-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
                     >
-                      {savingId === item._id ? 'Guardando…' : 'Guardar'}
+                      {savingId === item._id ? 'Guardando…' : 'Guardar cambios'}
                     </button>
                   </div>
                 </article>
