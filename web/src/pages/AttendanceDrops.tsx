@@ -323,7 +323,7 @@ export default function AttendanceDrops() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5 overflow-hidden px-3 py-4 sm:px-4 md:space-y-6 md:px-6 md:py-6">
+    <div className="mx-auto w-full max-w-7xl space-y-5 overflow-x-hidden px-3 py-4 sm:px-4 md:space-y-6 md:px-6 md:py-6">
       {/* HERO */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-rose-500 via-orange-500 to-amber-400 p-[2px] shadow-xl">
         <div className="relative rounded-3xl bg-white/95 p-5 sm:p-6 md:p-8">
@@ -346,7 +346,7 @@ export default function AttendanceDrops() {
               </p>
             </div>
 
-            <div className="w-fit rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3 text-sm shadow-sm">
+            <div className="w-full rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3 text-sm shadow-sm sm:w-fit">
               <p className="font-black text-orange-800">
                 {stats.total} seguimiento{stats.total === 1 ? '' : 's'}
               </p>
@@ -495,12 +495,12 @@ export default function AttendanceDrops() {
               return (
                 <article
                   key={item._id}
-                  className="overflow-hidden rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:border-orange-200 hover:shadow-lg sm:p-6 md:p-7"
+                  className="overflow-hidden rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-orange-200 hover:shadow-lg sm:p-6 md:p-7"
                 >
-                  <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="break-words text-2xl font-black uppercase leading-tight text-neutral-900">
+                        <h3 className="break-words text-xl font-black uppercase leading-tight text-neutral-900 sm:text-2xl">
                           {studentName(item)}
                         </h3>
 
@@ -513,7 +513,7 @@ export default function AttendanceDrops() {
                         </span>
                       </div>
 
-                      <div className="mt-4 grid gap-3 text-base text-neutral-600 md:grid-cols-2">
+                      <div className="mt-4 grid gap-3 text-sm text-neutral-600 sm:text-base md:grid-cols-2">
                         <div className="break-words">
                           <span className="font-bold text-neutral-800">Curso:</span>{' '}
                           {courseName(item)}
@@ -541,7 +541,7 @@ export default function AttendanceDrops() {
                       </div>
                     </div>
 
-                    <div className={`shrink-0 rounded-2xl border px-5 py-4 text-sm xl:min-w-[260px] ${statusBox.boxClass}`}>
+                    <div className={`w-full rounded-2xl border px-5 py-4 text-sm xl:w-auto xl:min-w-[260px] ${statusBox.boxClass}`}>
                       <p className={`text-base font-black ${statusBox.titleClass}`}>
                         {statusBox.title}
                       </p>
@@ -551,7 +551,7 @@ export default function AttendanceDrops() {
                     </div>
                   </div>
 
-                  <div className="mt-6 grid gap-4 xl:grid-cols-[280px_minmax(260px,1fr)_minmax(260px,1fr)_auto] xl:items-end">
+                  <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
                     <div>
                       <label className="mb-1 block text-sm font-bold text-neutral-700">
                         Estado actual / editar seguimiento
@@ -575,20 +575,20 @@ export default function AttendanceDrops() {
                       </label>
                       <textarea
                         rows={3}
-                        className="min-h-[92px] w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-base font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                        className="min-h-[110px] w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-base font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                         placeholder="Ej: enfermedad, viaje, no responde, posible baja..."
                         value={draft.reason}
                         onChange={e => updateDraft(item._id, { reason: e.target.value })}
                       />
                     </div>
 
-                    <div>
+                    <div className="lg:col-span-2 xl:col-span-1">
                       <label className="mb-1 block text-sm font-bold text-neutral-700">
                         Notas internas
                       </label>
                       <textarea
                         rows={3}
-                        className="min-h-[92px] w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-base font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                        className="min-h-[110px] w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-base font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
                         placeholder="Ej: se contactó a la familia..."
                         value={draft.notes}
                         onChange={e => updateDraft(item._id, { notes: e.target.value })}
@@ -598,7 +598,7 @@ export default function AttendanceDrops() {
                     <button
                       onClick={() => save(item)}
                       disabled={savingId === item._id || droppingId === item._id}
-                      className="min-h-[58px] w-full rounded-2xl bg-gradient-to-r from-rose-500 to-orange-500 px-6 py-4 text-base font-black uppercase tracking-wide text-white shadow-lg shadow-orange-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 xl:w-auto"
+                      className="min-h-[58px] w-full rounded-2xl bg-gradient-to-r from-rose-500 to-orange-500 px-6 py-4 text-base font-black uppercase tracking-wide text-white shadow-lg shadow-orange-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 lg:col-span-2 xl:col-span-3"
                     >
                       {savingId === item._id ? 'Guardando…' : 'Guardar cambios'}
                     </button>
@@ -726,7 +726,7 @@ export default function AttendanceDrops() {
                     </div>
                   </div>
 
-                  <div className="shrink-0 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm">
+                  <div className="w-full shrink-0 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm xl:w-auto">
                     <p className="font-black text-sky-700">
                       Revisar manualmente
                     </p>
