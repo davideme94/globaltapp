@@ -86,6 +86,7 @@ export default function AttendanceDrops() {
   const [drafts, setDrafts] = useState<DraftState>({});
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [droppingId, setDroppingId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [detected, setDetected] = useState(0);
 
@@ -173,6 +174,52 @@ export default function AttendanceDrops() {
       alert(e?.message || 'No se pudo guardar el seguimiento');
     } finally {
       setSavingId(null);
+    }
+  }
+
+  async function dropAndUnenroll(item: AttendanceFollowUp) {
+    const draft = drafts[item._id] || {
+      status: item.status,
+      reason: item.reason || '',
+      notes: item.notes || '',
+    };
+
+    const ok = confirm(
+      `¿Confirmás que querés marcar como BAJA a ${studentName(item)} y sacarlo/a del curso?\n\nEsta acción quitará al alumno del curso y cerrará el seguimiento como Baja.`
+    );
+
+    if (!ok) return;
+
+    setDroppingId(item._id);
+
+    try {
+      const res = await api.attendanceFollowups.dropAndUnenroll(item._id, {
+        reason: draft.reason || 'Baja administrativa',
+        notes: draft.notes || 'Alumno marcado como baja y retirado del curso.',
+      });
+
+      setRows(prev =>
+        prev.map(row => row._id === item._id ? res.item : row)
+      );
+
+      setDrafts(prev => ({
+        ...prev,
+        [item._id]: {
+          status: res.item.status,
+          reason: res.item.reason || '',
+          notes: res.item.notes || '',
+        },
+      }));
+
+      alert(
+        res.removedFromCourse > 0
+          ? 'Alumno marcado como baja y retirado del curso.'
+          : 'Seguimiento marcado como baja. No se encontró una inscripción activa para eliminar.'
+      );
+    } catch (e: any) {
+      alert(e?.message || 'No se pudo marcar la baja y sacar del curso');
+    } finally {
+      setDroppingId(null);
     }
   }
 
@@ -433,12 +480,35 @@ export default function AttendanceDrops() {
 
                     <button
                       onClick={() => save(item)}
-                      disabled={savingId === item._id}
+                      disabled={savingId === item._id || droppingId === item._id}
                       className="w-full rounded-2xl bg-gradient-to-r from-rose-500 to-orange-500 px-5 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-orange-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
                     >
                       {savingId === item._id ? 'Guardando…' : 'Guardar cambios'}
                     </button>
                   </div>
+
+                  {item.status !== 'DROPPED' && (
+                    <div className="mt-4 rounded-3xl border border-rose-200 bg-rose-50 p-4">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="min-w-0">
+                          <p className="text-sm font-black text-rose-800">
+                            Baja definitiva del curso
+                          </p>
+                          <p className="mt-1 text-xs leading-relaxed text-rose-600">
+                            Usá esta opción solo si el alumno no continúa. El sistema lo marcará como baja y lo sacará del curso.
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() => dropAndUnenroll(item)}
+                          disabled={droppingId === item._id || savingId === item._id}
+                          className="w-full rounded-2xl border border-rose-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-wide text-rose-700 shadow-sm transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
+                        >
+                          {droppingId === item._id ? 'Procesando baja…' : 'Marcar baja y sacar del curso'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </article>
               );
             })}
