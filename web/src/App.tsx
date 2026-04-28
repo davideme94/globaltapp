@@ -47,6 +47,9 @@ import TeacherCourseStudents from './pages/TeacherCourseStudents';
 /* ➕ NUEVO: Casos (seguimiento) coord/admin */
 import StaffCases from './pages/StaffCases';
 
+/* ➕ NUEVO: Asistencia/Bajas coord/admin */
+import AttendanceDrops from './pages/AttendanceDrops';
+
 /* ➕ Imagen de fondo para Login (mantén el nombre real del archivo) */
 import hero from './assets/login-hero.jpg.png';
 
@@ -153,6 +156,7 @@ function Shell() {
       { to: '/exam-models', label: 'Exámenes modelos', icon: ClipboardList, show: !!me },
       { to: '/communications', label: 'Comunicaciones', icon: Mail, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
       { to: '/staff/cases', label: 'Casos', icon: ClipboardList, show: me?.role === 'coordinator' || me?.role === 'admin' },
+      { to: '/staff/attendance-drops', label: 'Asistencia/Bajas', icon: ClipboardList, show: me?.role === 'coordinator' || me?.role === 'admin' },
       { to: '/me', label: 'Mi perfil', icon: UserCog, show: !!me },
       { to: '/student/communications', label: 'Comunicaciones', icon: Mail, show: me?.role === 'student' },
       { to: '/student/partials', label: 'Informes parciales', icon: FileText, show: me?.role === 'student' },
@@ -331,6 +335,9 @@ function Home() {
               {me.role === 'teacher' && <Link className="btn btn-secondary" to="/teacher/courses">Mis cursos</Link>}
               {(me.role === 'teacher' || me.role === 'coordinator' || me?.role === 'admin') && <Link className="btn btn-secondary" to="/teacher/students">Alumnos</Link>}
               {(me.role === 'teacher' || me.role === 'coordinator' || me?.role === 'admin') && <Link className="btn btn-secondary" to="/communications">Comunicaciones</Link>}
+              {(me.role === 'coordinator' || me.role === 'admin') && (
+                <Link className="btn btn-secondary" to="/staff/attendance-drops">Asistencia/Bajas</Link>
+              )}
               {/* ➕ NUEVO: Acceso rápido Crear Sets para docentes */}
               {(me.role === 'teacher' || me.role === 'coordinator') && (
                 <Link className="btn btn-secondary" to="/coordinator/practice/sets">Crear sets</Link>
@@ -508,6 +515,9 @@ export default function App() {
 
           {/* ➕ NUEVO: Casos (seguimiento) coord/admin */}
           <Route path="/staff/cases" element={<StaffCases />} />
+
+          {/* ➕ NUEVO: Asistencia/Bajas coord/admin */}
+          <Route path="/staff/attendance-drops" element={<AttendanceDrops />} />
 
           {/* Perfil para TODOS */}
           <Route path="/me" element={<StudentProfile />} />
