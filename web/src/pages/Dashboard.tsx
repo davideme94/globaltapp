@@ -1,4 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import {
+  BookOpen,
+  ClipboardList,
+  FileText,
+  GraduationCap,
+  LayoutDashboard,
+  MessageSquare,
+  UserRound,
+  Layers,
+} from 'lucide-react';
 import { api } from '../lib/api';
 import MyCoursesCard from '../components/MyCoursesCard';
 import StudentCoursesDebugCard from '../components/StudentCoursesDebugCard';
@@ -13,8 +24,8 @@ export default function Dashboard() {
 
   if (me.isLoading) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-4 py-6">
-        <div className="overflow-hidden rounded-[2rem] border border-neutral-200 bg-white p-6 shadow-xl shadow-neutral-100">
+      <div className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-5 md:px-6 md:py-6">
+        <section className="overflow-hidden rounded-[2rem] border border-neutral-200 bg-white p-5 shadow-xl shadow-neutral-100 sm:p-7">
           <div className="flex items-center gap-4">
             <div className="h-14 w-14 animate-pulse rounded-2xl bg-neutral-100" />
 
@@ -23,22 +34,22 @@ export default function Dashboard() {
               <div className="h-4 w-80 max-w-full animate-pulse rounded-full bg-neutral-100" />
             </div>
           </div>
-        </div>
+        </section>
       </div>
     );
   }
 
   if (me.error || !me.data) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-4 py-6">
-        <div className="rounded-[2rem] border border-rose-200 bg-rose-50 p-6 text-rose-700 shadow-sm">
+      <div className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-5 md:px-6 md:py-6">
+        <section className="rounded-[2rem] border border-rose-200 bg-rose-50 p-6 text-rose-700 shadow-sm">
           <h1 className="text-xl font-black">
             No se pudo cargar tu perfil
           </h1>
           <p className="mt-1 text-sm font-medium">
             Intentá actualizar la página o volver a iniciar sesión.
           </p>
-        </div>
+        </section>
       </div>
     );
   }
@@ -55,31 +66,42 @@ export default function Dashboard() {
           ? 'Coordinación'
           : 'Administración';
 
+  const shortcuts = [
+    { label: 'Mi perfil', to: '/student/profile', icon: UserRound },
+    { label: 'Comunicaciones', to: '/student/communications', icon: MessageSquare },
+    { label: 'Informes parciales', to: '/student/partials', icon: ClipboardList },
+    { label: 'Boletín', to: '/student/finals', icon: FileText },
+    { label: 'Británico', to: '/student/british', icon: GraduationCap },
+    { label: 'Práctica', to: '/practice', icon: Layers },
+    { label: 'Materiales', to: '/student/materials', icon: BookOpen },
+  ];
+
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 px-3 py-4 sm:px-5 md:px-6 md:py-6">
       {/* HERO */}
-      <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-violet-600 via-fuchsia-500 to-sky-500 p-[2px] shadow-xl shadow-violet-100">
+      <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-slate-950 via-violet-700 to-indigo-700 p-[2px] shadow-xl shadow-violet-100">
         <div className="relative overflow-hidden rounded-[2rem] bg-white p-5 sm:p-7 md:p-8">
           <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-violet-200/60 blur-3xl" />
-          <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-sky-200/60 blur-3xl" />
+          <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-indigo-200/60 blur-3xl" />
 
-          <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
-              <div className="mb-3 w-fit rounded-full border border-violet-100 bg-violet-50 px-4 py-1.5 text-xs font-black uppercase tracking-wide text-violet-700">
-                👋 Panel principal
+              <div className="mb-3 flex w-fit items-center gap-2 rounded-full border border-violet-100 bg-violet-50 px-4 py-1.5 text-xs font-black uppercase tracking-wide text-violet-700">
+                <LayoutDashboard size={14} />
+                Panel principal
               </div>
 
-              <h1 className="text-2xl font-black tracking-tight text-neutral-950 sm:text-3xl md:text-4xl">
-                Hola, {user.name}
+              <h1 className="break-words text-2xl font-black tracking-tight text-neutral-950 sm:text-3xl md:text-4xl">
+                Inicio
               </h1>
 
               <p className="mt-2 max-w-3xl text-sm leading-relaxed text-neutral-600 sm:text-base">
-                Bienvenido/a a tu espacio de cursada. Desde acá podés consultar tus cursos,
-                asistencia y accesos disponibles.
+                Hola, <b>{user.name}</b>. Desde este panel podés consultar tus cursos,
+                asistencia, comunicaciones, boletines, práctica y materiales.
               </p>
             </div>
 
-            <div className="grid w-full gap-3 sm:grid-cols-2 md:w-auto md:min-w-[360px]">
+            <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-auto lg:min-w-[360px]">
               <div className="rounded-3xl border border-violet-100 bg-violet-50/80 px-5 py-4 shadow-sm">
                 <p className="text-xs font-black uppercase tracking-wide text-violet-500">
                   Rol
@@ -89,15 +111,33 @@ export default function Dashboard() {
                 </p>
               </div>
 
-              <div className="rounded-3xl border border-sky-100 bg-sky-50/80 px-5 py-4 shadow-sm">
-                <p className="text-xs font-black uppercase tracking-wide text-sky-500">
+              <div className="rounded-3xl border border-indigo-100 bg-indigo-50/80 px-5 py-4 shadow-sm">
+                <p className="text-xs font-black uppercase tracking-wide text-indigo-500">
                   Sede
                 </p>
-                <p className="mt-1 text-sm font-black text-sky-800">
+                <p className="mt-1 text-sm font-black text-indigo-800">
                   {campusLabel}
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* ACCESOS RÁPIDOS */}
+          <div className="relative mt-6 grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-7">
+            {shortcuts.map(({ label, to, icon: Icon }) => (
+              <Link
+                key={to}
+                to={to}
+                className="group flex min-h-[74px] items-center gap-3 rounded-3xl border border-neutral-200 bg-white/80 px-4 py-3 text-sm font-black text-neutral-700 no-underline shadow-sm transition hover:-translate-y-0.5 hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700 hover:shadow-lg"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-600 transition group-hover:bg-violet-100 group-hover:text-violet-700">
+                  <Icon size={19} />
+                </span>
+                <span className="break-words leading-tight">
+                  {label}
+                </span>
+              </Link>
+            ))}
           </div>
         </div>
       </section>
@@ -111,7 +151,7 @@ export default function Dashboard() {
                 Mis cursos
               </h2>
               <p className="text-sm text-neutral-500">
-                Cursos en los que estás inscripto/a actualmente.
+                Cursos activos y horarios disponibles.
               </p>
             </div>
 
@@ -130,7 +170,7 @@ export default function Dashboard() {
                 Mi asistencia
               </h2>
               <p className="text-sm text-neutral-500">
-                Resumen de asistencias, ausentes, justificadas y porcentaje general.
+                Resumen de presentes, ausentes, justificadas, tardes y porcentaje.
               </p>
             </div>
 
