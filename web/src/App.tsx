@@ -4,8 +4,20 @@ import { api, type Me } from './lib/api';
 import './styles/responsive.css';
 import type { MyCourseRow, CourseScheduleItem, DayCode } from './lib/api';
 import {
-  Menu, LayoutDashboard, Users, UserCog, BookOpen, ClipboardList,
-  FileText, Mail, BarChart3, Settings, Search, GraduationCap, Sun, Moon
+  Menu,
+  LayoutDashboard,
+  Users,
+  UserCog,
+  BookOpen,
+  ClipboardList,
+  FileText,
+  Mail,
+  BarChart3,
+  Settings,
+  Search,
+  GraduationCap,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 /* Páginas */
@@ -73,20 +85,33 @@ import CoordinatorPracticeSets from './pages/CoordinatorPracticeSets';
 import ExamModels from './pages/ExamModels';
 
 /* ------- Utiles ------- */
-const L: Record<DayCode, string> = { MON:'Lun', TUE:'Mar', WED:'Mié', THU:'Jue', FRI:'Vie', SAT:'Sáb' };
+const L: Record<DayCode, string> = {
+  MON: 'Lun',
+  TUE: 'Mar',
+  WED: 'Mié',
+  THU: 'Jue',
+  FRI: 'Vie',
+  SAT: 'Sáb',
+};
 
 /* ===== Toggle de Tema (persistente) ===== */
 function ThemeToggle() {
-  const [theme, setTheme] = useState<'light'|'dark'>(() => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window === 'undefined') return 'light';
+
     const saved = localStorage.getItem('theme');
+
     if (saved === 'light' || saved === 'dark') return saved;
+
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
+
   useEffect(() => {
     const root = document.documentElement;
+
     if (theme === 'dark') root.classList.add('dark');
     else root.classList.remove('dark');
+
     localStorage.setItem('theme', theme);
   }, [theme]);
 
@@ -100,8 +125,10 @@ function ThemeToggle() {
       aria-label="Cambiar tema"
       title={theme === 'dark' ? 'Tema claro' : 'Tema oscuro'}
     >
-      {theme === 'dark' ? <Sun size={16}/> : <Moon size={16}/> }
-      <span className="hidden sm:inline">{theme === 'dark' ? 'Claro' : 'Oscuro'}</span>
+      {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+      <span className="hidden sm:inline">
+        {theme === 'dark' ? 'Claro' : 'Oscuro'}
+      </span>
     </button>
   );
 }
@@ -109,16 +136,35 @@ function ThemeToggle() {
 function useMe() {
   const [me, setMe] = useState<Me['user'] | null>(null);
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     let ok = true;
+
     (async () => {
-      try { const r = await api.me(); if (ok) setMe(r.user); }
-      catch { if (ok) setMe(null); }
-      finally { if (ok) setLoading(false); }
+      try {
+        const r = await api.me();
+
+        if (ok) setMe(r.user);
+      } catch {
+        if (ok) setMe(null);
+      } finally {
+        if (ok) setLoading(false);
+      }
     })();
-    return ()=>{ ok = false; };
+
+    return () => {
+      ok = false;
+    };
   }, []);
-  return { me, loading, refresh: async () => { const r = await api.me().catch(()=>null); setMe(r?.user ?? null); } };
+
+  return {
+    me,
+    loading,
+    refresh: async () => {
+      const r = await api.me().catch(() => null);
+      setMe(r?.user ?? null);
+    },
+  };
 }
 
 /* ------- Layout (Shell Global-T) ------- */
@@ -130,42 +176,131 @@ function Shell() {
 
   // 🔎 estado del buscador global
   const [globalQ, setGlobalQ] = useState('');
+
   const doGlobalSearch = () => {
     const q = globalQ.trim();
+
     if (!q) return;
+
     nav(`/coordinator/students?q=${encodeURIComponent(q)}`);
   };
 
   const navItems = useMemo(() => {
-    const items: { to:string; label:string; icon:any; show:boolean }[] = [
-      { to: '/', label: 'Dashboard', icon: LayoutDashboard, show: true },
+    const items: { to: string; label: string; icon: any; show: boolean }[] = [
+      {
+        to: '/',
+        label: 'Dashboard',
+        icon: LayoutDashboard,
+        show: true,
+      },
       {
         to: '/coordinator/courses',
         label: me?.role === 'admin' ? 'Cursos (Admin)' : 'Cursos',
         icon: BookOpen,
-        show: me?.role === 'coordinator' || me?.role === 'admin'
+        show: me?.role === 'coordinator' || me?.role === 'admin',
       },
-      { to: '/coordinator/users', label: 'Personas', icon: Users, show: me?.role === 'coordinator' || me?.role === 'admin' },
-      { to: '/teacher/courses', label: 'Mis cursos', icon: ClipboardList, show: me?.role === 'teacher' },
-      { to: '/teacher/students', label: 'Alumnos', icon: Users, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
+      {
+        to: '/coordinator/users',
+        label: 'Personas',
+        icon: Users,
+        show: me?.role === 'coordinator' || me?.role === 'admin',
+      },
+      {
+        to: '/teacher/courses',
+        label: 'Mis cursos',
+        icon: ClipboardList,
+        show: me?.role === 'teacher',
+      },
+      {
+        to: '/teacher/students',
+        label: 'Alumnos',
+        icon: Users,
+        show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin',
+      },
       /* ➕ NUEVO: Crear Sets (visible para teacher/coord, NO admin) */
-      { to: '/coordinator/practice/sets', label: 'Crear sets', icon: Settings, show: me?.role === 'teacher' || me?.role === 'coordinator' },
+      {
+        to: '/coordinator/practice/sets',
+        label: 'Crear sets',
+        icon: Settings,
+        show: me?.role === 'teacher' || me?.role === 'coordinator',
+      },
       /* ➕ NUEVO: Práctica (curso) en el sidebar para coord/teacher, NO admin */
-      { to: '/coordinator/courses', label: 'Práctica (curso)', icon: BookOpen, show: me?.role === 'teacher' || me?.role === 'coordinator' },
+      {
+        to: '/coordinator/courses',
+        label: 'Práctica (curso)',
+        icon: BookOpen,
+        show: me?.role === 'teacher' || me?.role === 'coordinator',
+      },
       /* ➕ NUEVO: Exámenes modelos (visible para TODOS los roles logueados) */
-      { to: '/exam-models', label: 'Exámenes modelos', icon: ClipboardList, show: !!me },
-      { to: '/communications', label: 'Comunicaciones', icon: Mail, show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin' },
-      { to: '/staff/cases', label: 'Casos', icon: ClipboardList, show: me?.role === 'coordinator' || me?.role === 'admin' },
-      { to: '/staff/attendance-drops', label: 'Asistencia/Bajas', icon: ClipboardList, show: me?.role === 'coordinator' || me?.role === 'admin' },
-      { to: '/me', label: 'Mi perfil', icon: UserCog, show: !!me },
-      { to: '/student/communications', label: 'Comunicaciones', icon: Mail, show: me?.role === 'student' },
-      { to: '/student/partials', label: 'Informes parciales', icon: FileText, show: me?.role === 'student' },
-      { to: '/student/finals', label: 'Boletín', icon: BarChart3, show: me?.role === 'student' },
-      { to: '/student/british', label: 'Británico', icon: GraduationCap, show: me?.role === 'student' },
-      { to: '/student/practice', label: 'Práctica', icon: Settings, show: me?.role === 'student' },
+      {
+        to: '/exam-models',
+        label: 'Exámenes modelos',
+        icon: ClipboardList,
+        show: !!me,
+      },
+      {
+        to: '/communications',
+        label: 'Comunicaciones',
+        icon: Mail,
+        show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin',
+      },
+      {
+        to: '/staff/cases',
+        label: 'Casos',
+        icon: ClipboardList,
+        show: me?.role === 'coordinator' || me?.role === 'admin',
+      },
+      {
+        to: '/staff/attendance-drops',
+        label: 'Asistencia/Bajas',
+        icon: ClipboardList,
+        show: me?.role === 'coordinator' || me?.role === 'admin',
+      },
+      {
+        to: '/me',
+        label: 'Mi perfil',
+        icon: UserCog,
+        show: !!me,
+      },
+      {
+        to: '/student/communications',
+        label: 'Comunicaciones',
+        icon: Mail,
+        show: me?.role === 'student',
+      },
+      {
+        to: '/student/partials',
+        label: 'Informes parciales',
+        icon: FileText,
+        show: me?.role === 'student',
+      },
+      {
+        to: '/student/finals',
+        label: 'Boletín',
+        icon: BarChart3,
+        show: me?.role === 'student',
+      },
+      {
+        to: '/student/british',
+        label: 'Británico',
+        icon: GraduationCap,
+        show: me?.role === 'student',
+      },
+      {
+        to: '/student/practice',
+        label: 'Práctica',
+        icon: Settings,
+        show: me?.role === 'student',
+      },
       /* ➕ agregado: Materiales (alumnos) en el sidebar del alumno */
-      { to: '/student/materials', label: 'Materiales', icon: BookOpen, show: me?.role === 'student' },
+      {
+        to: '/student/materials',
+        label: 'Materiales',
+        icon: BookOpen,
+        show: me?.role === 'student',
+      },
     ];
+
     return items.filter(i => i.show);
   }, [me]);
 
@@ -174,25 +309,37 @@ function Shell() {
       {/* Topbar */}
       <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white dark:bg-slate-900 dark:border-slate-800">
         <div className="mx-auto max-w-7xl px-3 md:px-6 h-14 flex items-center gap-3">
-          <button aria-label="Abrir menú" className="md:hidden btn btn-secondary !px-2 !py-2" onClick={()=>setOpen(s=>!s)}>
-            <Menu size={20}/>
+          <button
+            aria-label="Abrir menú"
+            className="md:hidden btn btn-secondary !px-2 !py-2"
+            onClick={() => setOpen(s => !s)}
+          >
+            <Menu size={20} />
           </button>
+
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-xl" style={{background:'var(--grad-brand)'}}/>
+            <div
+              className="h-8 w-8 rounded-xl"
+              style={{ background: 'var(--grad-brand)' }}
+            />
             <span className="font-heading font-bold">Global-T</span>
           </div>
 
           {(me?.role === 'coordinator' || me?.role === 'admin') && (
             <div className="flex-1 max-w-xl mx-auto hidden md:flex">
               <label className="relative w-full" aria-label="Búsqueda global">
-                <Search className="absolute left-3 top-2.5" size={18}/>
+                <Search className="absolute left-3 top-2.5" size={18} />
+
                 <input
                   className="input pl-9 pr-24"
                   placeholder="Buscar por Nombre, DNI o Curso…"
                   value={globalQ}
-                  onChange={e=>setGlobalQ(e.target.value)}
-                  onKeyDown={e=>{ if(e.key==='Enter') doGlobalSearch(); }}
+                  onChange={e => setGlobalQ(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') doGlobalSearch();
+                  }}
                 />
+
                 <button
                   className="absolute right-1 top-1 btn btn-secondary !px-3 !py-1.5"
                   onClick={doGlobalSearch}
@@ -206,24 +353,33 @@ function Shell() {
           <div className="ml-auto flex items-center gap-2">
             {/* ⬇️ Toggle de tema global */}
             <ThemeToggle />
+
             {/* ⬇️ Campanita con contador */}
-            <NotifBell onClick={() => {
-              if (me?.role === 'student') nav('/student/communications');
-              else nav('/communications');
-            }} />
+            <NotifBell
+              onClick={() => {
+                if (me?.role === 'student') nav('/student/communications');
+                else nav('/communications');
+              }}
+            />
+
             {loading ? (
               <div className="h-8 w-24 skeleton" />
             ) : me ? (
               <button
                 className="h-8 px-3 rounded-xl text-white font-medium"
                 style={{ background: 'var(--brand-deep)' }}
-                onClick={async ()=>{ await api.logout(); nav('/login'); }}
+                onClick={async () => {
+                  await api.logout();
+                  nav('/login');
+                }}
                 title={`Salir (${me.email})`}
               >
                 Salir
               </button>
             ) : (
-              <Link className="btn btn-primary !px-3 !py-2" to="/login">Login</Link>
+              <Link className="btn btn-primary !px-3 !py-2" to="/login">
+                Login
+              </Link>
             )}
           </div>
         </div>
@@ -234,9 +390,10 @@ function Shell() {
         {/* Sidebar */}
         <aside className={(open ? 'block' : 'hidden') + ' md:block card h-fit md:sticky md:top-16 p-2 md:p-3'}>
           <nav className="flex flex-col">
-            {navItems.map(item=>{
+            {navItems.map(item => {
               const Icon = item.icon;
               const active = loc.pathname === item.to || (item.to !== '/' && loc.pathname.startsWith(item.to));
+
               return (
                 <NavLink
                   key={item.to}
@@ -246,7 +403,8 @@ function Shell() {
                     (active ? 'bg-neutral-50 dark:bg-slate-800 font-medium' : '')
                   }
                 >
-                  <Icon size={18}/><span>{item.label}</span>
+                  <Icon size={18} />
+                  <span>{item.label}</span>
                 </NavLink>
               );
             })}
@@ -268,8 +426,6 @@ function Home() {
   const [loading, setLoading] = useState(true);
 
   // "Mis cursos" del backend
-  the: {
-  }
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [rows, setRows] = useState<MyCourseRow[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
@@ -277,22 +433,29 @@ function Home() {
 
   useEffect(() => {
     (async () => {
-      try { const r = await api.me(); setMe(r.user); }
-      catch { setMe(null); }
-      finally { setLoading(false); }
+      try {
+        const r = await api.me();
+        setMe(r.user);
+      } catch {
+        setMe(null);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
   useEffect(() => {
     (async () => {
       if (!me || me.role !== 'student') return;
+
       setLoadingCourses(true);
       setErrCourses(null);
+
       try {
         const resp = await api.courses.mine();
         setYear(resp.year);
         setRows(resp.rows || []);
-      } catch (e:any) {
+      } catch (e: any) {
         setErrCourses(e?.message || 'No se pudo cargar tus cursos.');
       } finally {
         setLoadingCourses(false);
@@ -303,90 +466,344 @@ function Home() {
   const fmtItem = (it: CourseScheduleItem) =>
     `${it.day ? (L[it.day] + ' ') : ''}${it.start}-${it.end}`;
 
-  if (loading) return <div className="p-4"><div className="h-6 w-32 skeleton mb-3"/><div className="h-24 skeleton"/></div>;
+  const campusLabel = me?.campus === 'DERQUI' ? 'Derqui' : 'José C. Paz';
+
+  const roleLabel =
+    me?.role === 'student'
+      ? 'Alumno'
+      : me?.role === 'teacher'
+        ? 'Docente'
+        : me?.role === 'coordinator'
+          ? 'Coordinación'
+          : me?.role === 'admin'
+            ? 'Administración'
+            : 'Usuario';
+
+  if (loading) {
+    return (
+      <div className="mx-auto w-full max-w-7xl space-y-6 px-3 py-4 sm:px-5 md:px-6 md:py-6">
+        <section className="overflow-hidden rounded-[2rem] border border-neutral-200 bg-white p-5 shadow-xl shadow-neutral-100 sm:p-7">
+          <div className="space-y-5">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 animate-pulse rounded-2xl bg-neutral-100" />
+
+              <div className="min-w-0 flex-1 space-y-3">
+                <div className="h-6 w-56 animate-pulse rounded-full bg-neutral-100" />
+                <div className="h-4 w-80 max-w-full animate-pulse rounded-full bg-neutral-100" />
+              </div>
+            </div>
+
+            <div className="h-36 animate-pulse rounded-[2rem] bg-neutral-100" />
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  const quickLinks = [
+    {
+      show: me?.role === 'coordinator' || me?.role === 'admin',
+      to: '/coordinator/courses',
+      label: me?.role === 'admin' ? 'Cursos (Admin)' : 'Cursos',
+      icon: BookOpen,
+    },
+    {
+      show: me?.role === 'coordinator' || me?.role === 'admin',
+      to: '/coordinator/students',
+      label: 'Buscar alumno',
+      icon: Search,
+    },
+    {
+      show: me?.role === 'coordinator' || me?.role === 'admin',
+      to: '/coordinator/users',
+      label: 'Personas',
+      icon: Users,
+    },
+    {
+      show: me?.role === 'teacher',
+      to: '/teacher/courses',
+      label: 'Mis cursos',
+      icon: ClipboardList,
+    },
+    {
+      show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin',
+      to: '/teacher/students',
+      label: 'Alumnos',
+      icon: Users,
+    },
+    {
+      show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin',
+      to: '/communications',
+      label: 'Comunicaciones',
+      icon: Mail,
+    },
+    {
+      show: me?.role === 'coordinator' || me?.role === 'admin',
+      to: '/staff/attendance-drops',
+      label: 'Asistencia/Bajas',
+      icon: ClipboardList,
+    },
+    {
+      show: me?.role === 'teacher' || me?.role === 'coordinator',
+      to: '/coordinator/practice/sets',
+      label: 'Crear sets',
+      icon: Settings,
+    },
+    {
+      show: !!me,
+      to: '/me',
+      label: 'Mi perfil',
+      icon: UserCog,
+    },
+    {
+      show: me?.role === 'student',
+      to: '/student/communications',
+      label: 'Comunicaciones',
+      icon: Mail,
+    },
+    {
+      show: me?.role === 'student',
+      to: '/student/partials',
+      label: 'Informes parciales',
+      icon: FileText,
+    },
+    {
+      show: me?.role === 'student',
+      to: '/student/finals',
+      label: 'Boletín',
+      icon: BarChart3,
+    },
+    {
+      show: me?.role === 'student',
+      to: '/student/british',
+      label: 'Británico',
+      icon: GraduationCap,
+    },
+    {
+      show: me?.role === 'student',
+      to: '/student/practice',
+      label: 'Práctica',
+      icon: Settings,
+    },
+    {
+      show: me?.role === 'student',
+      to: '/student/materials',
+      label: 'Materiales',
+      icon: BookOpen,
+    },
+  ].filter(item => item.show);
 
   return (
-    <div className="space-y-4">
-      <div className="card p-4">
-        <h1 className="font-heading text-xl">Inicio</h1>
-        {!me ? (
-          <div className="mt-2">
-            <p>No estás logueado.</p>
-            <Link className="btn btn-primary mt-2 inline-flex" to="/login">Ir a Login</Link>
+    <div className="mx-auto w-full max-w-7xl space-y-6 px-3 py-4 sm:px-5 md:px-6 md:py-6">
+      {/* INICIO */}
+      <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-violet-700 via-indigo-700 to-sky-600 p-[2px] shadow-xl shadow-violet-100">
+        <div className="relative overflow-hidden rounded-[2rem] bg-white p-5 sm:p-7 md:p-8">
+          <div className="absolute -right-14 -top-14 h-44 w-44 rounded-full bg-violet-200/60 blur-3xl" />
+          <div className="absolute -bottom-16 -left-14 h-44 w-44 rounded-full bg-sky-200/60 blur-3xl" />
+
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="mb-3 flex w-fit items-center gap-2 rounded-full border border-violet-100 bg-violet-50 px-4 py-1.5 text-xs font-black uppercase tracking-wide text-violet-700">
+                <LayoutDashboard size={14} />
+                Inicio
+              </div>
+
+              <h1 className="break-words text-2xl font-black tracking-tight text-neutral-950 sm:text-3xl md:text-4xl">
+                {me ? `Hola, ${me.name}` : 'Inicio'}
+              </h1>
+
+              {!me ? (
+                <div className="mt-4 rounded-3xl border border-neutral-200 bg-neutral-50 p-5">
+                  <p className="text-sm font-semibold text-neutral-700">
+                    No estás logueado.
+                  </p>
+
+                  <Link
+                    className="mt-3 inline-flex rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-3 text-sm font-black uppercase tracking-wide text-white no-underline shadow-lg shadow-violet-200 transition hover:-translate-y-0.5 hover:shadow-xl"
+                    to="/login"
+                  >
+                    Ir a Login
+                  </Link>
+                </div>
+              ) : (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="rounded-full border border-violet-100 bg-violet-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-violet-700">
+                    {roleLabel}
+                  </span>
+
+                  <span className="rounded-full border border-sky-100 bg-sky-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-sky-700">
+                    {campusLabel}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {me && (
+              <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-auto lg:min-w-[360px]">
+                <div className="rounded-3xl border border-violet-100 bg-violet-50/80 px-5 py-4 shadow-sm">
+                  <p className="text-xs font-black uppercase tracking-wide text-violet-500">
+                    Rol
+                  </p>
+                  <p className="mt-1 text-sm font-black text-violet-800">
+                    {roleLabel}
+                  </p>
+                </div>
+
+                <div className="rounded-3xl border border-sky-100 bg-sky-50/80 px-5 py-4 shadow-sm">
+                  <p className="text-xs font-black uppercase tracking-wide text-sky-500">
+                    Sede
+                  </p>
+                  <p className="mt-1 text-sm font-black text-sky-800">
+                    {campusLabel}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="mt-2 space-y-3">
-            <div>
-              Hola, <b>{me.name}</b> — rol: <b>{me.role}</b>{' '}
-              — sede:{' '}
-              <span className={'badge ' + (me.campus === 'DERQUI' ? 'badge-derqui' : 'badge-jcp')}>
-                {me.campus === 'DERQUI' ? 'Derqui' : 'José C. Paz'}
+
+          {me && quickLinks.length > 0 && (
+            <div className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              {quickLinks.map(({ to, label, icon: Icon }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className="group flex min-h-[76px] items-center gap-3 rounded-3xl border border-neutral-200 bg-white/90 px-4 py-3 text-sm font-black text-neutral-700 no-underline shadow-sm transition hover:-translate-y-0.5 hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700 hover:shadow-lg"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-600 transition group-hover:bg-violet-100 group-hover:text-violet-700">
+                    <Icon size={20} />
+                  </span>
+
+                  <span className="break-words leading-tight">
+                    {label}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* MIS CURSOS Y HORARIOS */}
+      {me?.role === 'student' && (
+        <section className="overflow-hidden rounded-[2rem] border border-neutral-200 bg-white shadow-xl shadow-neutral-100">
+          <div className="relative overflow-hidden bg-gradient-to-r from-violet-700 via-indigo-700 to-sky-600 px-5 py-5 text-white sm:px-6">
+            <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/15 blur-2xl" />
+            <div className="absolute -bottom-12 -left-10 h-32 w-32 rounded-full bg-black/15 blur-2xl" />
+
+            <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-violet-700 shadow-lg shadow-black/10">
+                  <BookOpen size={24} />
+                </div>
+
+                <div className="min-w-0">
+                  <h2 className="break-words text-xl font-black leading-tight text-white sm:text-2xl">
+                    Mis cursos y horarios
+                  </h2>
+
+                  <p className="mt-1 text-sm font-semibold text-white/85">
+                    Ciclo lectivo {year}
+                  </p>
+                </div>
+              </div>
+
+              <span className="w-fit rounded-full border border-white/20 bg-white/15 px-4 py-2 text-xs font-black uppercase tracking-wide text-white shadow-sm backdrop-blur-sm">
+                {rows.length} curso{rows.length === 1 ? '' : 's'}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-5">
+            {loadingCourses && (
+              <div className="space-y-3">
+                <div className="h-16 animate-pulse rounded-3xl bg-neutral-100" />
+                <div className="h-16 animate-pulse rounded-3xl bg-neutral-100" />
+              </div>
+            )}
+
+            {errCourses && (
+              <div className="rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-bold text-rose-700">
+                {errCourses}
+              </div>
+            )}
+
+            {!loadingCourses && !errCourses && (
+              rows.length === 0 ? (
+                <div className="rounded-3xl border border-dashed border-neutral-200 bg-neutral-50 p-8 text-center">
+                  <div className="mb-3 flex justify-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-500">
+                      <BookOpen size={28} />
+                    </div>
+                  </div>
+
+                  <h3 className="text-lg font-black text-neutral-800">
+                    Aún no estás matriculado en cursos
+                  </h3>
+
+                  <p className="mt-1 text-sm text-neutral-500">
+                    Cuando tengas cursos activos, van a aparecer en esta sección.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {rows.map(({ course, schedule }) => (
+                    <article
+                      key={course._id}
+                      className="rounded-3xl border border-neutral-200 bg-neutral-50 p-4 transition hover:border-violet-200 hover:bg-violet-50/40 hover:shadow-md"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <h3 className="break-words text-lg font-black text-neutral-950">
+                            {course.name}
+                          </h3>
+
+                          <p className="mt-1 text-sm font-semibold text-neutral-600">
+                            {Array.isArray(schedule) && schedule.length
+                              ? schedule.map(it => fmtItem(it)).join(' · ')
+                              : 'Sin horarios'}
+                          </p>
+                        </div>
+
+                        <Link
+                          to={`/student/course/${course._id}/board`}
+                          className="inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-3 text-sm font-black uppercase tracking-wide text-white no-underline shadow-lg shadow-violet-200 transition hover:-translate-y-0.5 hover:shadow-xl sm:w-auto"
+                        >
+                          Muro del curso
+                        </Link>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ASISTENCIAS */}
+      {me?.role === 'student' && (
+        <section className="space-y-4">
+          <div id="asistencias" />
+
+          <div className="rounded-[2rem] border border-neutral-200 bg-white p-4 shadow-xl shadow-neutral-100 sm:p-5">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-black text-neutral-950">
+                  Mi asistencia
+                </h2>
+                <p className="text-sm text-neutral-500">
+                  Resumen de presentes, ausentes, justificadas, tardes y porcentaje.
+                </p>
+              </div>
+
+              <span className="w-fit rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-emerald-700">
+                Seguimiento
               </span>
             </div>
 
-            <div className="flex gap-2 flex-wrap">
-              {(me.role === 'coordinator' || me.role === 'admin') && (
-                <Link className="btn btn-secondary" to="/coordinator/courses">
-                  {me.role === 'admin' ? 'Cursos (Admin)' : 'Cursos (coord)'}
-                </Link>
-              )}
-              {(me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/coordinator/students">Buscar alumno</Link>}
-              {(me.role === 'coordinator' || me.role === 'admin') && <Link className="btn btn-secondary" to="/coordinator/users">Personas</Link>}
-              {me.role === 'teacher' && <Link className="btn btn-secondary" to="/teacher/courses">Mis cursos</Link>}
-              {(me.role === 'teacher' || me.role === 'coordinator' || me?.role === 'admin') && <Link className="btn btn-secondary" to="/teacher/students">Alumnos</Link>}
-              {(me.role === 'teacher' || me.role === 'coordinator' || me?.role === 'admin') && <Link className="btn btn-secondary" to="/communications">Comunicaciones</Link>}
-              {(me.role === 'coordinator' || me.role === 'admin') && (
-                <Link className="btn btn-secondary" to="/staff/attendance-drops">Asistencia/Bajas</Link>
-              )}
-              {/* ➕ NUEVO: Acceso rápido Crear Sets para docentes */}
-              {(me.role === 'teacher' || me.role === 'coordinator') && (
-                <Link className="btn btn-secondary" to="/coordinator/practice/sets">Crear sets</Link>
-              )}
-              {me && <Link className="btn btn-secondary" to="/me">Mi perfil</Link>}
-              {me?.role === 'student' && <Link className="btn btn-secondary" to="/student/communications">Comunicaciones</Link>}
-              {me?.role === 'student' && <Link className="btn btn-secondary" to="/student/partials">Informes parciales</Link>}
-              {me?.role === 'student' && <Link className="btn btn-secondary" to="/student/finals">Boletín</Link>}
-              {me?.role === 'student' && <Link className="btn btn-secondary" to="/student/british">Británico</Link>}
-              {me?.role === 'student' && <Link className="btn btn-secondary" to="/student/practice">Práctica</Link>}
-              {/* ➕ NUEVO: acceso rápido a Materiales (alumnos) */}
-              {me?.role === 'student' && <Link className="btn btn-secondary" to="/student/materials">Materiales</Link>}
-            </div>
+            <StudentAttendanceCard />
           </div>
-        )}
-      </div>
-
-      {/* Mis cursos y horarios */}
-      {me?.role === 'student' && (
-        <div className="card p-4">
-          <div className="font-heading mb-2">Mis cursos y horarios ({year})</div>
-          {loadingCourses && <div className="text-neutral-700">Cargando…</div>}
-          {errCourses && <div className="text-danger">{errCourses}</div>}
-          {!loadingCourses && !errCourses && (
-            rows.length === 0 ? (
-              <div className="text-neutral-700">Aún no estás matriculado en cursos o no tienen horarios cargados.</div>
-            ) : (
-              <ul className="list-disc pl-6">
-                {rows.map(({ course, schedule }) => (
-                  <li key={course._id} className="mb-1">
-                    <b>{course.name}</b> —{' '}
-                    {Array.isArray(schedule) && schedule.length
-                      ? schedule.map(it => fmtItem(it)).join(' · ')
-                      : 'Sin horarios'}{' '}
-                    · <Link to={`/student/course/${course._id}/board`} className="text-brand-primary underline">MURO DEL CURSO</Link>
-                  </li>
-                ))}
-              </ul>
-            )
-          )}
-        </div>
-      )}
-
-      {/* ➕ NUEVO: Sección Asistencias para el alumno */}
-      {me?.role === 'student' && (
-        <div className="mt-4">
-          <div id="asistencias" />
-          <StudentAttendanceCard />
-        </div>
+        </section>
       )}
     </div>
   );
@@ -408,6 +825,7 @@ function Login() {
         aria-hidden="true"
         className="pointer-events-none select-none absolute inset-0 w-full h-full object-cover"
       />
+
       {/* Overlay para legibilidad (claro/oscuro) */}
       <div
         aria-hidden="true"
@@ -425,10 +843,18 @@ function Login() {
             style={{ background: 'var(--grad-primary)' }}
           >
             <div className="flex items-center gap-3">
-              <div className="h-6 w-6 rounded-lg" style={{ background: 'var(--grad-brand)' }} />
+              <div
+                className="h-6 w-6 rounded-lg"
+                style={{ background: 'var(--grad-brand)' }}
+              />
+
               <div className="leading-tight">
-                <div className="text-xs font-medium opacity-90 tracking-wide">GLOBAL-T</div>
-                <div className="text-sm font-semibold">CAMPUS INGLÉS</div>
+                <div className="text-xs font-medium opacity-90 tracking-wide">
+                  GLOBAL-T
+                </div>
+                <div className="text-sm font-semibold">
+                  CAMPUS INGLÉS
+                </div>
               </div>
             </div>
           </div>
@@ -440,16 +866,36 @@ function Login() {
           </div>
 
           <div className="flex flex-col gap-3">
-            <input className="input" placeholder="email" value={email} onChange={e => setEmail(e.target.value)} />
-            <input className="input" type="password" placeholder="password" value={password} onChange={e => setPassword(e.target.value)} />
+            <input
+              className="input"
+              placeholder="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+            />
+
+            <input
+              className="input"
+              type="password"
+              placeholder="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+            />
+
             <button
               className="btn btn-primary"
               onClick={async () => {
-                try { setErr(null); await api.login(email, password); nav('/'); }
-                catch (e:any) { setErr(e.message); }
-              }}>
+                try {
+                  setErr(null);
+                  await api.login(email, password);
+                  nav('/');
+                } catch (e: any) {
+                  setErr(e.message);
+                }
+              }}
+            >
               Entrar
             </button>
+
             {err && <div className="text-danger">{err}</div>}
           </div>
         </div>
@@ -477,8 +923,10 @@ export default function App() {
           <Route path="/coordinator/course/:id/schedule" element={<CoordinatorCourseSchedule />} />
           <Route path="/coordinator/students" element={<CoordinatorStudentSearch />} />
           <Route path="/coordinator/users" element={<CoordinatorUsers />} />
+
           {/* ➕ NUEVO: Sets de práctica */}
           <Route path="/coordinator/practice/sets" element={<CoordinatorPracticeSets />} />
+
           {/* Alias operativos */}
           <Route path="/coordinator/course/:id/attendance" element={<AttendancePage />} />
           <Route path="/coordinator/course/:id/partials" element={<TeacherCoursePartials />} />
@@ -486,16 +934,20 @@ export default function App() {
           <Route path="/coordinator/course/:id/report" element={<TeacherCourseReport />} />
           <Route path="/coordinator/course/:id/topics" element={<CourseTopicsPage />} />
           <Route path="/coordinator/course/:id/materials" element={<CourseMaterialsPage />} />
+
           {/* ➕ NUEVO: Material alumnos (edición) */}
           <Route path="/coordinator/course/:id/student-materials" element={<CourseStudentMaterials />} />
+
           {/* ➕ NUEVO: Británico (edición) */}
           <Route path="/coordinator/course/:id/british" element={<CoordinatorBritishCourse mode="edit" />} />
+
           {/* ➕ NUEVO: Tablón (coordinador) */}
           <Route path="/coordinator/course/:id/board" element={<CourseBoardPage />} />
 
           {/* Profesor */}
           <Route path="/teacher/courses" element={<TeacherCourses />} />
           <Route path="/teacher/students" element={<TeacherStudents />} />
+
           {/* ➕ NUEVO: alumnos por curso del profe */}
           <Route path="/teacher/course/:id/students" element={<TeacherCourseStudents />} />
           <Route path="/teacher/course/:id/attendance" element={<AttendancePage />} />
@@ -505,8 +957,10 @@ export default function App() {
           <Route path="/teacher/course/:id/report" element={<TeacherCourseReport />} />
           <Route path="/teacher/course/:id/topics" element={<CourseTopicsPage />} />
           <Route path="/teacher/course/:id/materials" element={<CourseMaterialsPage />} />
+
           {/* ➕ NUEVO: Británico (solo lectura para el profe) */}
           <Route path="/teacher/course/:id/british" element={<CoordinatorBritishCourse mode="view" />} />
+
           {/* ➕ NUEVO: Tablón (docente) */}
           <Route path="/teacher/course/:id/board" element={<CourseBoardPage />} />
 
@@ -521,16 +975,18 @@ export default function App() {
 
           {/* Perfil para TODOS */}
           <Route path="/me" element={<StudentProfile />} />
-          <Route path="/student/profile" element={<StudentProfile />} /> {/* compat viejo */}
+          <Route path="/student/profile" element={<StudentProfile />} />
 
           {/* Alumno */}
           <Route path="/student/communications" element={<StudentCommunications />} />
           <Route path="/student/partials" element={<StudentPartialCards />} />
           <Route path="/student/finals" element={<StudentFinalCards />} />
-          <Route path="/student/british" element={<StudentBritishExam />} /> {/* NUEVO */}
+          <Route path="/student/british" element={<StudentBritishExam />} />
           <Route path="/student/practice" element={<StudentPractice />} />
+
           {/* ➕ NUEVO: Material alumnos (vista) */}
           <Route path="/student/materials" element={<StudentMaterials />} />
+
           {/* ➕ NUEVO: Tablón (alumno) */}
           <Route path="/student/course/:id/board" element={<CourseBoardPage />} />
 
