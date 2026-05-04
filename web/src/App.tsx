@@ -170,7 +170,7 @@ function useMe() {
 /* ------- Layout (Shell Global-T) ------- */
 function Shell() {
   const { me, loading } = useMe();
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const nav = useNavigate();
   const loc = useLocation();
 
@@ -500,99 +500,6 @@ function Home() {
     );
   }
 
-  const quickLinks = [
-    {
-      show: me?.role === 'coordinator' || me?.role === 'admin',
-      to: '/coordinator/courses',
-      label: me?.role === 'admin' ? 'Cursos (Admin)' : 'Cursos',
-      icon: BookOpen,
-    },
-    {
-      show: me?.role === 'coordinator' || me?.role === 'admin',
-      to: '/coordinator/students',
-      label: 'Buscar alumno',
-      icon: Search,
-    },
-    {
-      show: me?.role === 'coordinator' || me?.role === 'admin',
-      to: '/coordinator/users',
-      label: 'Personas',
-      icon: Users,
-    },
-    {
-      show: me?.role === 'teacher',
-      to: '/teacher/courses',
-      label: 'Mis cursos',
-      icon: ClipboardList,
-    },
-    {
-      show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin',
-      to: '/teacher/students',
-      label: 'Alumnos',
-      icon: Users,
-    },
-    {
-      show: me?.role === 'teacher' || me?.role === 'coordinator' || me?.role === 'admin',
-      to: '/communications',
-      label: 'Comunicaciones',
-      icon: Mail,
-    },
-    {
-      show: me?.role === 'coordinator' || me?.role === 'admin',
-      to: '/staff/attendance-drops',
-      label: 'Asistencia/Bajas',
-      icon: ClipboardList,
-    },
-    {
-      show: me?.role === 'teacher' || me?.role === 'coordinator',
-      to: '/coordinator/practice/sets',
-      label: 'Crear sets',
-      icon: Settings,
-    },
-    {
-      show: !!me,
-      to: '/me',
-      label: 'Mi perfil',
-      icon: UserCog,
-    },
-    {
-      show: me?.role === 'student',
-      to: '/student/communications',
-      label: 'Comunicaciones',
-      icon: Mail,
-    },
-    {
-      show: me?.role === 'student',
-      to: '/student/partials',
-      label: 'Informes parciales',
-      icon: FileText,
-    },
-    {
-      show: me?.role === 'student',
-      to: '/student/finals',
-      label: 'Boletín',
-      icon: BarChart3,
-    },
-    {
-      show: me?.role === 'student',
-      to: '/student/british',
-      label: 'Británico',
-      icon: GraduationCap,
-    },
-    {
-      show: me?.role === 'student',
-      to: '/student/practice',
-      label: 'Práctica',
-      icon: Settings,
-    },
-    {
-      show: me?.role === 'student',
-      to: '/student/materials',
-      label: 'Materiales',
-      icon: BookOpen,
-    },
-  ].filter(item => item.show);
-
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 px-3 py-4 sm:px-5 md:px-6 md:py-6">
       {/* INICIO */}
@@ -601,18 +508,18 @@ function Home() {
           <div className="absolute -right-14 -top-14 h-44 w-44 rounded-full bg-violet-200/60 blur-3xl" />
           <div className="absolute -bottom-16 -left-14 h-44 w-44 rounded-full bg-sky-200/60 blur-3xl" />
 
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0">
-              <div className="mb-3 flex w-fit items-center gap-2 rounded-full border border-violet-100 bg-violet-50 px-4 py-1.5 text-xs font-black uppercase tracking-wide text-violet-700">
-                <LayoutDashboard size={14} />
-                Inicio
-              </div>
+          <div className="relative">
+            <div className="mb-3 flex w-fit items-center gap-2 rounded-full border border-violet-100 bg-violet-50 px-4 py-1.5 text-xs font-black uppercase tracking-wide text-violet-700">
+              <LayoutDashboard size={14} />
+              Inicio
+            </div>
 
-              <h1 className="break-words text-2xl font-black tracking-tight text-neutral-950 sm:text-3xl md:text-4xl">
-                {me ? `Hola, ${me.name}` : 'Inicio'}
-              </h1>
+            {!me ? (
+              <>
+                <h1 className="break-words text-2xl font-black tracking-tight text-neutral-950 sm:text-3xl md:text-4xl">
+                  Inicio
+                </h1>
 
-              {!me ? (
                 <div className="mt-4 rounded-3xl border border-neutral-200 bg-neutral-50 p-5">
                   <p className="text-sm font-semibold text-neutral-700">
                     No estás logueado.
@@ -625,61 +532,35 @@ function Home() {
                     Ir a Login
                   </Link>
                 </div>
-              ) : (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-violet-100 bg-violet-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-violet-700">
-                    {roleLabel}
-                  </span>
+              </>
+            ) : (
+              <>
+                <h1 className="break-words text-2xl font-black tracking-tight text-neutral-950 sm:text-3xl md:text-4xl">
+                  Hola, {me.name}
+                </h1>
 
-                  <span className="rounded-full border border-sky-100 bg-sky-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-sky-700">
-                    {campusLabel}
-                  </span>
-                </div>
-              )}
-            </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-3xl border border-violet-100 bg-violet-50/80 px-5 py-4 shadow-sm">
+                    <p className="text-xs font-black uppercase tracking-wide text-violet-500">
+                      Rol
+                    </p>
+                    <p className="mt-1 text-base font-black text-violet-800">
+                      {roleLabel}
+                    </p>
+                  </div>
 
-            {me && (
-              <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-auto lg:min-w-[360px]">
-                <div className="rounded-3xl border border-violet-100 bg-violet-50/80 px-5 py-4 shadow-sm">
-                  <p className="text-xs font-black uppercase tracking-wide text-violet-500">
-                    Rol
-                  </p>
-                  <p className="mt-1 text-sm font-black text-violet-800">
-                    {roleLabel}
-                  </p>
+                  <div className="rounded-3xl border border-sky-100 bg-sky-50/80 px-5 py-4 shadow-sm">
+                    <p className="text-xs font-black uppercase tracking-wide text-sky-500">
+                      Sede
+                    </p>
+                    <p className="mt-1 text-base font-black text-sky-800">
+                      {campusLabel}
+                    </p>
+                  </div>
                 </div>
-
-                <div className="rounded-3xl border border-sky-100 bg-sky-50/80 px-5 py-4 shadow-sm">
-                  <p className="text-xs font-black uppercase tracking-wide text-sky-500">
-                    Sede
-                  </p>
-                  <p className="mt-1 text-sm font-black text-sky-800">
-                    {campusLabel}
-                  </p>
-                </div>
-              </div>
+              </>
             )}
           </div>
-
-          {me && quickLinks.length > 0 && (
-            <div className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-              {quickLinks.map(({ to, label, icon: Icon }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  className="group flex min-h-[76px] items-center gap-3 rounded-3xl border border-neutral-200 bg-white/90 px-4 py-3 text-sm font-black text-neutral-700 no-underline shadow-sm transition hover:-translate-y-0.5 hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700 hover:shadow-lg"
-                >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-600 transition group-hover:bg-violet-100 group-hover:text-violet-700">
-                    <Icon size={20} />
-                  </span>
-
-                  <span className="break-words leading-tight">
-                    {label}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
         </div>
       </section>
 
@@ -751,9 +632,9 @@ function Home() {
                       key={course._id}
                       className="rounded-3xl border border-neutral-200 bg-neutral-50 p-4 transition hover:border-violet-200 hover:bg-violet-50/40 hover:shadow-md"
                     >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div className="min-w-0">
-                          <h3 className="break-words text-lg font-black text-neutral-950">
+                          <h3 className="break-words text-lg font-black text-neutral-950 sm:text-xl">
                             {course.name}
                           </h3>
 
@@ -766,7 +647,7 @@ function Home() {
 
                         <Link
                           to={`/student/course/${course._id}/board`}
-                          className="inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-3 text-sm font-black uppercase tracking-wide text-white no-underline shadow-lg shadow-violet-200 transition hover:-translate-y-0.5 hover:shadow-xl sm:w-auto"
+                          className="inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-sky-600 px-5 py-3 text-sm font-black uppercase tracking-wide text-white no-underline shadow-lg shadow-violet-200 transition hover:-translate-y-0.5 hover:shadow-xl lg:w-auto"
                         >
                           Muro del curso
                         </Link>
