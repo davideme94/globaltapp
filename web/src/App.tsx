@@ -170,7 +170,7 @@ function useMe() {
 /* ------- Layout (Shell Global-T) ------- */
 function Shell() {
   const { me, loading } = useMe();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const nav = useNavigate();
   const loc = useLocation();
 
