@@ -396,11 +396,15 @@ export const api = {
       ),
   },
 
-  // PARTIALS (informes parciales)
+   // PARTIALS (informes parciales)
   partials: {
     // alumno
     mine: () =>
       request<{ rows: any[]; reports?: any[] }>('/partials/mine'),
+
+    // vista imprimible / PDF
+    print: (reportId: string) =>
+      request<{ ok: true; report: any }>(`/partials/${reportId}/print`),
 
     // curso (coord/profe/admin) – opcional ?term= y ?year=
     course: (courseId: string, opts?: { term?: PartialTerm; year?: number }) =>
