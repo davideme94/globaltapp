@@ -44,8 +44,7 @@ function defaultTerm(): 'MAY' | 'OCT' {
 
 /* =============================================================================
  * 1) ALUMNO: mis informes
- * Ahora muestra report card aunque no haya notas
- * PERO solamente de cursos donde el alumno sigue inscripto actualmente
+ * Muestra SOLO informes de cursos donde el alumno tiene inscripción ACTIVA
  * ========================================================================== */
 router.get(
   '/partials/mine',
@@ -55,21 +54,24 @@ router.get(
     try {
       const userId = (req as any).userId as string;
 
+      const { year } = z
+        .object({
+          year: z.coerce.number().int().optional(),
+        })
+        .parse(req.query);
+
+      const y = year ?? new Date().getFullYear();
+
       /*
         IMPORTANTE:
-        Antes buscaba todas las inscripciones del alumno:
-        Enrollment.find({ student: userId })
-
-        Ahora mantiene la misma lógica, pero intenta evitar inscripciones viejas/inactivas.
-        Si tu modelo Enrollment tiene active, usa active:true.
-        Si no tiene active, igual las deja pasar para no romper nada.
+        Tu sistema de inscripciones usa status: 'active',
+        no usa active: true.
+        Por eso antes seguía trayendo cursos viejos.
       */
       const enrollments = await Enrollment.find({
         student: userId,
-        $or: [
-          { active: true },
-          { active: { $exists: false } },
-        ],
+        status: 'active',
+        year: y,
       })
         .populate('course', '_id name year')
         .lean();
@@ -81,18 +83,17 @@ router.get(
         })
         .filter(Boolean);
 
-      /*
-        Si el alumno no tiene cursos activos, no devolvemos informes viejos.
-      */
       if (courseIds.length === 0) {
         return res.json({
           rows: [],
           reports: [],
+          year: y,
         });
       }
 
       const reports = await PartialReport.find({
         student: userId,
+        year: y,
         course: { $in: courseIds },
       })
         .populate('course', '_id name year')
@@ -106,11 +107,6 @@ router.get(
         const course: any = r.course;
         const courseId = String(course._id);
 
-        /*
-          Doble seguridad:
-          si por alguna razón llega un reporte de un curso que no está
-          entre las inscripciones actuales, no lo mostramos.
-        */
         if (!courseIds.includes(courseId)) return;
 
         const key = `${courseId}-${r.term}-${r.year}`;
@@ -121,7 +117,7 @@ router.get(
       const rows: any[] = [];
 
       for (const e of enrollments) {
-        const course: any = e.course; // 👈 FIX TYPESCRIPT
+        const course: any = e.course;
 
         if (!course?._id) continue;
 
@@ -164,6 +160,7 @@ router.get(
       res.json({
         rows,
         reports: rows,
+        year: y,
       });
     } catch (e) {
       next(e);
@@ -201,7 +198,11 @@ router.get(
       const y = year ?? course.year;
       const t = term ?? defaultTerm();
 
-      const roster = await Enrollment.find({ course: courseId })
+      const roster = await Enrollment.find({
+        course: courseId,
+        status: 'active',
+        year: y,
+      })
         .populate('student', '_id name email')
         .lean();
 
