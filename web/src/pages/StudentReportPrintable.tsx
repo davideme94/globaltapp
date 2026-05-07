@@ -147,6 +147,7 @@ export default function StudentReportPrintable() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [report, setReport] = useState<Report | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -187,10 +188,105 @@ export default function StudentReportPrintable() {
   const studentName = getName(report?.student, 'Alumno/a');
   const teacherName = getName(report?.teacher, 'Docente');
 
+  const canUseActions = Boolean(report && !loading && !err);
+
+  const handlePrint = () => {
+    setTimeout(() => {
+      window.print();
+    }, 150);
+  };
+
+  const handleShareLink = async () => {
+    const url = window.location.href;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Informe parcial Global-T',
+          text: 'Abrir informe parcial para guardar o compartir.',
+          url,
+        });
+        return;
+      } catch {
+        // Si el usuario cancela compartir, seguimos con copiar.
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+
+      setTimeout(() => {
+        setCopied(false);
+      }, 2500);
+    } catch {
+      alert('Copiá este link y abrilo en Chrome: ' + url);
+    }
+  };
+
   return (
     <div className="print-page min-h-screen bg-[radial-gradient(circle_at_top_left,#f5d0fe_0,#eef2ff_35%,#ffffff_75%)] px-3 py-4 text-neutral-950 sm:px-6 md:py-8">
       <style>
         {`
+          @media screen and (max-width: 767px) {
+            .mobile-action-card {
+              border-radius: 28px !important;
+            }
+
+            .screen-print-card {
+              border-radius: 28px !important;
+            }
+
+            .screen-header {
+              min-height: auto !important;
+            }
+
+            .screen-header-inner {
+              flex-direction: column !important;
+              align-items: flex-start !important;
+            }
+
+            .screen-period {
+              align-self: stretch !important;
+              width: 100% !important;
+            }
+
+            .screen-body-grid {
+              display: grid !important;
+              grid-template-columns: 1fr !important;
+              height: auto !important;
+            }
+
+            .screen-left,
+            .screen-right {
+              grid-column: auto !important;
+              width: 100% !important;
+            }
+
+            .screen-grades-grid {
+              grid-template-columns: 1fr !important;
+            }
+
+            .screen-scale-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+
+            .screen-comment-box {
+              height: auto !important;
+              max-height: none !important;
+            }
+
+            .screen-comment-inner {
+              height: auto !important;
+              max-height: none !important;
+            }
+
+            .comment-text {
+              display: block !important;
+              overflow: visible !important;
+            }
+          }
+
           @media print {
             @page {
               size: A4 landscape;
@@ -262,6 +358,8 @@ export default function StudentReportPrintable() {
               break-after: avoid !important;
               break-before: avoid !important;
               break-inside: avoid !important;
+              border-radius: 18px !important;
+              box-shadow: none !important;
             }
 
             .no-print {
@@ -272,19 +370,47 @@ export default function StudentReportPrintable() {
               overflow: hidden !important;
             }
 
-            .print-card {
-              box-shadow: none !important;
-              border-radius: 18px !important;
+            .screen-header {
+              height: 38mm !important;
+              min-height: 38mm !important;
+              max-height: 38mm !important;
             }
 
-            .print-break-inside {
-              break-inside: avoid !important;
-              page-break-inside: avoid !important;
+            .screen-body-grid {
+              display: grid !important;
+              grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+              height: 162mm !important;
+              max-height: 162mm !important;
+              overflow: hidden !important;
             }
 
-            .comment-box {
+            .screen-left {
+              grid-column: span 5 / span 5 !important;
+              overflow: hidden !important;
+            }
+
+            .screen-right {
+              grid-column: span 7 / span 7 !important;
+              overflow: hidden !important;
+            }
+
+            .screen-grades-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+
+            .screen-scale-grid {
+              grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+            }
+
+            .screen-comment-box {
               height: 54mm !important;
               max-height: 54mm !important;
+              overflow: hidden !important;
+            }
+
+            .screen-comment-inner {
+              height: 39mm !important;
+              max-height: 39mm !important;
               overflow: hidden !important;
             }
 
@@ -295,9 +421,14 @@ export default function StudentReportPrintable() {
               overflow: hidden !important;
               text-overflow: ellipsis !important;
             }
+
+            .print-break-inside {
+              break-inside: avoid !important;
+              page-break-inside: avoid !important;
+            }
           }
 
-          @media screen {
+          @media screen and (min-width: 768px) {
             .comment-text {
               display: -webkit-box;
               -webkit-line-clamp: 9;
@@ -311,22 +442,28 @@ export default function StudentReportPrintable() {
 
       <div className="print-wrapper mx-auto w-full max-w-6xl space-y-5">
         {/* ACCIONES */}
-        <div className="no-print flex flex-col gap-3 rounded-[2rem] border border-white/70 bg-white/85 p-4 shadow-xl shadow-violet-100/60 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-          <div>
+        <div className="no-print mobile-action-card flex flex-col gap-4 rounded-[2rem] border border-white/70 bg-white/85 p-5 shadow-xl shadow-violet-100/60 backdrop-blur md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-wide text-violet-600">
               Vista imprimible horizontal
             </p>
 
-            <h1 className="mt-1 text-xl font-black tracking-tight text-neutral-950 sm:text-2xl">
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-neutral-950 md:text-3xl">
               Informe parcial para PDF
             </h1>
 
-            <p className="mt-1 text-sm font-semibold text-neutral-500">
-              Formato A4 horizontal para guardar el informe en una sola hoja.
+            <p className="mt-2 text-sm font-semibold leading-relaxed text-neutral-500 md:text-base">
+              Formato A4 horizontal. En celular podés compartir el link y abrirlo en Chrome.
             </p>
+
+            {copied && (
+              <p className="mt-3 rounded-2xl bg-emerald-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-emerald-700">
+                Link copiado ✅
+              </p>
+            )}
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="grid gap-2 sm:grid-cols-3 md:min-w-[520px]">
             <button
               type="button"
               onClick={() => navigate(-1)}
@@ -337,15 +474,28 @@ export default function StudentReportPrintable() {
 
             <button
               type="button"
-              disabled={!report || loading || Boolean(err)}
-              onClick={() => window.print()}
+              disabled={!canUseActions}
+              onClick={handlePrint}
               className={
-                report && !loading && !err
+                canUseActions
                   ? 'rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-3 text-xs font-black uppercase tracking-wide text-white shadow-lg shadow-violet-200 transition hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98]'
                   : 'cursor-not-allowed rounded-2xl border border-neutral-200 bg-neutral-100 px-5 py-3 text-xs font-black uppercase tracking-wide text-neutral-400'
               }
             >
-              📄 Guardar / Imprimir PDF
+              📄 Imprimir PDF
+            </button>
+
+            <button
+              type="button"
+              disabled={!canUseActions}
+              onClick={handleShareLink}
+              className={
+                canUseActions
+                  ? 'rounded-2xl border border-violet-200 bg-white px-5 py-3 text-xs font-black uppercase tracking-wide text-violet-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-violet-50 active:scale-[0.98]'
+                  : 'cursor-not-allowed rounded-2xl border border-neutral-200 bg-neutral-100 px-5 py-3 text-xs font-black uppercase tracking-wide text-neutral-400'
+              }
+            >
+              🔗 Compartir link
             </button>
           </div>
         </div>
@@ -407,15 +557,15 @@ export default function StudentReportPrintable() {
         {!loading && !err && report && (
           <main
             id="print-area"
-            className="print-card overflow-hidden rounded-[2rem] border border-violet-100 bg-white shadow-2xl shadow-violet-100"
+            className="screen-print-card overflow-hidden rounded-[2rem] border border-violet-100 bg-white shadow-2xl shadow-violet-100"
           >
-            {/* ENCABEZADO COMPACTO */}
-            <section className="relative h-[38mm] overflow-hidden bg-gradient-to-br from-fuchsia-500 via-violet-600 to-indigo-600 px-6 py-4 text-white">
+            {/* ENCABEZADO */}
+            <section className="screen-header relative overflow-hidden bg-gradient-to-br from-fuchsia-500 via-violet-600 to-indigo-600 px-5 py-5 text-white md:px-6">
               <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-white/20 blur-3xl" />
               <div className="absolute -bottom-20 -left-16 h-52 w-52 rounded-full bg-cyan-200/20 blur-3xl" />
               <div className="absolute left-1/2 top-8 h-24 w-24 rounded-full bg-pink-300/20 blur-2xl" />
 
-              <div className="relative flex h-full items-center justify-between gap-5">
+              <div className="screen-header-inner relative flex h-full items-center justify-between gap-5">
                 <div className="flex min-w-0 items-center gap-4">
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-3xl shadow-lg shadow-violet-900/20">
                     📘
@@ -426,7 +576,7 @@ export default function StudentReportPrintable() {
                       Instituto Global-T
                     </p>
 
-                    <h2 className="mt-1 break-words text-3xl font-black leading-tight tracking-tight text-white">
+                    <h2 className="mt-1 break-words text-3xl font-black leading-tight tracking-tight text-white md:text-4xl">
                       {courseName}
                     </h2>
 
@@ -436,7 +586,7 @@ export default function StudentReportPrintable() {
                   </div>
                 </div>
 
-                <div className="shrink-0 rounded-[1.5rem] border border-white/30 bg-white px-6 py-4 text-center text-neutral-950 shadow-xl shadow-violet-900/20">
+                <div className="screen-period shrink-0 rounded-[1.5rem] border border-white/30 bg-white px-6 py-4 text-center text-neutral-950 shadow-xl shadow-violet-900/20">
                   <p className="text-xs font-black uppercase tracking-wide text-violet-500">
                     Período
                   </p>
@@ -448,10 +598,10 @@ export default function StudentReportPrintable() {
               </div>
             </section>
 
-            {/* CUERPO EN DOS COLUMNAS */}
-            <section className="grid h-[162mm] grid-cols-12 gap-3 overflow-hidden bg-gradient-to-br from-violet-50 via-white to-indigo-50 px-5 py-3">
-              {/* COLUMNA IZQUIERDA */}
-              <div className="col-span-5 space-y-3 overflow-hidden">
+            {/* CUERPO */}
+            <section className="screen-body-grid grid grid-cols-1 gap-4 overflow-hidden bg-gradient-to-br from-violet-50 via-white to-indigo-50 px-4 py-4 md:grid-cols-12 md:gap-3 md:px-5 md:py-3">
+              {/* IZQUIERDA */}
+              <div className="screen-left space-y-3 overflow-hidden md:col-span-5">
                 <div className="grid gap-2">
                   <InfoBox
                     icon="👩‍🎓"
@@ -466,19 +616,19 @@ export default function StudentReportPrintable() {
                   />
                 </div>
 
-                <div className="comment-box overflow-hidden rounded-[1.5rem] border border-violet-100 bg-white shadow-sm">
-                  <div className="bg-gradient-to-r from-fuchsia-500 via-violet-600 to-indigo-600 px-4 py-2.5 text-white">
-                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-white/75">
+                <div className="screen-comment-box overflow-hidden rounded-[1.5rem] border border-violet-100 bg-white shadow-sm">
+                  <div className="bg-gradient-to-r from-fuchsia-500 via-violet-600 to-indigo-600 px-4 py-3 text-white md:py-2.5">
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/75 md:text-[9px]">
                       Observaciones docentes
                     </p>
 
-                    <h3 className="mt-0.5 text-lg font-black">
+                    <h3 className="mt-0.5 text-xl font-black md:text-lg">
                       Comentarios
                     </h3>
                   </div>
 
                   <div className="bg-gradient-to-br from-violet-50 via-white to-indigo-50 p-3">
-                    <div className="h-[39mm] overflow-hidden whitespace-pre-wrap rounded-[1.25rem] border border-violet-100 bg-white p-3 text-[10.5px] leading-[1.38] text-neutral-800 shadow-sm">
+                    <div className="screen-comment-inner overflow-hidden whitespace-pre-wrap rounded-[1.25rem] border border-violet-100 bg-white p-4 text-sm leading-relaxed text-neutral-800 shadow-sm md:p-3 md:text-[10.5px] md:leading-[1.38]">
                       <div className="comment-text">
                         {report.comments?.trim()
                           ? report.comments
@@ -489,35 +639,35 @@ export default function StudentReportPrintable() {
                 </div>
               </div>
 
-              {/* COLUMNA DERECHA */}
-              <div className="col-span-7 space-y-3 overflow-hidden">
+              {/* DERECHA */}
+              <div className="screen-right space-y-3 overflow-hidden md:col-span-7">
                 <div>
-                  <div className="mb-2 flex items-end justify-between gap-4">
+                  <div className="mb-3 flex flex-col gap-3 md:mb-2 md:flex-row md:items-end md:justify-between">
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-[0.22em] text-violet-600">
+                      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-violet-600 md:text-[9px]">
                         Desempeño académico
                       </p>
 
-                      <h3 className="mt-0.5 text-xl font-black text-neutral-950">
+                      <h3 className="mt-0.5 text-2xl font-black text-neutral-950 md:text-xl">
                         Calificaciones del período
                       </h3>
 
-                      <p className="mt-0.5 text-[11px] font-semibold text-neutral-500">
+                      <p className="mt-0.5 text-xs font-semibold text-neutral-500 md:text-[11px]">
                         Escala institucional de valoración A–E.
                       </p>
                     </div>
 
-                    <div className="rounded-2xl bg-gradient-to-r from-violet-100 to-indigo-100 px-4 py-2 text-right">
-                      <p className="text-[9px] font-black uppercase tracking-wide text-violet-600">
+                    <div className="w-fit rounded-2xl bg-gradient-to-r from-violet-100 to-indigo-100 px-4 py-2 text-left md:text-right">
+                      <p className="text-[10px] font-black uppercase tracking-wide text-violet-600 md:text-[9px]">
                         Global-T
                       </p>
-                      <p className="text-[11px] font-black text-neutral-900">
+                      <p className="text-xs font-black text-neutral-900 md:text-[11px]">
                         Progress Report
                       </p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="screen-grades-grid grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-2.5">
                     <GradeCard label="Reading" value={grades.reading} />
                     <GradeCard label="Writing" value={grades.writing} />
                     <GradeCard label="Listening" value={grades.listening} />
@@ -527,18 +677,18 @@ export default function StudentReportPrintable() {
                   </div>
                 </div>
 
-                <div className="rounded-[1.5rem] border border-violet-100 bg-white p-3 shadow-sm">
-                  <div className="mb-2">
-                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-violet-600">
+                <div className="rounded-[1.5rem] border border-violet-100 bg-white p-4 shadow-sm md:p-3">
+                  <div className="mb-3 md:mb-2">
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-violet-600 md:text-[9px]">
                       Referencia
                     </p>
 
-                    <h3 className="mt-0.5 text-lg font-black text-neutral-950">
+                    <h3 className="mt-0.5 text-xl font-black text-neutral-950 md:text-lg">
                       Escala de calificación
                     </h3>
                   </div>
 
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className="screen-scale-grid grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
                     <ScaleItem grade="A" text="90–100" />
                     <ScaleItem grade="B" text="80–89" />
                     <ScaleItem grade="C" text="70–79" />
@@ -565,16 +715,16 @@ function InfoBox({
   value: string | number;
 }) {
   return (
-    <div className="relative h-[22mm] overflow-hidden rounded-[1.35rem] border border-violet-100 bg-white p-3 shadow-sm">
+    <div className="relative overflow-hidden rounded-[1.35rem] border border-violet-100 bg-white p-4 shadow-sm md:h-[22mm] md:p-3">
       <div className="absolute right-4 top-4 text-3xl opacity-20">
         {icon}
       </div>
 
-      <p className="text-[9px] font-black uppercase tracking-wide text-violet-500">
+      <p className="text-[10px] font-black uppercase tracking-wide text-violet-500 md:text-[9px]">
         {label}
       </p>
 
-      <p className="mt-1 break-words text-sm font-black text-neutral-950">
+      <p className="mt-1.5 break-words text-base font-black text-neutral-950 md:mt-1 md:text-sm">
         {value}
       </p>
     </div>
@@ -589,10 +739,10 @@ function GradeCard({
   value?: Grade;
 }) {
   return (
-    <div className="print-break-inside h-[24mm] overflow-hidden rounded-[1.25rem] border border-neutral-200 bg-white shadow-sm">
+    <div className="print-break-inside overflow-hidden rounded-[1.25rem] border border-neutral-200 bg-white shadow-sm md:h-[24mm]">
       <div className={`h-1.5 bg-gradient-to-r ${gradeAccent(value)}`} />
 
-      <div className="flex items-center justify-between gap-3 p-2.5">
+      <div className="flex items-center justify-between gap-3 p-3 md:p-2.5">
         <div>
           <p className="text-sm font-black text-neutral-950">
             {label}
@@ -603,7 +753,7 @@ function GradeCard({
           </p>
         </div>
 
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-base font-black ${gradeChip(value)}`}>
+        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-base font-black md:h-10 md:w-10 ${gradeChip(value)}`}>
           {value ?? '—'}
         </span>
       </div>
@@ -619,15 +769,15 @@ function ScaleItem({
   text: string;
 }) {
   return (
-    <div className={`h-[19mm] overflow-hidden rounded-2xl border bg-white text-center shadow-sm ${gradeChip(grade)}`}>
+    <div className={`overflow-hidden rounded-2xl border bg-white text-center shadow-sm md:h-[19mm] ${gradeChip(grade)}`}>
       <div className={`h-1.5 bg-gradient-to-r ${gradeAccent(grade)}`} />
 
-      <div className="px-2 py-1.5">
+      <div className="px-2 py-2 md:py-1.5">
         <p className="text-base font-black">
           {grade}
         </p>
 
-        <p className="mt-0.5 text-[9px] font-bold">
+        <p className="mt-0.5 text-[10px] font-bold md:text-[9px]">
           {text}
         </p>
       </div>
