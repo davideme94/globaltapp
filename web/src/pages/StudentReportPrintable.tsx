@@ -147,7 +147,6 @@ export default function StudentReportPrintable() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [report, setReport] = useState<Report | null>(null);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -196,34 +195,6 @@ export default function StudentReportPrintable() {
     }, 150);
   };
 
-  const handleShareLink = async () => {
-    const url = window.location.href;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Informe parcial Global-T',
-          text: 'Abrir informe parcial para guardar o compartir.',
-          url,
-        });
-        return;
-      } catch {
-        // Si el usuario cancela compartir, seguimos con copiar.
-      }
-    }
-
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-
-      setTimeout(() => {
-        setCopied(false);
-      }, 2500);
-    } catch {
-      alert('Copiá este link y abrilo en Chrome: ' + url);
-    }
-  };
-
   return (
     <div className="print-page min-h-screen bg-[radial-gradient(circle_at_top_left,#f5d0fe_0,#eef2ff_35%,#ffffff_75%)] px-3 py-4 text-neutral-950 sm:px-6 md:py-8">
       <style>
@@ -231,6 +202,10 @@ export default function StudentReportPrintable() {
           @media screen and (max-width: 767px) {
             .mobile-action-card {
               border-radius: 28px !important;
+            }
+
+            .desktop-actions {
+              display: none !important;
             }
 
             .screen-print-card {
@@ -445,25 +420,19 @@ export default function StudentReportPrintable() {
         <div className="no-print mobile-action-card flex flex-col gap-4 rounded-[2rem] border border-white/70 bg-white/85 p-5 shadow-xl shadow-violet-100/60 backdrop-blur md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-wide text-violet-600">
-              Vista imprimible horizontal
+              Vista completa del informe
             </p>
 
             <h1 className="mt-1 text-2xl font-black tracking-tight text-neutral-950 md:text-3xl">
-              Informe parcial para PDF
+              Informe parcial
             </h1>
 
             <p className="mt-2 text-sm font-semibold leading-relaxed text-neutral-500 md:text-base">
-              Formato A4 horizontal. En celular podés compartir el link y abrirlo en Chrome.
+              Visualización completa del informe parcial del alumno/a.
             </p>
-
-            {copied && (
-              <p className="mt-3 rounded-2xl bg-emerald-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-emerald-700">
-                Link copiado ✅
-              </p>
-            )}
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-3 md:min-w-[520px]">
+          <div className="desktop-actions grid gap-2 md:min-w-[360px] md:grid-cols-2">
             <button
               type="button"
               onClick={() => navigate(-1)}
@@ -483,19 +452,6 @@ export default function StudentReportPrintable() {
               }
             >
               📄 Imprimir PDF
-            </button>
-
-            <button
-              type="button"
-              disabled={!canUseActions}
-              onClick={handleShareLink}
-              className={
-                canUseActions
-                  ? 'rounded-2xl border border-violet-200 bg-white px-5 py-3 text-xs font-black uppercase tracking-wide text-violet-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-violet-50 active:scale-[0.98]'
-                  : 'cursor-not-allowed rounded-2xl border border-neutral-200 bg-neutral-100 px-5 py-3 text-xs font-black uppercase tracking-wide text-neutral-400'
-              }
-            >
-              🔗 Compartir link
             </button>
           </div>
         </div>
