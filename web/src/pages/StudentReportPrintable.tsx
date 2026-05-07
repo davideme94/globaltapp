@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 
@@ -99,10 +99,6 @@ const formatDate = (date?: string) => {
 };
 
 async function getPrintableReport(reportId: string): Promise<Report> {
-  /*
-    Primero intenta usar un método del objeto api si existe.
-    Esto evita romper si tu lib/api ya maneja tokens, cookies o BASE_URL internamente.
-  */
   const apiAny = api as any;
 
   if (apiAny?.partials?.print) {
@@ -115,10 +111,6 @@ async function getPrintableReport(reportId: string): Promise<Report> {
     return (data.report ?? data.row ?? data) as Report;
   }
 
-  /*
-    Fallback directo.
-    En producción suele funcionar porque el frontend va contra /api.
-  */
   const base =
     import.meta.env.VITE_API_URL ||
     '/api';
@@ -194,16 +186,6 @@ export default function StudentReportPrintable() {
   const studentName = getName(report?.student, 'Alumno/a');
   const teacherName = getName(report?.teacher, 'Docente');
   const updated = formatDate(report?.updatedAt || report?.createdAt);
-
-  const studentEmail = useMemo(() => {
-    if (!report?.student || typeof report.student === 'string') return '';
-    return report.student.email || '';
-  }, [report]);
-
-  const teacherEmail = useMemo(() => {
-    if (!report?.teacher || typeof report.teacher === 'string') return '';
-    return report.teacher.email || '';
-  }, [report]);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#f5d0fe_0,#eef2ff_35%,#ffffff_70%)] px-3 py-4 text-neutral-950 sm:px-6 md:py-8">
@@ -406,13 +388,11 @@ export default function StudentReportPrintable() {
               <InfoBox
                 label="Alumno/a"
                 value={studentName}
-                detail={studentEmail}
               />
 
               <InfoBox
                 label="Docente"
                 value={teacherName}
-                detail={teacherEmail}
               />
 
               <InfoBox
@@ -503,11 +483,9 @@ export default function StudentReportPrintable() {
 function InfoBox({
   label,
   value,
-  detail,
 }: {
   label: string;
   value: string | number;
-  detail?: string;
 }) {
   return (
     <div className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
@@ -518,12 +496,6 @@ function InfoBox({
       <p className="mt-1 break-words text-sm font-black text-neutral-900">
         {value}
       </p>
-
-      {detail && (
-        <p className="mt-1 break-words text-[11px] font-semibold text-neutral-400">
-          {detail}
-        </p>
-      )}
     </div>
   );
 }
