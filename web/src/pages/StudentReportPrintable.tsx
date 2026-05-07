@@ -188,49 +188,88 @@ export default function StudentReportPrintable() {
   const teacherName = getName(report?.teacher, 'Docente');
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#f5d0fe_0,#eef2ff_35%,#ffffff_75%)] px-3 py-4 text-neutral-950 sm:px-6 md:py-8">
+    <div className="print-page min-h-screen bg-[radial-gradient(circle_at_top_left,#f5d0fe_0,#eef2ff_35%,#ffffff_75%)] px-3 py-4 text-neutral-950 sm:px-6 md:py-8">
       <style>
         {`
           @media print {
             @page {
               size: A4 landscape;
-              margin: 6mm;
+              margin: 0;
             }
 
             html,
-            body {
-              width: 297mm;
-              height: 210mm;
-              background: white !important;
+            body,
+            #root {
+              width: 297mm !important;
+              height: 210mm !important;
+              min-width: 297mm !important;
+              min-height: 210mm !important;
+              max-width: 297mm !important;
+              max-height: 210mm !important;
+              margin: 0 !important;
+              padding: 0 !important;
               overflow: hidden !important;
+              background: white !important;
             }
 
             * {
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
+              box-sizing: border-box !important;
             }
 
             body * {
-              visibility: hidden;
+              visibility: hidden !important;
             }
 
             #print-area,
             #print-area * {
-              visibility: visible;
+              visibility: visible !important;
+            }
+
+            .print-page {
+              width: 297mm !important;
+              height: 210mm !important;
+              min-height: 0 !important;
+              max-height: 210mm !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: hidden !important;
+              background: white !important;
+            }
+
+            .print-wrapper {
+              width: 297mm !important;
+              height: 210mm !important;
+              max-width: none !important;
+              margin: 0 !important;
+              padding: 5mm !important;
+              overflow: hidden !important;
             }
 
             #print-area {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 285mm;
-              min-height: 198mm;
-              max-height: 198mm;
-              overflow: hidden;
+              position: fixed !important;
+              left: 5mm !important;
+              top: 5mm !important;
+              width: 287mm !important;
+              height: 200mm !important;
+              min-height: 200mm !important;
+              max-height: 200mm !important;
+              overflow: hidden !important;
+              page-break-after: avoid !important;
+              page-break-before: avoid !important;
+              page-break-inside: avoid !important;
+              break-after: avoid !important;
+              break-before: avoid !important;
+              break-inside: avoid !important;
             }
 
             .no-print {
               display: none !important;
+              visibility: hidden !important;
+              height: 0 !important;
+              max-height: 0 !important;
+              overflow: hidden !important;
             }
 
             .print-card {
@@ -239,14 +278,38 @@ export default function StudentReportPrintable() {
             }
 
             .print-break-inside {
-              break-inside: avoid;
-              page-break-inside: avoid;
+              break-inside: avoid !important;
+              page-break-inside: avoid !important;
+            }
+
+            .comment-box {
+              height: 54mm !important;
+              max-height: 54mm !important;
+              overflow: hidden !important;
+            }
+
+            .comment-text {
+              display: -webkit-box !important;
+              -webkit-line-clamp: 10 !important;
+              -webkit-box-orient: vertical !important;
+              overflow: hidden !important;
+              text-overflow: ellipsis !important;
+            }
+          }
+
+          @media screen {
+            .comment-text {
+              display: -webkit-box;
+              -webkit-line-clamp: 9;
+              -webkit-box-orient: vertical;
+              overflow: hidden;
+              text-overflow: ellipsis;
             }
           }
         `}
       </style>
 
-      <div className="mx-auto w-full max-w-6xl space-y-5">
+      <div className="print-wrapper mx-auto w-full max-w-6xl space-y-5">
         {/* ACCIONES */}
         <div className="no-print flex flex-col gap-3 rounded-[2rem] border border-white/70 bg-white/85 p-4 shadow-xl shadow-violet-100/60 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -347,12 +410,12 @@ export default function StudentReportPrintable() {
             className="print-card overflow-hidden rounded-[2rem] border border-violet-100 bg-white shadow-2xl shadow-violet-100"
           >
             {/* ENCABEZADO COMPACTO */}
-            <section className="relative overflow-hidden bg-gradient-to-br from-fuchsia-500 via-violet-600 to-indigo-600 px-6 py-5 text-white">
+            <section className="relative h-[38mm] overflow-hidden bg-gradient-to-br from-fuchsia-500 via-violet-600 to-indigo-600 px-6 py-4 text-white">
               <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-white/20 blur-3xl" />
               <div className="absolute -bottom-20 -left-16 h-52 w-52 rounded-full bg-cyan-200/20 blur-3xl" />
               <div className="absolute left-1/2 top-8 h-24 w-24 rounded-full bg-pink-300/20 blur-2xl" />
 
-              <div className="relative flex items-center justify-between gap-5">
+              <div className="relative flex h-full items-center justify-between gap-5">
                 <div className="flex min-w-0 items-center gap-4">
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-3xl shadow-lg shadow-violet-900/20">
                     📘
@@ -386,10 +449,10 @@ export default function StudentReportPrintable() {
             </section>
 
             {/* CUERPO EN DOS COLUMNAS */}
-            <section className="grid grid-cols-12 gap-4 bg-gradient-to-br from-violet-50 via-white to-indigo-50 px-5 py-4">
+            <section className="grid h-[162mm] grid-cols-12 gap-3 overflow-hidden bg-gradient-to-br from-violet-50 via-white to-indigo-50 px-5 py-3">
               {/* COLUMNA IZQUIERDA */}
-              <div className="col-span-5 space-y-4">
-                <div className="grid gap-3">
+              <div className="col-span-5 space-y-3 overflow-hidden">
+                <div className="grid gap-2">
                   <InfoBox
                     icon="👩‍🎓"
                     label="Alumno/a"
@@ -403,56 +466,58 @@ export default function StudentReportPrintable() {
                   />
                 </div>
 
-                <div className="overflow-hidden rounded-[1.5rem] border border-violet-100 bg-white shadow-sm">
-                  <div className="bg-gradient-to-r from-fuchsia-500 via-violet-600 to-indigo-600 px-4 py-3 text-white">
-                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/75">
+                <div className="comment-box overflow-hidden rounded-[1.5rem] border border-violet-100 bg-white shadow-sm">
+                  <div className="bg-gradient-to-r from-fuchsia-500 via-violet-600 to-indigo-600 px-4 py-2.5 text-white">
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-white/75">
                       Observaciones docentes
                     </p>
 
-                    <h3 className="mt-0.5 text-xl font-black">
+                    <h3 className="mt-0.5 text-lg font-black">
                       Comentarios
                     </h3>
                   </div>
 
-                  <div className="bg-gradient-to-br from-violet-50 via-white to-indigo-50 p-4">
-                    <div className="min-h-[170px] max-h-[205px] overflow-hidden whitespace-pre-wrap rounded-[1.25rem] border border-violet-100 bg-white p-4 text-[12px] leading-relaxed text-neutral-800 shadow-sm">
-                      {report.comments?.trim()
-                        ? report.comments
-                        : <span className="text-neutral-500">Sin comentarios.</span>}
+                  <div className="bg-gradient-to-br from-violet-50 via-white to-indigo-50 p-3">
+                    <div className="h-[39mm] overflow-hidden whitespace-pre-wrap rounded-[1.25rem] border border-violet-100 bg-white p-3 text-[10.5px] leading-[1.38] text-neutral-800 shadow-sm">
+                      <div className="comment-text">
+                        {report.comments?.trim()
+                          ? report.comments
+                          : <span className="text-neutral-500">Sin comentarios.</span>}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* COLUMNA DERECHA */}
-              <div className="col-span-7 space-y-4">
+              <div className="col-span-7 space-y-3 overflow-hidden">
                 <div>
-                  <div className="mb-3 flex items-end justify-between gap-4">
+                  <div className="mb-2 flex items-end justify-between gap-4">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-violet-600">
+                      <p className="text-[9px] font-black uppercase tracking-[0.22em] text-violet-600">
                         Desempeño académico
                       </p>
 
-                      <h3 className="mt-0.5 text-2xl font-black text-neutral-950">
+                      <h3 className="mt-0.5 text-xl font-black text-neutral-950">
                         Calificaciones del período
                       </h3>
 
-                      <p className="mt-0.5 text-xs font-semibold text-neutral-500">
+                      <p className="mt-0.5 text-[11px] font-semibold text-neutral-500">
                         Escala institucional de valoración A–E.
                       </p>
                     </div>
 
                     <div className="rounded-2xl bg-gradient-to-r from-violet-100 to-indigo-100 px-4 py-2 text-right">
-                      <p className="text-[10px] font-black uppercase tracking-wide text-violet-600">
+                      <p className="text-[9px] font-black uppercase tracking-wide text-violet-600">
                         Global-T
                       </p>
-                      <p className="text-xs font-black text-neutral-900">
+                      <p className="text-[11px] font-black text-neutral-900">
                         Progress Report
                       </p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2.5">
                     <GradeCard label="Reading" value={grades.reading} />
                     <GradeCard label="Writing" value={grades.writing} />
                     <GradeCard label="Listening" value={grades.listening} />
@@ -462,13 +527,13 @@ export default function StudentReportPrintable() {
                   </div>
                 </div>
 
-                <div className="rounded-[1.5rem] border border-violet-100 bg-white p-4 shadow-sm">
-                  <div className="mb-3">
-                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-violet-600">
+                <div className="rounded-[1.5rem] border border-violet-100 bg-white p-3 shadow-sm">
+                  <div className="mb-2">
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-violet-600">
                       Referencia
                     </p>
 
-                    <h3 className="mt-0.5 text-xl font-black text-neutral-950">
+                    <h3 className="mt-0.5 text-lg font-black text-neutral-950">
                       Escala de calificación
                     </h3>
                   </div>
@@ -500,16 +565,16 @@ function InfoBox({
   value: string | number;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-[1.5rem] border border-violet-100 bg-white p-4 shadow-sm">
+    <div className="relative h-[22mm] overflow-hidden rounded-[1.35rem] border border-violet-100 bg-white p-3 shadow-sm">
       <div className="absolute right-4 top-4 text-3xl opacity-20">
         {icon}
       </div>
 
-      <p className="text-[10px] font-black uppercase tracking-wide text-violet-500">
+      <p className="text-[9px] font-black uppercase tracking-wide text-violet-500">
         {label}
       </p>
 
-      <p className="mt-1.5 break-words text-base font-black text-neutral-950">
+      <p className="mt-1 break-words text-sm font-black text-neutral-950">
         {value}
       </p>
     </div>
@@ -524,21 +589,21 @@ function GradeCard({
   value?: Grade;
 }) {
   return (
-    <div className="print-break-inside overflow-hidden rounded-[1.35rem] border border-neutral-200 bg-white shadow-sm">
+    <div className="print-break-inside h-[24mm] overflow-hidden rounded-[1.25rem] border border-neutral-200 bg-white shadow-sm">
       <div className={`h-1.5 bg-gradient-to-r ${gradeAccent(value)}`} />
 
-      <div className="flex items-center justify-between gap-3 p-3">
+      <div className="flex items-center justify-between gap-3 p-2.5">
         <div>
           <p className="text-sm font-black text-neutral-950">
             {label}
           </p>
 
-          <p className="mt-0.5 text-[11px] font-bold text-neutral-500">
+          <p className="mt-0.5 text-[10px] font-bold text-neutral-500">
             {value ? `${GRADE_LABEL[value]} · ${GRADE_RANGE[value]}` : 'Sin calificación'}
           </p>
         </div>
 
-        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-lg font-black ${gradeChip(value)}`}>
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-base font-black ${gradeChip(value)}`}>
           {value ?? '—'}
         </span>
       </div>
@@ -554,15 +619,15 @@ function ScaleItem({
   text: string;
 }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border bg-white text-center shadow-sm ${gradeChip(grade)}`}>
+    <div className={`h-[19mm] overflow-hidden rounded-2xl border bg-white text-center shadow-sm ${gradeChip(grade)}`}>
       <div className={`h-1.5 bg-gradient-to-r ${gradeAccent(grade)}`} />
 
-      <div className="px-2 py-2">
-        <p className="text-lg font-black">
+      <div className="px-2 py-1.5">
+        <p className="text-base font-black">
           {grade}
         </p>
 
-        <p className="mt-0.5 text-[10px] font-bold">
+        <p className="mt-0.5 text-[9px] font-bold">
           {text}
         </p>
       </div>
