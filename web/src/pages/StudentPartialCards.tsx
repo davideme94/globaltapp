@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 
 type Term = 'MAY' | 'OCT';
@@ -296,7 +297,9 @@ function TermCard({
   report?: Report;
   accent: string;
 }) {
+  const navigate = useNavigate();
   const g = report?.grades ?? {};
+  const canShare = Boolean(report?._id);
 
   return (
     <div className="group relative overflow-hidden rounded-[1.75rem] border border-neutral-200 bg-white shadow-sm transition hover:border-violet-200 hover:shadow-lg">
@@ -334,6 +337,14 @@ function TermCard({
             <p className="mt-1 text-xs text-neutral-500">
               Cuando el informe esté cargado, vas a verlo acá.
             </p>
+
+            <button
+              type="button"
+              disabled
+              className="mt-5 w-full cursor-not-allowed rounded-2xl border border-neutral-200 bg-neutral-100 px-4 py-3 text-xs font-black uppercase tracking-wide text-neutral-400 sm:w-auto"
+            >
+              📄 Sin informe para PDF
+            </button>
           </div>
         ) : (
           <>
@@ -359,6 +370,36 @@ function TermCard({
             </div>
 
             <Legend />
+
+            <div className="rounded-3xl border border-violet-100 bg-gradient-to-r from-violet-50 via-white to-indigo-50 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-black text-neutral-800">
+                    Informe listo para guardar
+                  </p>
+
+                  <p className="mt-1 text-xs font-semibold text-neutral-500">
+                    Abrí la vista imprimible para guardar o compartir este informe en PDF.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={!canShare}
+                  onClick={() => {
+                    if (!report?._id) return;
+                    navigate(`/informes/${report._id}/print`);
+                  }}
+                  className={
+                    canShare
+                      ? 'w-full rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-3 text-xs font-black uppercase tracking-wide text-white shadow-lg shadow-violet-100 transition hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98] sm:w-auto'
+                      : 'w-full cursor-not-allowed rounded-2xl border border-neutral-200 bg-neutral-100 px-5 py-3 text-xs font-black uppercase tracking-wide text-neutral-400 sm:w-auto'
+                  }
+                >
+                  📄 Guardar / Compartir PDF
+                </button>
+              </div>
+            </div>
           </>
         )}
       </div>
