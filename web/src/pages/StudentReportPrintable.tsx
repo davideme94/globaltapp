@@ -7,9 +7,9 @@ type Grade = 'A' | 'B' | 'C' | 'D' | 'E';
 
 type Report = {
   _id: string | null;
-  course: { _id: string; name: string; year: number } | string;
-  student: string | { _id: string; name: string };
-  teacher?: string | { _id: string; name: string };
+  course: { _id: string; name: string; year: number; campus?: string } | string;
+  student: string | { _id: string; name: string; email?: string };
+  teacher?: string | { _id: string; name: string; email?: string };
   year: number;
   term: Term;
   grades?: {
@@ -64,7 +64,7 @@ const gradeChip = (g?: Grade) => {
 };
 
 const getName = (
-  value: string | { _id?: string; name?: string } | undefined,
+  value: string | { _id?: string; name?: string; email?: string } | undefined,
   fallback: string
 ) => {
   if (!value) return fallback;
@@ -98,28 +98,82 @@ const formatDate = (date?: string) => {
   }
 };
 
+async function getPrintableReport(reportId: string): Promise<Report> {
+  /*
+    Primero intenta usar un método del objeto api si existe.
+    Esto evita romper si tu lib/api ya maneja tokens, cookies o BASE_URL internamente.
+  */
+  const apiAny = api as any;
+
+  if (apiAny?.partials?.print) {
+    const data = await apiAny.partials.print(reportId);
+    return (data.report ?? data.row ?? data) as Report;
+  }
+
+  if (apiAny?.get) {
+    const data = await apiAny.get(`/partials/${reportId}/print`);
+    return (data.report ?? data.row ?? data) as Report;
+  }
+
+  /*
+    Fallback directo.
+    En producción suele funcionar porque el frontend va contra /api.
+  */
+  const base =
+    import.meta.env.VITE_API_URL ||
+    '/api';
+
+  const token =
+    localStorage.getItem('token') ||
+    localStorage.getItem('authToken') ||
+    localStorage.getItem('accessToken') ||
+    '';
+
+  const res = await fetch(`${base}/partials/${reportId}/print`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || 'No se pudo cargar el informe.');
+  }
+
+  return (data.report ?? data.row ?? data) as Report;
+}
+
 export default function StudentReportPrintable() {
   const { reportId } = useParams();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-  const [reports, setReports] = useState<Report[]>([]);
+  const [report, setReport] = useState<Report | null>(null);
 
   useEffect(() => {
     let alive = true;
 
     (async () => {
+      if (!reportId) {
+        setLoading(false);
+        setErr('No se encontró el ID del informe.');
+        return;
+      }
+
       setLoading(true);
       setErr(null);
 
       try {
-        const r = await api.partials.mine() as any;
-        const list: Report[] = (r.reports ?? r.rows ?? []) as Report[];
+        const printableReport = await getPrintableReport(reportId);
 
         if (!alive) return;
 
-        setReports(list);
+        setReport(printableReport);
       } catch (e: any) {
         if (!alive) return;
 
@@ -132,11 +186,7 @@ export default function StudentReportPrintable() {
     return () => {
       alive = false;
     };
-  }, []);
-
-  const report = useMemo(() => {
-    return reports.find((item) => item._id === reportId) ?? null;
-  }, [reports, reportId]);
+  }, [reportId]);
 
   const grades = report?.grades ?? {};
   const courseName = getCourseName(report);
@@ -144,6 +194,16 @@ export default function StudentReportPrintable() {
   const studentName = getName(report?.student, 'Alumno/a');
   const teacherName = getName(report?.teacher, 'Docente');
   const updated = formatDate(report?.updatedAt || report?.createdAt);
+
+  const studentEmail = useMemo(() => {
+    if (!report?.student || typeof report.student === 'string') return '';
+    return report.student.email || '';
+  }, [report]);
+
+  const teacherEmail = useMemo(() => {
+    if (!report?.teacher || typeof report.teacher === 'string') return '';
+    return report.teacher.email || '';
+  }, [report]);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#f5d0fe_0,#eef2ff_35%,#ffffff_70%)] px-3 py-4 text-neutral-950 sm:px-6 md:py-8">
@@ -267,6 +327,14 @@ export default function StudentReportPrintable() {
             <p className="mt-1 text-sm font-bold">
               {err}
             </p>
+
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="mt-5 rounded-2xl bg-rose-600 px-5 py-3 text-xs font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-rose-700"
+            >
+              Volver
+            </button>
           </section>
         )}
 
@@ -338,11 +406,13 @@ export default function StudentReportPrintable() {
               <InfoBox
                 label="Alumno/a"
                 value={studentName}
+                detail={studentEmail}
               />
 
               <InfoBox
                 label="Docente"
                 value={teacherName}
+                detail={teacherEmail}
               />
 
               <InfoBox
@@ -433,9 +503,11 @@ export default function StudentReportPrintable() {
 function InfoBox({
   label,
   value,
+  detail,
 }: {
   label: string;
   value: string | number;
+  detail?: string;
 }) {
   return (
     <div className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
@@ -446,6 +518,12 @@ function InfoBox({
       <p className="mt-1 break-words text-sm font-black text-neutral-900">
         {value}
       </p>
+
+      {detail && (
+        <p className="mt-1 break-words text-[11px] font-semibold text-neutral-400">
+          {detail}
+        </p>
+      )}
     </div>
   );
 }
