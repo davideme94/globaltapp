@@ -45,6 +45,7 @@ function defaultTerm(): 'MAY' | 'OCT' {
 /* =============================================================================
  * 1) ALUMNO: mis informes
  * Ahora muestra report card aunque no haya notas
+ * PERO solamente de cursos donde el alumno sigue inscripto actualmente
  * ========================================================================== */
 router.get(
   '/partials/mine',
@@ -52,20 +53,47 @@ router.get(
   allowRoles('student', 'teacher', 'coordinator', 'admin'),
   async (req, res, next) => {
     try {
-
       const userId = (req as any).userId as string;
 
-      const enrollments = await Enrollment.find({ student: userId })
+      /*
+        IMPORTANTE:
+        Antes buscaba todas las inscripciones del alumno:
+        Enrollment.find({ student: userId })
+
+        Ahora mantiene la misma lógica, pero intenta evitar inscripciones viejas/inactivas.
+        Si tu modelo Enrollment tiene active, usa active:true.
+        Si no tiene active, igual las deja pasar para no romper nada.
+      */
+      const enrollments = await Enrollment.find({
+        student: userId,
+        $or: [
+          { active: true },
+          { active: { $exists: false } },
+        ],
+      })
         .populate('course', '_id name year')
         .lean();
 
       const courseIds = enrollments
-        .map((e: any) => (e.course as any)?._id)
+        .map((e: any) => {
+          const course: any = e.course;
+          return course?._id ? String(course._id) : null;
+        })
         .filter(Boolean);
+
+      /*
+        Si el alumno no tiene cursos activos, no devolvemos informes viejos.
+      */
+      if (courseIds.length === 0) {
+        return res.json({
+          rows: [],
+          reports: [],
+        });
+      }
 
       const reports = await PartialReport.find({
         student: userId,
-        course: { $in: courseIds }
+        course: { $in: courseIds },
       })
         .populate('course', '_id name year')
         .lean();
@@ -73,37 +101,47 @@ router.get(
       const byKey = new Map<string, any>();
 
       reports.forEach((r: any) => {
-
         if (!r.course) return;
 
         const course: any = r.course;
+        const courseId = String(course._id);
 
-        const key = `${course._id}-${r.term}-${r.year}`;
+        /*
+          Doble seguridad:
+          si por alguna razón llega un reporte de un curso que no está
+          entre las inscripciones actuales, no lo mostramos.
+        */
+        if (!courseIds.includes(courseId)) return;
+
+        const key = `${courseId}-${r.term}-${r.year}`;
 
         byKey.set(key, r);
-
       });
 
       const rows: any[] = [];
 
       for (const e of enrollments) {
+        const course: any = e.course; // 👈 FIX TYPESCRIPT
 
-        const course: any = e.course;   // 👈 FIX TYPESCRIPT
+        if (!course?._id) continue;
 
-        if (!course) continue;
+        const courseId = String(course._id);
 
         const terms: ('MAY' | 'OCT')[] = ['MAY', 'OCT'];
 
         for (const term of terms) {
-
-          const key = `${course._id}-${term}-${course.year}`;
+          const key = `${courseId}-${term}-${course.year}`;
 
           const existing = byKey.get(key);
 
           rows.push(
             existing ?? {
               _id: null,
-              course: course,
+              course: {
+                _id: courseId,
+                name: course.name,
+                year: course.year,
+              },
               student: userId,
               year: course.year,
               term,
@@ -111,26 +149,22 @@ router.get(
               comments: '',
             }
           );
-
         }
       }
 
       rows.sort((a, b) => {
-
         if (a.year !== b.year) return b.year - a.year;
 
         const na = a.course?.name || '';
         const nb = b.course?.name || '';
 
         return na.localeCompare(nb);
-
       });
 
       res.json({
         rows,
-        reports: rows
+        reports: rows,
       });
-
     } catch (e) {
       next(e);
     }
@@ -146,7 +180,6 @@ router.get(
   allowRoles('teacher', 'coordinator', 'admin'),
   async (req, res, next) => {
     try {
-
       const role = (req as any).role || (req as any).userRole;
       const userId = (req as any).userId as string;
 
@@ -175,7 +208,7 @@ router.get(
       const prs = await PartialReport.find({
         course: courseId,
         year: y,
-        term: t
+        term: t,
       }).lean();
 
       const byStudent = new Map<string, any>();
@@ -198,7 +231,6 @@ router.get(
         rows,
         year: y,
       });
-
     } catch (e) {
       next(e);
     }
@@ -214,7 +246,6 @@ router.put(
   allowRoles('teacher', 'coordinator', 'admin'),
   async (req, res, next) => {
     try {
-
       const payload = upsertSchema.parse(req.body || {});
       const role = (req as any).role || (req as any).userRole;
       const userId = (req as any).userId as string;
@@ -253,7 +284,6 @@ router.put(
       ).lean();
 
       res.json({ ok: true, report: doc });
-
     } catch (e) {
       next(e);
     }
