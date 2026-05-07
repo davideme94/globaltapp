@@ -378,23 +378,21 @@ export default function StudentReportPrintable() {
             }
 
             .screen-comment-box {
-              height: 54mm !important;
-              max-height: 54mm !important;
+              height: 78mm !important;
+              max-height: 78mm !important;
               overflow: hidden !important;
             }
 
             .screen-comment-inner {
-              height: 39mm !important;
-              max-height: 39mm !important;
+              height: 63mm !important;
+              max-height: 63mm !important;
               overflow: hidden !important;
             }
 
             .comment-text {
-              display: -webkit-box !important;
-              -webkit-line-clamp: 10 !important;
-              -webkit-box-orient: vertical !important;
+              display: block !important;
               overflow: hidden !important;
-              text-overflow: ellipsis !important;
+              text-overflow: clip !important;
             }
 
             .print-break-inside {
@@ -405,11 +403,9 @@ export default function StudentReportPrintable() {
 
           @media screen and (min-width: 768px) {
             .comment-text {
-              display: -webkit-box;
-              -webkit-line-clamp: 9;
-              -webkit-box-orient: vertical;
-              overflow: hidden;
-              text-overflow: ellipsis;
+              display: block;
+              overflow: visible;
+              text-overflow: clip;
             }
           }
         `}
@@ -584,7 +580,7 @@ export default function StudentReportPrintable() {
                   </div>
 
                   <div className="bg-gradient-to-br from-violet-50 via-white to-indigo-50 p-3">
-                    <div className="screen-comment-inner overflow-hidden whitespace-pre-wrap rounded-[1.25rem] border border-violet-100 bg-white p-4 text-sm leading-relaxed text-neutral-800 shadow-sm md:p-3 md:text-[10.5px] md:leading-[1.38]">
+                    <div className="screen-comment-inner overflow-hidden whitespace-pre-wrap rounded-[1.25rem] border border-violet-100 bg-white p-4 text-sm leading-relaxed text-neutral-800 shadow-sm md:p-3 md:text-[9.5px] md:leading-[1.28]">
                       <div className="comment-text">
                         {report.comments?.trim()
                           ? report.comments
