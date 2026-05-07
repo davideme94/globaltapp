@@ -379,7 +379,7 @@ function TermCard({
                   </p>
 
                   <p className="mt-1 text-xs font-semibold text-neutral-500">
-                    Abrí la vista imprimible para guardar o compartir este informe en PDF.
+                    Abrí la vista completa para ver el informe con mejor presentación.
                   </p>
                 </div>
 
@@ -396,7 +396,7 @@ function TermCard({
                       : 'w-full cursor-not-allowed rounded-2xl border border-neutral-200 bg-neutral-100 px-5 py-3 text-xs font-black uppercase tracking-wide text-neutral-400 sm:w-auto'
                   }
                 >
-                  📄 Guardar / Compartir PDF
+                  📄 Ver completo
                 </button>
               </div>
             </div>
