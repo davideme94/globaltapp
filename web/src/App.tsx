@@ -39,6 +39,7 @@ import CourseMaterialsPage from './pages/CourseMaterialsPage';
 import StudentProfile from './pages/StudentProfile';
 import StudentCommunications from './pages/StudentCommunications';
 import StudentPartialCards from './pages/StudentPartialCards';
+import StudentReportPrintable from './pages/StudentReportPrintable';
 import StudentFinalCards from './pages/StudentFinalCards';
 import PrintFinalReport from './pages/PrintFinalReport';
 import StudentPractice from './pages/StudentPractice';
@@ -861,6 +862,7 @@ export default function App() {
           {/* Alumno */}
           <Route path="/student/communications" element={<StudentCommunications />} />
           <Route path="/student/partials" element={<StudentPartialCards />} />
+          <Route path="/informes/:reportId/print" element={<StudentReportPrintable />} />
           <Route path="/student/finals" element={<StudentFinalCards />} />
           <Route path="/student/british" element={<StudentBritishExam />} />
           <Route path="/student/practice" element={<StudentPractice />} />
