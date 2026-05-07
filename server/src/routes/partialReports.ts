@@ -62,12 +62,6 @@ router.get(
 
       const y = year ?? new Date().getFullYear();
 
-      /*
-        IMPORTANTE:
-        Tu sistema de inscripciones usa status: 'active',
-        no usa active: true.
-        Por eso antes seguía trayendo cursos viejos.
-      */
       const enrollments = await Enrollment.find({
         student: userId,
         status: 'active',
@@ -161,6 +155,67 @@ router.get(
         rows,
         reports: rows,
         year: y,
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/* =============================================================================
+ * 1.5) ALUMNO/STAFF: ver un informe parcial para imprimir PDF
+ * Trae alumno, docente y curso populados para la vista imprimible
+ * ========================================================================== */
+router.get(
+  '/partials/:reportId/print',
+  requireAuth,
+  allowRoles('student', 'teacher', 'coordinator', 'admin'),
+  async (req, res, next) => {
+    try {
+      const { reportId } = z
+        .object({
+          reportId: z.string().min(1),
+        })
+        .parse(req.params);
+
+      const userId = (req as any).userId as string;
+      const role = (req as any).role || (req as any).userRole || (req as any).user?.role;
+
+      const report = await PartialReport.findById(reportId)
+        .populate('course', '_id name year campus')
+        .populate('student', '_id name email')
+        .populate('teacher', '_id name email')
+        .lean();
+
+      if (!report) {
+        return res.status(404).json({ error: 'Informe no encontrado' });
+      }
+
+      const course: any = report.course;
+      const student: any = report.student;
+
+      if (role === 'student' && String(student?._id) !== String(userId)) {
+        return res.status(403).json({ error: 'No autorizado' });
+      }
+
+      if (role === 'student') {
+        const enrollment = await Enrollment.exists({
+          student: userId,
+          course: course?._id,
+          year: report.year,
+          status: 'active',
+        });
+
+        if (!enrollment) {
+          return res.status(403).json({
+            error: 'No estás inscripto actualmente en este curso.',
+          });
+        }
+      }
+
+      return res.json({
+        ok: true,
+        report,
       });
     } catch (e) {
       next(e);
