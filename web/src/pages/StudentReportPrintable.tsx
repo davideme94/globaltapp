@@ -199,6 +199,141 @@ export default function StudentReportPrintable() {
     <div className="print-page min-h-screen bg-[radial-gradient(circle_at_top_left,#f5d0fe_0,#eef2ff_35%,#ffffff_75%)] px-3 py-4 text-neutral-950 sm:px-6 md:py-8">
       <style>
         {`
+          /* ===== FIX MODO OSCURO: el informe imprimible siempre se ve claro ===== */
+
+          .print-page,
+          .print-page * {
+            color-scheme: light !important;
+          }
+
+          .print-page {
+            background: radial-gradient(circle at top left, #f5d0fe 0, #eef2ff 35%, #ffffff 75%) !important;
+            color: #0f172a !important;
+          }
+
+          .no-print.mobile-action-card {
+            background: rgba(255, 255, 255, 0.92) !important;
+            border-color: rgba(255, 255, 255, 0.8) !important;
+          }
+
+          .no-print.mobile-action-card h1 {
+            color: #0f172a !important;
+          }
+
+          .no-print.mobile-action-card p {
+            color: #64748b !important;
+          }
+
+          .no-print.mobile-action-card p:first-child {
+            color: #7c3aed !important;
+          }
+
+          .screen-print-card {
+            background: #ffffff !important;
+            border-color: #ede9fe !important;
+          }
+
+          .screen-body-grid {
+            background: linear-gradient(135deg, #f5f3ff 0%, #ffffff 48%, #eef2ff 100%) !important;
+          }
+
+          .screen-left > .grid > div {
+            background: #ffffff !important;
+            border-color: #ede9fe !important;
+            color: #0f172a !important;
+          }
+
+          .screen-left > .grid > div p:first-of-type {
+            color: #8b5cf6 !important;
+          }
+
+          .screen-left > .grid > div p:last-of-type {
+            color: #0f172a !important;
+          }
+
+          .screen-comment-box {
+            background: #ffffff !important;
+            border-color: #ede9fe !important;
+          }
+
+          .screen-comment-box > div:last-child {
+            background: linear-gradient(135deg, #f5f3ff 0%, #ffffff 48%, #eef2ff 100%) !important;
+          }
+
+          .screen-comment-inner {
+            background: #ffffff !important;
+            border-color: #ede9fe !important;
+            color: #1f2937 !important;
+          }
+
+          .comment-text {
+            color: #1f2937 !important;
+          }
+
+          .comment-text span {
+            color: #64748b !important;
+          }
+
+          .screen-right h3 {
+            color: #0f172a !important;
+          }
+
+          .screen-right p {
+            color: #64748b !important;
+          }
+
+          .screen-right p[class*="text-violet"] {
+            color: #7c3aed !important;
+          }
+
+          .screen-right .w-fit.rounded-2xl {
+            background: linear-gradient(90deg, #ede9fe 0%, #e0e7ff 100%) !important;
+          }
+
+          .screen-right .w-fit.rounded-2xl p:first-child {
+            color: #7c3aed !important;
+          }
+
+          .screen-right .w-fit.rounded-2xl p:last-child {
+            color: #111827 !important;
+          }
+
+          .screen-grades-grid > div {
+            background: #ffffff !important;
+            border-color: #e5e7eb !important;
+            color: #0f172a !important;
+          }
+
+          .screen-grades-grid > div p:first-child {
+            color: #0f172a !important;
+          }
+
+          .screen-grades-grid > div p:nth-child(2) {
+            color: #475569 !important;
+          }
+
+          .screen-right > div:last-child {
+            background: #ffffff !important;
+            border-color: #ede9fe !important;
+          }
+
+          .screen-scale-grid > div {
+            background: #ffffff !important;
+          }
+
+          .screen-period {
+            background: #ffffff !important;
+            color: #0f172a !important;
+          }
+
+          .screen-period p:first-child {
+            color: #8b5cf6 !important;
+          }
+
+          .screen-period p:last-child {
+            color: #0f172a !important;
+          }
+
           @media screen and (max-width: 767px) {
             .mobile-action-card {
               border-radius: 28px !important;
