@@ -298,7 +298,7 @@ export default function TeacherCourses() {
                       to={`/teacher/course/${c._id}/partials`}
                       className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center text-xs font-black uppercase tracking-wide text-slate-700 shadow-sm transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700"
                     >
-                      📝 Parciales
+                      📋 INFORMES PARCIALES
                     </Link>
 
                     <Link
