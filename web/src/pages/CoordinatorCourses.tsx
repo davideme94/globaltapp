@@ -170,6 +170,7 @@ export default function CoordinatorCourses() {
   const thisYear = new Date().getFullYear();
 
   const [year, setYear] = useState<number>(thisYear);
+  const [courseSearch, setCourseSearch] = useState('');
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -252,6 +253,29 @@ export default function CoordinatorCourses() {
   }, [year]);
 
   const teacherById = useMemo(() => new Map(teachers.map(t => [t._id, t])), [teachers]);
+
+  const filteredCourses = useMemo(() => {
+    const term = courseSearch.trim().toLowerCase();
+
+    if (!term) return courses;
+
+    return courses.filter((c: any) => {
+      const teacher = teacherLabel((c as any).teacher, teacherById);
+      const campusLabel = c.campus === 'DERQUI' ? 'Derqui' : 'José C. Paz';
+
+      return [
+        c.name,
+        c.year,
+        c.campus,
+        campusLabel,
+        teacher,
+        c._scheduleText,
+        c._studentCount,
+      ]
+        .filter(Boolean)
+        .some(value => String(value).toLowerCase().includes(term));
+    });
+  }, [courses, courseSearch, teacherById]);
 
   const createCourse = async () => {
     try {
@@ -380,16 +404,16 @@ export default function CoordinatorCourses() {
         </div>
       </div>
 
-      {/* Año */}
+      {/* Filtro general */}
       <div className="card rounded-3xl border border-neutral-200 p-5 shadow-sm">
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-neutral-900">Filtro general</h2>
           <p className="text-sm text-neutral-600">
-            Elegí el año para ver y administrar los cursos.
+            Elegí el año y buscá un curso por nombre, docente, sede u horario.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:max-w-xs">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr]">
           <div>
             <label className="mb-1 block text-sm font-medium text-neutral-700">
               Año
@@ -400,6 +424,19 @@ export default function CoordinatorCourses() {
               type="number"
               value={year}
               onChange={e => setYear(Number(e.target.value || thisYear))}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-neutral-700">
+              Buscar curso
+            </label>
+
+            <input
+              className="input w-full rounded-2xl"
+              value={courseSearch}
+              onChange={e => setCourseSearch(e.target.value)}
+              placeholder="Ej: Intensivo, Carolina, Derqui, Sábado..."
             />
           </div>
         </div>
@@ -494,7 +531,9 @@ export default function CoordinatorCourses() {
           </div>
 
           <div className="inline-flex w-fit items-center rounded-2xl border border-fuchsia-200 bg-fuchsia-50 px-3 py-2 text-sm font-semibold text-fuchsia-700">
-            {courses.length} curso{courses.length === 1 ? '' : 's'}
+            {courseSearch.trim()
+              ? `${filteredCourses.length} de ${courses.length} curso${courses.length === 1 ? '' : 's'}`
+              : `${courses.length} curso${courses.length === 1 ? '' : 's'}`}
           </div>
         </div>
 
@@ -505,13 +544,15 @@ export default function CoordinatorCourses() {
 
           {!loading && !err && (
             <div className="space-y-4">
-              {courses.length === 0 && (
+              {filteredCourses.length === 0 && (
                 <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 px-4 py-8 text-center text-neutral-600">
-                  Sin cursos para {year}.
+                  {courseSearch.trim()
+                    ? 'No se encontraron cursos con ese criterio.'
+                    : `Sin cursos para ${year}.`}
                 </div>
               )}
 
-              {courses.map((c: any) => (
+              {filteredCourses.map((c: any) => (
                 <div
                   key={c._id}
                   className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:shadow-md"
