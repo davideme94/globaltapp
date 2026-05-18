@@ -230,7 +230,13 @@ export default function StudentAttendanceCard() {
                   </div>
                 </div>
 
-                <div className="flex w-full items-center gap-3 rounded-3xl border border-white/25 bg-white px-4 py-3 text-neutral-900 shadow-lg shadow-black/10 sm:w-auto sm:min-w-[260px]">
+                <div
+                  className="flex w-full items-center gap-3 rounded-3xl border border-white/25 bg-white px-4 py-3 text-neutral-950 shadow-lg shadow-black/10 sm:w-auto sm:min-w-[260px]"
+                  style={{
+                    backgroundColor: '#ffffff',
+                    color: '#0f172a',
+                  }}
+                >
                   {teacher?.photoUrl ? (
                     <img
                       src={teacher.photoUrl}
@@ -238,16 +244,29 @@ export default function StudentAttendanceCard() {
                       className="h-11 w-11 rounded-full object-cover ring-2 ring-violet-100"
                     />
                   ) : (
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-700">
+                    <div
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-700"
+                      style={{
+                        backgroundColor: '#f5f3ff',
+                        color: '#6d28d9',
+                      }}
+                    >
                       <UserRound size={21} />
                     </div>
                   )}
 
                   <div className="min-w-0">
-                    <p className="text-xs font-black uppercase tracking-wide text-neutral-400">
+                    <p
+                      className="text-xs font-black uppercase tracking-wide text-neutral-500"
+                      style={{ color: '#64748b' }}
+                    >
                       Docente
                     </p>
-                    <p className="max-w-[220px] truncate text-sm font-black text-neutral-900">
+
+                    <p
+                      className="max-w-[220px] truncate text-sm font-black text-neutral-950"
+                      style={{ color: '#0f172a' }}
+                    >
                       {tQ?.isLoading ? 'Cargando…' : teacher ? teacher.name : 'No asignado'}
                     </p>
                   </div>
