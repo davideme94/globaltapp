@@ -18,8 +18,17 @@ type RosterItem = {
     tutorPhone?: string;
   };
 };
-type CourseInfo = { _id: string; name: string; year: number; campus?: string };
+
+type TeacherInfo = { _id: string; name: string; email?: string };
+type CourseInfo = {
+  _id: string;
+  name: string;
+  year: number;
+  campus?: string;
+  teacher?: string | TeacherInfo | null;
+};
 type PickRow = { _id: string; name: string; email?: string };
+type EditCourseForm = { name: string; year: string; campus: string; teacherId: string };
 
 /* ====== BASE URL: siempre con /api ====== */
 const ORIGIN = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
@@ -41,6 +50,21 @@ function initialsFromName(name: string) {
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase() || "")
     .join("");
+}
+
+function teacherIdOf(teacher?: string | TeacherInfo | null) {
+  if (!teacher) return "";
+  if (typeof teacher === "string") return teacher;
+  return teacher._id || "";
+}
+
+function teacherLabel(teacher?: string | TeacherInfo | null, teachers: TeacherInfo[] = []) {
+  if (!teacher) return "Sin docente";
+  if (typeof teacher === "string") {
+    const found = teachers.find((t) => t._id === teacher);
+    return found ? `${found.name}${found.email ? ` (${found.email})` : ""}` : "Docente asignado";
+  }
+  return teacher.name || teacher.email || "Docente asignado";
 }
 
 /* ====== HTTP helpers ====== */
@@ -83,6 +107,16 @@ export default function CoordinatorCourseManage() {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<PickRow[]>([]);
   const [searching, setSearching] = useState(false);
+
+  const [editing, setEditing] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [teachers, setTeachers] = useState<TeacherInfo[]>([]);
+  const [editForm, setEditForm] = useState<EditCourseForm>({
+    name: "",
+    year: String(new Date().getFullYear()),
+    campus: "DERQUI",
+    teacherId: "",
+  });
 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -133,6 +167,75 @@ export default function CoordinatorCourseManage() {
     () => roster.slice().sort((a, b) => (a.student.name || "").localeCompare(b.student.name || "")),
     [roster]
   );
+
+  const courseTeacherLabel = useMemo(
+    () => teacherLabel(course?.teacher, teachers),
+    [course?.teacher, teachers]
+  );
+
+  const loadTeachers = async (baseCourse: CourseInfo | null = course) => {
+    try {
+      const data = await get(`/users?role=teacher&limit=100`);
+      const rows: TeacherInfo[] = Array.isArray(data.rows)
+        ? data.rows.map((u: any) => ({ _id: u._id, name: u.name, email: u.email }))
+        : [];
+
+      const currentTeacher = baseCourse?.teacher;
+      if (currentTeacher && typeof currentTeacher === "object" && !rows.some((t) => t._id === currentTeacher._id)) {
+        rows.unshift(currentTeacher);
+      }
+
+      setTeachers(rows);
+      return rows;
+    } catch {
+      setTeachers([]);
+      return [];
+    }
+  };
+
+  const openEditCourse = async () => {
+    if (!course) return;
+    setEditForm({
+      name: course.name || "",
+      year: String(course.year || new Date().getFullYear()),
+      campus: course.campus || "DERQUI",
+      teacherId: teacherIdOf(course.teacher),
+    });
+    setEditing(true);
+    await loadTeachers(course);
+  };
+
+  const onSaveCourse = async () => {
+    const name = editForm.name.trim();
+    const year = Number(editForm.year);
+
+    if (!name || name.length < 2) {
+      toast.error("El nombre del curso debe tener al menos 2 caracteres");
+      return;
+    }
+    if (!Number.isInteger(year) || year < 2000 || year > 3000) {
+      toast.error("Revisá el año del curso");
+      return;
+    }
+
+    setEditSaving(true);
+    try {
+      const payload = {
+        name,
+        year,
+        campus: editForm.campus,
+        teacherId: editForm.teacherId || null,
+      };
+      const r = await http("PUT", `/courses/${courseId}`, payload);
+      if (r?.course) setCourse(r.course);
+      toast.success("Curso actualizado");
+      setEditing(false);
+    } catch (e: any) {
+      toast.error(e?.message || "No se pudo actualizar el curso");
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   /* Inscribir por ID */
   const onAdd = async (studentId: string) => {
@@ -189,17 +292,40 @@ export default function CoordinatorCourseManage() {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-heading text-xl">Gestionar curso</h1>
-          <div className="text-sm text-neutral-700 mt-1">
-            {course ? (<><b>{course.name}</b> · {course.year} · {course.campus || "—"}</>) : "(cargando curso...)"}
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Coordinación / Administración</p>
+          <h1 className="font-heading text-2xl font-bold text-neutral-900">Gestionar curso</h1>
+          <div className="mt-2 flex flex-wrap gap-2 text-sm text-neutral-700">
+            {course ? (
+              <>
+                <span className="rounded-full bg-indigo-50 px-3 py-1 font-semibold text-indigo-700">{course.name}</span>
+                <span className="rounded-full bg-neutral-100 px-3 py-1">Año {course.year}</span>
+                <span className="rounded-full bg-neutral-100 px-3 py-1">{course.campus || "—"}</span>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">Docente: {courseTeacherLabel}</span>
+              </>
+            ) : (
+              <span>(cargando curso...)</span>
+            )}
           </div>
         </div>
-        <button className="btn btn-primary" onClick={() => { setAdding(true); setQ(""); setResults([]); }}>
-          Agregar alumnos
-        </button>
+
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            className="btn btn-secondary w-full sm:w-auto"
+            onClick={openEditCourse}
+            disabled={!course}
+          >
+            Editar curso
+          </button>
+          <button
+            className="btn btn-primary w-full sm:w-auto"
+            onClick={() => { setAdding(true); setQ(""); setResults([]); }}
+          >
+            Agregar alumnos
+          </button>
+        </div>
       </div>
 
       {/* Tabla */}
@@ -266,13 +392,95 @@ export default function CoordinatorCourseManage() {
         </table>
       </div>
 
+      {/* Modal editar curso */}
+      {editing && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setEditing(false); }}
+        >
+          <div className="card w-full max-w-2xl p-4 shadow-xl">
+            <div className="flex flex-col gap-2 border-b border-neutral-200 pb-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-heading text-xl font-bold text-neutral-900">Editar curso</h2>
+                <p className="text-sm text-neutral-600">Solo coordinación y administración pueden modificar estos datos.</p>
+              </div>
+              <button className="btn btn-secondary !py-1" onClick={() => setEditing(false)} disabled={editSaving}>Cerrar</button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <label className="space-y-1 md:col-span-2">
+                <span className="text-sm font-semibold text-neutral-700">Nombre del curso</span>
+                <input
+                  className="input"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((s) => ({ ...s, name: e.target.value }))}
+                  placeholder="Ej: Teens 4 - Comisión A"
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-sm font-semibold text-neutral-700">Año</span>
+                <input
+                  className="input"
+                  type="number"
+                  min={2000}
+                  max={3000}
+                  value={editForm.year}
+                  onChange={(e) => setEditForm((s) => ({ ...s, year: e.target.value }))}
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-sm font-semibold text-neutral-700">Sede</span>
+                <select
+                  className="input"
+                  value={editForm.campus}
+                  onChange={(e) => setEditForm((s) => ({ ...s, campus: e.target.value }))}
+                >
+                  <option value="DERQUI">Derqui</option>
+                  <option value="JOSE_C_PAZ">José C. Paz</option>
+                </select>
+              </label>
+
+              <label className="space-y-1 md:col-span-2">
+                <span className="text-sm font-semibold text-neutral-700">Profesor asignado</span>
+                <select
+                  className="input"
+                  value={editForm.teacherId}
+                  onChange={(e) => setEditForm((s) => ({ ...s, teacherId: e.target.value }))}
+                >
+                  <option value="">Sin docente asignado</option>
+                  {teachers.map((t) => (
+                    <option key={t._id} value={t._id}>
+                      {t.name}{t.email ? ` — ${t.email}` : ""}
+                    </option>
+                  ))}
+                </select>
+                {teachers.length === 0 && (
+                  <p className="text-xs text-neutral-500">No se encontraron docentes cargados.</p>
+                )}
+              </label>
+            </div>
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button className="btn btn-secondary w-full sm:w-auto" onClick={() => setEditing(false)} disabled={editSaving}>
+                Cancelar
+              </button>
+              <button className="btn btn-primary w-full sm:w-auto" onClick={onSaveCourse} disabled={editSaving}>
+                {editSaving ? "Guardando…" : "Guardar cambios"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal agregar */}
       {adding && (
         <div
-          className="fixed inset-0 bg-black/20 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/20 flex items-center justify-center p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setAdding(false); }}
         >
-          <div className="card w-full max-w-2xl p-4">
+          <div className="card w-full max-w-2xl p-4 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="font-heading text-lg">Agregar alumnos</h2>
               <button className="btn btn-secondary !py-1" onClick={() => setAdding(false)}>Cerrar</button>
@@ -294,7 +502,7 @@ export default function CoordinatorCourseManage() {
               {searching && <div className="p-3 text-sm">Buscando…</div>}
               {!searching && results.length === 0 && q && <div className="p-3 text-sm">Sin resultados.</div>}
               {!searching && results.map((u) => (
-                <div key={u._id} className="flex items-center justify-between p-3 border-b">
+                <div key={u._id} className="flex items-center justify-between p-3 border-b gap-3">
                   <div className="min-w-0">
                     <div className="font-medium truncate">{u.name}</div>
                     <div className="text-xs text-neutral-700 truncate">{u.email || u._id}</div>
@@ -312,7 +520,7 @@ export default function CoordinatorCourseManage() {
 
             <div className="mt-3">
               <button
-                className="btn btn-primary"
+                className="btn btn-primary w-full sm:w-auto"
                 disabled={!q.trim()}
                 onClick={() => onAddByInput(q)}
               >
