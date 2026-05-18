@@ -103,6 +103,76 @@ router.delete(
   }
 );
 
+/** ✅ PUT /courses/:id  -> edita datos generales del curso (solo coordinación/admin) */
+router.put(
+  '/courses/:id',
+  requireAuth,
+  allowRoles('coordinator', 'admin'),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      if (!isObjectId(id)) return res.status(404).json({ error: 'Curso no encontrado' });
+
+      const body = z
+        .object({
+          name: z.string().trim().min(2).optional(),
+          year: z.coerce.number().int().min(2000).max(3000).optional(),
+          campus: campusSchema.optional(),
+          teacherId: z
+            .preprocess(
+              (v) => (v === '' ? null : v),
+              z.string().min(1).nullable()
+            )
+            .optional(),
+        })
+        .refine(
+          (v) =>
+            v.name !== undefined ||
+            v.year !== undefined ||
+            v.campus !== undefined ||
+            v.teacherId !== undefined,
+          { message: 'No hay datos para actualizar' }
+        )
+        .parse(req.body || {});
+
+      const update: any = {};
+
+      if (body.name !== undefined) update.name = body.name;
+      if (body.year !== undefined) update.year = body.year;
+      if (body.campus !== undefined) update.campus = body.campus;
+
+      if (body.teacherId !== undefined) {
+        if (body.teacherId === null) {
+          update.teacher = null;
+        } else {
+          if (!isObjectId(body.teacherId)) {
+            return res.status(400).json({ error: 'Docente inválido' });
+          }
+
+          const teacher = await User.findOne({ _id: body.teacherId, role: 'teacher' }).lean();
+          if (!teacher) return res.status(404).json({ error: 'Docente no encontrado' });
+
+          update.teacher = teacher._id;
+        }
+      }
+
+      const updated = await Course.findByIdAndUpdate(
+        id,
+        { $set: update },
+        { new: true }
+      )
+        .populate('teacher', 'name email')
+        .lean();
+
+      if (!updated) return res.status(404).json({ error: 'Curso no encontrado' });
+
+      res.json({ ok: true, course: updated });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
 /** PUT /courses/:id/teacher  -> asigna docente */
 router.put(
   '/courses/:id/teacher',
@@ -567,4 +637,3 @@ router.get(
 );
 
 export default router;
-
