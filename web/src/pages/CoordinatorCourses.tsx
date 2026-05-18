@@ -182,6 +182,11 @@ export default function CoordinatorCourses() {
   // Docentes existentes para asignar al curso
   const [teachers, setTeachers] = useState<{ _id: string; name: string; email: string }[]>([]);
 
+  // Cambiar docente desde listado
+  const [teacherModalCourse, setTeacherModalCourse] = useState<any | null>(null);
+  const [teacherModalValue, setTeacherModalValue] = useState('');
+  const [savingTeacher, setSavingTeacher] = useState(false);
+
   useEffect(() => {
     let alive = true;
 
@@ -286,6 +291,65 @@ export default function CoordinatorCourses() {
       alert('Curso eliminado');
     } catch (e: any) {
       alert(e?.message || 'No se pudo eliminar el curso');
+    }
+  };
+
+  const openTeacherModal = (course: any) => {
+    const currentTeacher = course.teacher;
+
+    let currentTeacherId = '';
+
+    if (typeof currentTeacher === 'string') {
+      currentTeacherId = currentTeacher;
+    } else if (currentTeacher && typeof currentTeacher === 'object') {
+      currentTeacherId = currentTeacher._id || '';
+    }
+
+    setTeacherModalCourse(course);
+    setTeacherModalValue(currentTeacherId);
+  };
+
+  const saveTeacherChange = async () => {
+    if (!teacherModalCourse) return;
+
+    if (!teacherModalValue) {
+      alert('Seleccioná un docente.');
+      return;
+    }
+
+    try {
+      setSavingTeacher(true);
+
+      const res = await api.courses.assignTeacher(
+        teacherModalCourse._id,
+        teacherModalValue
+      );
+
+      const updatedCourse = res?.course || {
+        ...teacherModalCourse,
+        teacher: teacherModalValue,
+      };
+
+      setCourses(prev =>
+        prev.map(c =>
+          c._id === teacherModalCourse._id
+            ? {
+                ...c,
+                ...updatedCourse,
+                _scheduleText: c._scheduleText,
+                _studentCount: c._studentCount,
+              }
+            : c
+        )
+      );
+
+      setTeacherModalCourse(null);
+      setTeacherModalValue('');
+      alert('Docente actualizado');
+    } catch (e: any) {
+      alert(e?.message || 'No se pudo cambiar el docente');
+    } finally {
+      setSavingTeacher(false);
     }
   };
 
@@ -513,6 +577,14 @@ export default function CoordinatorCourses() {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openTeacherModal(c)}
+                        className="inline-flex items-center justify-center rounded-xl border border-indigo-200 bg-white px-3 py-2 text-sm font-medium text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-50"
+                      >
+                        CAMBIAR DOCENTE
+                      </button>
+
                       <ActionLink to={`/coordinator/course/${c._id}/manage`}>
                         AGREGAR ALUMNOS
                       </ActionLink>
@@ -564,6 +636,77 @@ export default function CoordinatorCourses() {
           )}
         </div>
       </div>
+
+      {/* Modal cambiar docente */}
+      {teacherModalCourse && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          onClick={e => {
+            if (e.target === e.currentTarget) {
+              setTeacherModalCourse(null);
+              setTeacherModalValue('');
+            }
+          }}
+        >
+          <div className="w-full max-w-xl rounded-3xl border border-neutral-200 bg-white p-5 shadow-xl">
+            <div className="mb-4 border-b border-neutral-200 pb-3">
+              <h2 className="text-xl font-bold text-neutral-900">
+                Cambiar docente
+              </h2>
+
+              <p className="mt-1 text-sm text-neutral-600">
+                Curso: <b>{teacherModalCourse.name}</b>
+              </p>
+
+              <p className="mt-1 text-xs text-neutral-500">
+                Seleccioná el nuevo profesor asignado a este curso.
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-neutral-700">
+                Nuevo docente
+              </label>
+
+              <select
+                className="input w-full rounded-2xl"
+                value={teacherModalValue}
+                onChange={e => setTeacherModalValue(e.target.value)}
+              >
+                <option value="">— Seleccionar docente —</option>
+                {teachers.map(t => (
+                  <option key={t._id} value={t._id}>
+                    {t.name} — {t.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                className="btn btn-secondary rounded-2xl"
+                onClick={() => {
+                  setTeacherModalCourse(null);
+                  setTeacherModalValue('');
+                }}
+                disabled={savingTeacher}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-primary rounded-2xl"
+                onClick={saveTeacherChange}
+                disabled={savingTeacher || !teacherModalValue}
+              >
+                {savingTeacher ? 'Guardando...' : 'Guardar docente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
