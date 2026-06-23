@@ -417,30 +417,48 @@ router.get(
 
         const seenFilter: any = { student: new mongoose.Types.ObjectId(uid), set: new mongoose.Types.ObjectId(setId) };
         if (unit) seenFilter.unit = Number(unit);
-        const seenIds = await PracticeAttempt.distinct('question', seenFilter);
 
-        const remaining = Math.max(0, total - seenIds.length);
+        // ✅ Para progreso real: solo contamos como completadas las correctas.
+        // Las preguntas incorrectas pueden volver a aparecer.
+        const correctIds = await PracticeAttempt.distinct('question', {
+          ...seenFilter,
+          correct: true,
+        });
 
-        if (remaining <= 0) {
-          return res.json({
-            questions: [],
-            completed: true,
-            progress: { total, seen: seenIds.length, remaining: 0 },
+        const mastered = Math.min(correctIds.length, total);
+        const remaining = Math.max(0, total - mastered);
+
+        // ✅ Si todavía no completó, mostramos las que NO respondió correctamente.
+        // ✅ Si ya completó todo, permitimos replay mezclando todas otra vez.
+        const pipeline: any[] = [
+          { $match: qFilter },
+        ];
+
+        if (remaining > 0) {
+          pipeline.push({
+            $match: {
+              _id: {
+                $nin: correctIds.map((x:any) => new mongoose.Types.ObjectId(String(x))),
+              },
+            },
           });
         }
 
-        const pipeline: any[] = [
-          { $match: qFilter },
-          { $match: { _id: { $nin: seenIds.map((x:any)=> new mongoose.Types.ObjectId(String(x))) } } },
-          { $sample: { size: Math.min(10, remaining) } },
-        ];
+        pipeline.push({
+          $sample: { size: Math.min(10, remaining > 0 ? remaining : total) },
+        });
 
         const raw = await PracticeQuestion.aggregate(pipeline);
         const questions = await resolveMediaForQuestions(raw);  // <-- usa item si falta media
+
         return res.json({
           questions,
-          completed: false,
-          progress: { total, seen: seenIds.length, remaining },
+          completed: remaining <= 0,
+          progress: {
+            total,
+            seen: mastered,
+            remaining,
+          },
         });
       }
 
@@ -615,32 +633,45 @@ router.get(
 
       const total = await PracticeQuestion.countDocuments(qFilter);
 
-      // ✅ no repetir correctas (repite erradas)
+      // ✅ no repetir correctas mientras todavía falten preguntas por dominar
       const baseSeen: any = { student: new mongoose.Types.ObjectId(studentId), set: new mongoose.Types.ObjectId(setId) };
       if (unit) baseSeen.unit = Number(unit);
       const correctIds = await PracticeAttempt.distinct('question', { ...baseSeen, correct: true });
-      const remaining = Math.max(0, total - correctIds.length);
 
-      if (remaining <= 0) {
-        return res.json({
-          questions: [],
-          completed: true,
-          progress: { total, seen: total, remaining: 0 },
+      const mastered = Math.min(correctIds.length, total);
+      const remaining = Math.max(0, total - mastered);
+
+      // ✅ Si todavía no completó, no repetimos correctas.
+      // ✅ Si ya completó, permitimos replay mezclando todas otra vez.
+      const pipeline: any[] = [
+        { $match: qFilter },
+      ];
+
+      if (remaining > 0) {
+        pipeline.push({
+          $match: {
+            _id: {
+              $nin: correctIds.map((x:any) => new mongoose.Types.ObjectId(String(x))),
+            },
+          },
         });
       }
 
-      const pipeline: any[] = [
-        { $match: qFilter },
-        { $match: { _id: { $nin: correctIds.map((x:any)=> new mongoose.Types.ObjectId(String(x))) } } },
-        { $sample: { size: Math.min(10, remaining) } },
-      ];
+      pipeline.push({
+        $sample: { size: Math.min(10, remaining > 0 ? remaining : total) },
+      });
 
       const raw = await PracticeQuestion.aggregate(pipeline);
       const questions = await resolveMediaForQuestions(raw);   // <-- usa item si falta media
+
       res.json({
         questions,
-        completed: false,
-        progress: { total, seen: total - remaining, remaining },
+        completed: remaining <= 0,
+        progress: {
+          total,
+          seen: mastered,
+          remaining,
+        },
       });
     } catch (e) { next(e); }
   }
