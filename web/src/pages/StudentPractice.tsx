@@ -1366,7 +1366,7 @@ function isDirectVideoUrl(u?: string | null) {
   }
 }
 
-function getAutoplayEmbedUrl(u?: string | null) {
+function getPlayableEmbedUrl(u?: string | null) {
   const normalized = normalizeEmbedUrl(u || '') || u || '';
   if (!normalized) return '';
 
@@ -1374,30 +1374,11 @@ function getAutoplayEmbedUrl(u?: string | null) {
     const url = new URL(normalized);
     const host = url.hostname.toLowerCase();
 
-    if (host.includes('youtube.com') || host.includes('youtu.be')) {
-      url.searchParams.set('autoplay', '1');
-      url.searchParams.set('mute', '1');
-      url.searchParams.set('playsinline', '1');
-      url.searchParams.set('rel', '0');
-      return url.toString();
-    }
-
-    if (host.includes('vimeo.com')) {
-      url.searchParams.set('autoplay', '1');
-      url.searchParams.set('muted', '1');
-      url.searchParams.set('playsinline', '1');
-      return url.toString();
-    }
-
     if (host.includes('drive.google.com')) {
       return getDrivePreviewUrl(normalized);
     }
 
-    url.searchParams.set('autoplay', '1');
-    url.searchParams.set('mute', '1');
-    url.searchParams.set('muted', '1');
-    url.searchParams.set('playsinline', '1');
-    return url.toString();
+    return normalized;
   } catch {
     return normalized;
   }
@@ -1607,7 +1588,7 @@ export default function StudentPractice() {
   const musicStepRef = useRef(0);
 
   const q = qs[idx];
-  const autoplayEmbedUrl = q?.embedUrl ? getAutoplayEmbedUrl(q.embedUrl) : '';
+  const playableEmbedUrl = q?.embedUrl ? getPlayableEmbedUrl(q.embedUrl) : '';
   const directVideoUrl = q?.embedUrl && isDirectVideoUrl(q.embedUrl) ? q.embedUrl : '';
 
   useEffect(() => {
@@ -2210,18 +2191,13 @@ export default function StudentPractice() {
                           className="practice-audio-frame"
                           src={getDrivePreviewUrl(q.audioUrl)}
                           title="audio-preview"
-                          allow="autoplay"
                           referrerPolicy="strict-origin-when-cross-origin"
                         />
-                        <p className="practice-audio-note">
-                          Si el reproductor aparece en 0:00, abrí el audio desde Google Drive y verificá que el archivo esté compartido.
-                        </p>
                       </>
                     ) : (
                       <audio controls src={normalizeAudioUrl(q.audioUrl)} />
                     )}
 
-                    <a href={q.audioUrl} target="_blank" rel="noreferrer">Open audio link</a>
                   </div>
                 )}
 
@@ -2232,16 +2208,14 @@ export default function StudentPractice() {
                         key={directVideoUrl}
                         src={directVideoUrl}
                         controls
-                        autoPlay
-                        muted
                         playsInline
                       />
                     ) : (
                       <iframe
-                        key={autoplayEmbedUrl || q.embedUrl}
-                        src={autoplayEmbedUrl || normalizeEmbedUrl(q.embedUrl)}
+                        key={playableEmbedUrl || q.embedUrl}
+                        src={playableEmbedUrl || normalizeEmbedUrl(q.embedUrl)}
                         title="embed"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         allowFullScreen
                         sandbox="allow-same-origin allow-scripts allow-popups allow-presentation"
                         referrerPolicy="strict-origin-when-cross-origin"
