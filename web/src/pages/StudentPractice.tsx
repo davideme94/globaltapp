@@ -737,11 +737,17 @@ const STUDENT_PRACTICE_INLINE_CSS = `
   object-fit: contain;
 }
 
-.practice-media-card iframe {
+.practice-media-card iframe,
+.practice-media-card video {
   display: block;
   width: 100%;
   height: 360px;
   border: 0;
+}
+
+.practice-media-card video {
+  object-fit: contain;
+  background: #000;
 }
 
 .practice-audio-card {
@@ -764,6 +770,22 @@ const STUDENT_PRACTICE_INLINE_CSS = `
   color: #0369a1;
   font-size: 12px;
   font-weight: 850;
+}
+
+.practice-audio-frame {
+  width: 100%;
+  height: 96px;
+  border: 1px solid rgba(14, 165, 233, .22);
+  border-radius: 20px;
+  background: #ffffff;
+}
+
+.practice-audio-note {
+  margin: 0;
+  color: #0369a1;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
 }
 
 .practice-prompt-card {
@@ -1295,6 +1317,92 @@ function prepareQuestions(questions: Q[]): Q[] {
   }));
 }
 
+function getGoogleDriveFileId(u?: string | null) {
+  if (!u) return '';
+
+  try {
+    const url = new URL(u);
+
+    if (!url.hostname.includes('drive.google.com')) return '';
+
+    if (url.pathname.startsWith('/file/d/')) {
+      return url.pathname.split('/')[3] || '';
+    }
+
+    return url.searchParams.get('id') || '';
+  } catch {
+    const match = String(u).match(/\/file\/d\/([^/]+)/);
+    return match?.[1] || '';
+  }
+}
+
+function isGoogleDriveUrl(u?: string | null) {
+  if (!u) return false;
+
+  try {
+    const url = new URL(u);
+    return url.hostname.includes('drive.google.com');
+  } catch {
+    return String(u).includes('drive.google.com');
+  }
+}
+
+function getDrivePreviewUrl(u?: string | null) {
+  const id = getGoogleDriveFileId(u);
+  return id ? `https://drive.google.com/file/d/${id}/preview` : (u || '');
+}
+
+function isDirectVideoUrl(u?: string | null) {
+  const text = String(u || '').trim();
+  if (!text) return false;
+
+  try {
+    const url = new URL(text);
+    const cleanPath = url.pathname.toLowerCase();
+    return /\.(mp4|webm|ogg|ogv|mov|m4v)$/i.test(cleanPath);
+  } catch {
+    const clean = text.split('?')[0].toLowerCase();
+    return /\.(mp4|webm|ogg|ogv|mov|m4v)$/i.test(clean);
+  }
+}
+
+function getAutoplayEmbedUrl(u?: string | null) {
+  const normalized = normalizeEmbedUrl(u || '') || u || '';
+  if (!normalized) return '';
+
+  try {
+    const url = new URL(normalized);
+    const host = url.hostname.toLowerCase();
+
+    if (host.includes('youtube.com') || host.includes('youtu.be')) {
+      url.searchParams.set('autoplay', '1');
+      url.searchParams.set('mute', '1');
+      url.searchParams.set('playsinline', '1');
+      url.searchParams.set('rel', '0');
+      return url.toString();
+    }
+
+    if (host.includes('vimeo.com')) {
+      url.searchParams.set('autoplay', '1');
+      url.searchParams.set('muted', '1');
+      url.searchParams.set('playsinline', '1');
+      return url.toString();
+    }
+
+    if (host.includes('drive.google.com')) {
+      return getDrivePreviewUrl(normalized);
+    }
+
+    url.searchParams.set('autoplay', '1');
+    url.searchParams.set('mute', '1');
+    url.searchParams.set('muted', '1');
+    url.searchParams.set('playsinline', '1');
+    return url.toString();
+  } catch {
+    return normalized;
+  }
+}
+
 function normalizeAudioUrl(u?: string | null) {
   if (!u) return '';
 
@@ -1499,6 +1607,8 @@ export default function StudentPractice() {
   const musicStepRef = useRef(0);
 
   const q = qs[idx];
+  const autoplayEmbedUrl = q?.embedUrl ? getAutoplayEmbedUrl(q.embedUrl) : '';
+  const directVideoUrl = q?.embedUrl && isDirectVideoUrl(q.embedUrl) ? q.embedUrl : '';
 
   useEffect(() => {
     const styleId = 'student-practice-inline-css';
@@ -2093,21 +2203,50 @@ export default function StudentPractice() {
                 {q?.audioUrl && (
                   <div className="practice-audio-card">
                     <span>🔊 Listen</span>
-                    <audio controls src={normalizeAudioUrl(q.audioUrl)} />
+
+                    {isGoogleDriveUrl(q.audioUrl) ? (
+                      <>
+                        <iframe
+                          className="practice-audio-frame"
+                          src={getDrivePreviewUrl(q.audioUrl)}
+                          title="audio-preview"
+                          allow="autoplay"
+                          referrerPolicy="strict-origin-when-cross-origin"
+                        />
+                        <p className="practice-audio-note">
+                          Si el reproductor aparece en 0:00, abrí el audio desde Google Drive y verificá que el archivo esté compartido.
+                        </p>
+                      </>
+                    ) : (
+                      <audio controls src={normalizeAudioUrl(q.audioUrl)} />
+                    )}
+
                     <a href={q.audioUrl} target="_blank" rel="noreferrer">Open audio link</a>
                   </div>
                 )}
 
                 {q?.embedUrl && (
                   <div className="practice-media-card">
-                    <iframe
-                      src={normalizeEmbedUrl(q.embedUrl)}
-                      title="embed"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                      sandbox="allow-same-origin allow-scripts allow-popups allow-presentation"
-                      referrerPolicy="strict-origin-when-cross-origin"
-                    />
+                    {directVideoUrl ? (
+                      <video
+                        key={directVideoUrl}
+                        src={directVideoUrl}
+                        controls
+                        autoPlay
+                        muted
+                        playsInline
+                      />
+                    ) : (
+                      <iframe
+                        key={autoplayEmbedUrl || q.embedUrl}
+                        src={autoplayEmbedUrl || normalizeEmbedUrl(q.embedUrl)}
+                        title="embed"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        sandbox="allow-same-origin allow-scripts allow-popups allow-presentation"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                      />
+                    )}
                   </div>
                 )}
 
