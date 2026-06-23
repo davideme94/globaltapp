@@ -934,25 +934,6 @@ const STUDENT_PRACTICE_INLINE_CSS = `
   gap: 8px;
 }
 
-.practice-speak-button {
-  display: inline-grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border: 1px solid #bae6fd;
-  border-radius: 16px;
-  background: #f0f9ff;
-  color: #0369a1;
-  cursor: pointer;
-  font-size: 18px;
-  box-shadow: 0 8px 18px rgba(14, 165, 233, .10);
-  transition: transform .18s ease, background .18s ease;
-}
-
-.practice-speak-button:hover {
-  transform: translateY(-1px) scale(1.03);
-  background: #e0f2fe;
-}
 
 .practice-answer-arrow {
   color: #a78bfa;
@@ -1261,12 +1242,6 @@ const STUDENT_PRACTICE_INLINE_CSS = `
     max-height: 160px;
   }
 
-  .practice-speak-button {
-    width: 38px;
-    height: 38px;
-    border-radius: 14px;
-  }
-
   .practice-written-row {
     grid-template-columns: 1fr;
   }
@@ -1346,22 +1321,9 @@ type ParsedPracticeOption = {
   isImage: boolean;
   imageUrl: string;
   label: string;
-  speakText: string;
   displayText: string;
 };
 
-function isProbablyUrl(value: string) {
-  const text = value.trim();
-
-  if (!text) return false;
-
-  try {
-    const url = new URL(text);
-    return url.protocol === 'http:' || url.protocol === 'https:' || url.protocol === 'data:';
-  } catch {
-    return /^https?:\/\//i.test(text) || /^data:/i.test(text);
-  }
-}
 
 function isImageUrl(value: string) {
   const text = value.trim();
@@ -1394,7 +1356,6 @@ function parsePracticeOption(raw: string): ParsedPracticeOption {
       isImage: !!imageUrl,
       imageUrl,
       label,
-      speakText: label && !isProbablyUrl(label) ? label : '',
       displayText: label || 'Image option',
     };
   }
@@ -1405,7 +1366,6 @@ function parsePracticeOption(raw: string): ParsedPracticeOption {
       isImage: true,
       imageUrl: text,
       label: '',
-      speakText: '',
       displayText: 'Image option',
     };
   }
@@ -1415,89 +1375,8 @@ function parsePracticeOption(raw: string): ParsedPracticeOption {
     isImage: false,
     imageUrl: '',
     label: text,
-    speakText: text && !isProbablyUrl(text) ? text : '',
     displayText: text,
   };
-}
-
-let lastSpeechText = '';
-let lastSpeechAt = 0;
-let cachedEnglishVoice: SpeechSynthesisVoice | null = null;
-
-function getEnglishVoice() {
-  try {
-    if (!('speechSynthesis' in window)) return null;
-
-    const voices = window.speechSynthesis.getVoices?.() || [];
-
-    const voice =
-      voices.find(v => v.lang?.toLowerCase() === 'en-us') ||
-      voices.find(v => v.lang?.toLowerCase().startsWith('en-us')) ||
-      voices.find(v => v.lang?.toLowerCase().startsWith('en-')) ||
-      voices.find(v => v.name?.toLowerCase().includes('english')) ||
-      null;
-
-    cachedEnglishVoice = voice;
-    return voice;
-  } catch {
-    return null;
-  }
-}
-
-function speakEnglishText(text: string) {
-  try {
-    const clean = text.trim();
-
-    if (!clean || isProbablyUrl(clean)) return;
-    if (!('speechSynthesis' in window)) return;
-
-    const now = Date.now();
-    if (lastSpeechText === clean && now - lastSpeechAt < 350) return;
-
-    lastSpeechText = clean;
-    lastSpeechAt = now;
-
-    const synth = window.speechSynthesis;
-
-    synth.cancel();
-
-    if (synth.paused) {
-      synth.resume();
-    }
-
-    const utterance = new SpeechSynthesisUtterance(clean);
-    utterance.lang = 'en-US';
-    utterance.rate = 0.85;
-    utterance.pitch = 1.05;
-    utterance.volume = 1;
-
-    const voice = cachedEnglishVoice || getEnglishVoice();
-    if (voice) utterance.voice = voice;
-
-    // Mobile browsers, especially iPhone/Safari/WebView, need this to run
-    // directly from the tap event. That is why the button calls this on pointer down.
-    synth.speak(utterance);
-
-    // Small safety retry for browsers that load voices a fraction later.
-    window.setTimeout(() => {
-      try {
-        if (synth.speaking || synth.pending) return;
-
-        const retry = new SpeechSynthesisUtterance(clean);
-        retry.lang = 'en-US';
-        retry.rate = 0.85;
-        retry.pitch = 1.05;
-        retry.volume = 1;
-
-        const retryVoice = cachedEnglishVoice || getEnglishVoice();
-        if (retryVoice) retry.voice = retryVoice;
-
-        synth.cancel();
-        if (synth.paused) synth.resume();
-        synth.speak(retry);
-      } catch {}
-    }, 120);
-  } catch {}
 }
 
 function getAudioContextClass() {
@@ -1544,21 +1423,6 @@ function playFeedbackSound(correct: boolean) {
   } catch {}
 }
 
-function speakFeedback(correct: boolean) {
-  try {
-    if (!('speechSynthesis' in window)) return;
-
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(correct ? 'Well done!' : 'Try again!');
-    utterance.lang = 'en-US';
-    utterance.rate = 0.95;
-    utterance.pitch = correct ? 1.1 : 0.9;
-    utterance.volume = 0.8;
-
-    window.speechSynthesis.speak(utterance);
-  } catch {}
-}
 
 const GAME_MELODY = [
   523.25, 659.25, 783.99, 659.25,
@@ -1652,37 +1516,6 @@ export default function StudentPractice() {
     };
   }, []);
 
-  useEffect(() => {
-    try {
-      if (!('speechSynthesis' in window)) return;
-
-      const synth = window.speechSynthesis;
-
-      const prepareVoices = () => {
-        getEnglishVoice();
-      };
-
-      prepareVoices();
-
-      if ('addEventListener' in synth) {
-        synth.addEventListener('voiceschanged', prepareVoices);
-
-        return () => {
-          synth.removeEventListener('voiceschanged', prepareVoices);
-        };
-      }
-
-      synth.onvoiceschanged = prepareVoices;
-
-      return () => {
-        if (synth.onvoiceschanged === prepareVoices) {
-          synth.onvoiceschanged = null;
-        }
-      };
-    } catch {
-      return;
-    }
-  }, []);
 
   const selectedSet = useMemo(() => {
     return mySets.find(r => r.set._id === setId)?.set || null;
@@ -1817,11 +1650,6 @@ export default function StudentPractice() {
   useEffect(() => {
     return () => {
       stopGameMusic();
-      try {
-        if ('speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-        }
-      } catch {}
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1958,7 +1786,6 @@ export default function StudentPractice() {
       });
 
       playFeedbackSound(res.correct);
-      speakFeedback(res.correct);
 
       window.setTimeout(() => {
         setFeedback(null);
@@ -2349,33 +2176,6 @@ export default function StudentPractice() {
                           </span>
 
                           <span className="practice-answer-actions">
-                            {parsed.speakText && (
-                              <button
-                                type="button"
-                                className="practice-speak-button"
-                                aria-label={`Listen to ${parsed.speakText}`}
-                                onPointerDown={e => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  speakEnglishText(parsed.speakText);
-                                }}
-                                onClick={e => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  speakEnglishText(parsed.speakText);
-                                }}
-                                onKeyDown={e => {
-                                  e.stopPropagation();
-
-                                  if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    speakEnglishText(parsed.speakText);
-                                  }
-                                }}
-                              >
-                                🔊
-                              </button>
-                            )}
 
                             <span className="practice-answer-arrow">›</span>
                           </span>
