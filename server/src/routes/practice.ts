@@ -49,19 +49,26 @@ function normalizeEmbedUrl(u?: string | null) {
   return toDrivePreview(toYouTubeEmbed(u));
 }
 
+const optionalUrl = z.union([
+  z.string().url(),
+  z.literal(''),
+  z.null(),
+]).optional();
+
 /* ===== Helper: resolver media desde item cuando falte ===== */
 async function resolveMediaForQuestions(list: any[]) {
   const itemIds = list.map(q => q.item).filter(Boolean).map((id:any) => String(id));
   const byId = new Map<string, any>();
   if (itemIds.length) {
     const docs = await PracticeItem.find({ _id: { $in: itemIds } })
-      .select('_id imageUrl embedUrl')
+      .select('_id imageUrl audioUrl embedUrl')
       .lean();
     docs.forEach((d:any) => byId.set(String(d._id), d));
   }
   return list.map(q => {
     const it = q.item ? byId.get(String(q.item)) : null;
     const imageUrl = q.imageUrl ?? it?.imageUrl ?? null;
+    const audioUrl = q.audioUrl ?? it?.audioUrl ?? null;
     const embedUrl = q.embedUrl ?? it?.embedUrl ?? null;
     return {
       _id: q._id,
@@ -69,6 +76,7 @@ async function resolveMediaForQuestions(list: any[]) {
       type: q.type,
       options: q.options ?? null,
       imageUrl,
+      audioUrl,
       embedUrl,
       unit: q.unit ?? null,
     };
@@ -211,14 +219,15 @@ router.put(
 /* ===== Preguntas (coord/admin/teacher) ===== */
 const qSchema = z.object({
   setId: z.string().optional(),
-  itemId: z.string().optional(),                 // <-- NUEVO: asociar media compartida
+  itemId: z.string().nullable().optional(),                 // <-- NUEVO: asociar media compartida
   unit: z.number().int().min(1).max(99).optional(),
   prompt: z.string().min(3),
   type: z.enum(['MC', 'GAP']),
   options: z.array(z.string()).optional(),
   answer: z.string().min(1),
-  imageUrl: z.string().url().optional(),
-  embedUrl: z.string().url().optional(),
+  imageUrl: optionalUrl,
+  audioUrl: optionalUrl,
+  embedUrl: optionalUrl,
   level: z.string().optional(),
   courseId: z.string().optional(),
 });
@@ -245,6 +254,7 @@ router.post(
       if (b.itemId)   payload.item = b.itemId;          // <-- NUEVO
       if (b.unit)     payload.unit = b.unit;
       if (b.imageUrl) payload.imageUrl = b.imageUrl;
+      if (b.audioUrl) payload.audioUrl = b.audioUrl;
       if (b.embedUrl) payload.embedUrl = normalizeEmbedUrl(b.embedUrl);
 
       const q = await PracticeQuestion.create(payload);
@@ -272,6 +282,7 @@ router.put(
       if (patch.unit     !== undefined) toSet.unit     = patch.unit;
       if (patch.itemId   !== undefined) toSet.item     = patch.itemId || null;  // <-- NUEVO
       if (patch.imageUrl !== undefined) toSet.imageUrl = patch.imageUrl || null;
+      if (patch.audioUrl !== undefined) toSet.audioUrl = patch.audioUrl || null;
       if (patch.embedUrl !== undefined) toSet.embedUrl = normalizeEmbedUrl(patch.embedUrl) || null;
 
       const q = await PracticeQuestion.findByIdAndUpdate(id, { $set: toSet }, { new: true }).lean();
@@ -327,8 +338,9 @@ router.post(
           type: z.enum(['MC', 'GAP']),
           options: z.array(z.string()).optional(),
           answer: z.string().min(1),
-          imageUrl: z.string().url().optional(),
-          embedUrl: z.string().url().optional(),
+          imageUrl: optionalUrl,
+          audioUrl: optionalUrl,
+          embedUrl: optionalUrl,
           level: z.string().optional(),
           courseId: z.string().optional(),
           itemId: z.string().optional(),           // <-- NUEVO (bulk)
@@ -344,7 +356,8 @@ router.post(
         type: r.type,
         options: r.options,
         answer: r.answer,
-        imageUrl: r.imageUrl,
+        imageUrl: r.imageUrl || undefined,
+        audioUrl: r.audioUrl || undefined,
         embedUrl: normalizeEmbedUrl(r.embedUrl),
         level: r.level,
         course: r.courseId || null,
@@ -657,5 +670,3 @@ router.post(
 );
 
 export default router;
-
-
