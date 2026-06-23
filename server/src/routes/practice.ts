@@ -216,6 +216,40 @@ router.put(
   }
 );
 
+/* ===== Sets habilitados para el alumno ===== */
+// GET /practice/my-sets
+router.get(
+  '/practice/my-sets',
+  requireAuth,
+  allowRoles('student'),
+  async (req, res, next) => {
+    try {
+      const uid = (req as any).userId as string;
+
+      const accessRows = await PracticeAccess
+        .find({
+          student: new mongoose.Types.ObjectId(uid),
+          enabled: true,
+          set: { $ne: null },
+        })
+        .populate('set', 'title units tags')
+        .sort({ updatedAt: -1 })
+        .lean();
+
+      const rows = accessRows
+        .filter((r: any) => r.set)
+        .map((r: any) => ({
+          set: r.set,
+          updatedAt: r.updatedAt,
+        }));
+
+      res.json({ rows });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
 /* ===== Preguntas (coord/admin/teacher) ===== */
 const qSchema = z.object({
   setId: z.string().optional(),
