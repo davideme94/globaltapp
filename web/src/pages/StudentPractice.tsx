@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { normalizeEmbedUrl } from '../lib/media';
-import '../styles/student-practice.css';
 
 type Q = {
   _id: string;
@@ -26,6 +25,1203 @@ type Feedback = {
   text: string;
   detail: string;
 };
+
+const STUDENT_PRACTICE_INLINE_CSS = `
+/* web/src/styles/student-practice.css */
+
+.practice-page-soft *,
+.practice-game-shell * {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+.practice-page-soft button,
+.practice-page-soft select,
+.practice-page-soft input,
+.practice-page-soft a,
+.practice-page-soft audio,
+.practice-game-shell button,
+.practice-game-shell select,
+.practice-game-shell input,
+.practice-game-shell a,
+.practice-game-shell audio {
+  font-family: inherit;
+}
+
+.practice-page-soft input,
+.practice-page-soft select,
+.practice-page-soft textarea,
+.practice-game-shell input,
+.practice-game-shell select,
+.practice-game-shell textarea {
+  font-size: 16px;
+}
+
+.practice-page-soft img,
+.practice-page-soft iframe,
+.practice-page-soft video,
+.practice-page-soft audio,
+.practice-game-shell img,
+.practice-game-shell iframe,
+.practice-game-shell video,
+.practice-game-shell audio {
+  max-width: 100%;
+}
+
+.practice-page-soft button,
+.practice-game-shell button {
+  touch-action: manipulation;
+}
+
+.practice-page-soft {
+  min-height: 100vh;
+  padding: 22px;
+  background:
+    radial-gradient(circle at top left, rgba(14, 165, 233, .20), transparent 30%),
+    radial-gradient(circle at top right, rgba(217, 70, 239, .18), transparent 28%),
+    linear-gradient(180deg, #ffffff, #f8fafc 60%, #f5f3ff);
+}
+
+.practice-shell {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 18px;
+}
+
+.practice-hero-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 28px;
+  align-items: center;
+  border-radius: 42px;
+  padding: 34px;
+  color: white;
+  background: linear-gradient(135deg, #0ea5e9, #7c3aed 54%, #d946ef);
+  box-shadow: 0 24px 70px rgba(124, 58, 237, .22);
+}
+
+.practice-blob {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(48px);
+  opacity: .55;
+  pointer-events: none;
+}
+
+.practice-blob-one {
+  width: 260px;
+  height: 260px;
+  right: -70px;
+  top: -80px;
+  background: #f0abfc;
+}
+
+.practice-blob-two {
+  width: 240px;
+  height: 240px;
+  left: -70px;
+  bottom: -90px;
+  background: #7dd3fc;
+}
+
+.practice-hero-copy,
+.practice-hero-mascot-wrap {
+  position: relative;
+  z-index: 1;
+}
+
+.practice-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  border: 1px solid rgba(255,255,255,.26);
+  border-radius: 999px;
+  background: rgba(255,255,255,.16);
+  padding: 7px 12px;
+  color: white;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.practice-kicker.dark {
+  border-color: #ede9fe;
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+.practice-hero-copy h1 {
+  margin: 14px 0 0;
+  max-width: 720px;
+  font-size: clamp(38px, 6vw, 68px);
+  line-height: .92;
+  font-weight: 950;
+  letter-spacing: -.06em;
+}
+
+.practice-hero-copy p {
+  margin: 18px 0 0;
+  max-width: 680px;
+  color: rgba(255,255,255,.86);
+  font-size: 16px;
+  line-height: 1.65;
+  font-weight: 650;
+}
+
+.practice-hero-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.practice-hero-pills span {
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 999px;
+  background: rgba(255,255,255,.14);
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 900;
+  backdrop-filter: blur(10px);
+}
+
+.practice-hero-mascot-wrap {
+  display: grid;
+  place-items: center;
+}
+
+.practice-hero-mascot {
+  display: grid;
+  place-items: center;
+  width: 230px;
+  height: 230px;
+  border: 1px solid rgba(255,255,255,.42);
+  border-radius: 52px;
+  background: rgba(255,255,255,.86);
+  font-size: 118px;
+  box-shadow: inset 0 -18px 0 rgba(124, 58, 237, .10), 0 22px 70px rgba(15, 23, 42, .24);
+  animation: practice-float 3.2s ease-in-out infinite;
+}
+
+.practice-speech-bubble {
+  margin-top: -20px;
+  border: 1px solid #ede9fe;
+  border-radius: 999px;
+  background: white;
+  padding: 12px 18px;
+  color: #6d28d9;
+  font-size: 14px;
+  font-weight: 950;
+  box-shadow: 0 16px 35px rgba(15, 23, 42, .14);
+}
+
+.practice-mission-card,
+.practice-loading-card,
+.practice-error-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 34px;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 20px 55px rgba(15, 23, 42, .07);
+  backdrop-filter: blur(12px);
+}
+
+.practice-mission-card {
+  padding: 24px;
+}
+
+.practice-mission-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.practice-mission-header h2,
+.practice-mission-card h2 {
+  margin: 10px 0 0;
+  color: #111827;
+  font-size: 28px;
+  line-height: 1.05;
+  font-weight: 950;
+  letter-spacing: -.04em;
+}
+
+.practice-mission-header p {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.practice-mission-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.practice-mission-grid label {
+  display: grid;
+  gap: 8px;
+}
+
+.practice-mission-grid label > span {
+  color: #374151;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.practice-mission-grid select,
+.practice-mission-grid input,
+.practice-written-row input {
+  width: 100%;
+  min-height: 58px;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  background: #f8fafc;
+  padding: 0 16px;
+  outline: none;
+  color: #111827;
+  font-weight: 750;
+  transition: .18s ease;
+}
+
+.practice-mission-grid select:focus,
+.practice-mission-grid input:focus,
+.practice-written-row input:focus {
+  border-color: #8b5cf6;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, .12);
+}
+
+.practice-start-button,
+.practice-secondary-button,
+.practice-error-card button {
+  min-height: 58px;
+  border: 0;
+  border-radius: 20px;
+  padding: 0 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+}
+
+.practice-start-button {
+  background: linear-gradient(90deg, #0ea5e9, #7c3aed 58%, #d946ef);
+  color: white;
+  box-shadow: 0 16px 35px rgba(124, 58, 237, .22);
+}
+
+.practice-start-button:hover:not(:disabled),
+.practice-secondary-button:hover:not(:disabled),
+.practice-error-card button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 45px rgba(124, 58, 237, .24);
+}
+
+.practice-start-button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.practice-secondary-button {
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: #374151;
+}
+
+.practice-empty-state,
+.practice-game-empty {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  min-height: 260px;
+  border: 1px dashed #d8b4fe;
+  border-radius: 28px;
+  background: linear-gradient(180deg, #faf5ff, #ffffff);
+  padding: 28px;
+  text-align: center;
+}
+
+.practice-empty-state > div,
+.practice-game-empty > div:first-child {
+  font-size: 56px;
+}
+
+.practice-empty-state h3,
+.practice-game-empty h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.practice-empty-state p,
+.practice-game-empty p {
+  margin: 0;
+  max-width: 430px;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.practice-loading-card,
+.practice-error-card {
+  width: min(560px, 100%);
+  margin: 10vh auto 0;
+  padding: 28px;
+  text-align: center;
+}
+
+.practice-loading-mascot,
+.practice-error-icon {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 16px;
+  border-radius: 30px;
+  background: linear-gradient(135deg, #f5f3ff, #e0f2fe);
+  font-size: 52px;
+  animation: practice-float 3.2s ease-in-out infinite;
+}
+
+.practice-loading-card h1,
+.practice-error-card h1 {
+  margin: 0;
+  color: #111827;
+  font-size: 26px;
+  font-weight: 950;
+  letter-spacing: -.04em;
+}
+
+.practice-loading-card p,
+.practice-error-card p {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.practice-error-card {
+  border-color: #fecdd3;
+  background: #fff1f2;
+}
+
+.practice-error-card button {
+  margin-top: 18px;
+  background: #e11d48;
+  color: white;
+}
+
+.practice-game-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  height: 100dvh;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  color: #111827;
+  background: #160f2e;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.practice-game-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(14, 165, 233, .42), transparent 28%),
+    radial-gradient(circle at 88% 18%, rgba(217, 70, 239, .36), transparent 32%),
+    radial-gradient(circle at 50% 100%, rgba(16, 185, 129, .24), transparent 34%),
+    linear-gradient(135deg, #111827, #27115c 54%, #4c1d95);
+}
+
+.practice-game-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: .22;
+  background-image:
+    linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, black, transparent 85%);
+}
+
+.practice-game-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.13);
+  background: rgba(17, 24, 39, .62);
+  backdrop-filter: blur(18px);
+}
+
+.practice-exit-button,
+.practice-music-button {
+  min-height: 46px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 16px;
+  background: rgba(255,255,255,.12);
+  color: white;
+  padding: 0 16px;
+  cursor: pointer;
+  font-weight: 950;
+  transition: .18s ease;
+}
+
+.practice-music-button {
+  background: rgba(124, 58, 237, .32);
+}
+
+.practice-exit-button:hover,
+.practice-music-button:hover {
+  transform: translateY(-1px);
+  background: rgba(255,255,255,.18);
+}
+
+.practice-game-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: white;
+}
+
+.practice-game-title > span {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  background: white;
+  font-size: 28px;
+  box-shadow: inset 0 -6px 0 rgba(124, 58, 237, .12);
+}
+
+.practice-game-title b,
+.practice-game-title small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.practice-game-title b {
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.practice-game-title small {
+  margin-top: 2px;
+  color: rgba(255,255,255,.72);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.practice-header-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(74px, 1fr));
+  gap: 8px;
+}
+
+.practice-header-stats div {
+  min-height: 48px;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 16px;
+  background: rgba(255,255,255,.12);
+  color: white;
+  padding: 7px 11px;
+}
+
+.practice-header-stats small {
+  display: block;
+  color: rgba(255,255,255,.68);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.practice-header-stats b {
+  display: block;
+  margin-top: 1px;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.practice-top-progress {
+  position: relative;
+  z-index: 2;
+  width: min(1280px, calc(100% - 24px));
+  margin: 12px auto 0;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 18px;
+  background: rgba(255,255,255,.12);
+  padding: 10px;
+  color: white;
+  backdrop-filter: blur(16px);
+}
+
+.practice-top-progress > div:first-child,
+.practice-progress-card > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.practice-game-main {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+  gap: 16px;
+  width: min(1280px, calc(100% - 24px));
+  margin: 16px auto 24px;
+}
+
+.practice-game-side {
+  position: sticky;
+  top: 84px;
+  align-self: start;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 32px;
+  background: rgba(255,255,255,.10);
+  color: white;
+  padding: 20px;
+  box-shadow: 0 20px 70px rgba(0,0,0,.20);
+  backdrop-filter: blur(18px);
+}
+
+.practice-mini-mascot {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  margin-bottom: 16px;
+  border-radius: 30px;
+  background: white;
+  font-size: 56px;
+  box-shadow: inset 0 -10px 0 rgba(124, 58, 237, .09), 0 18px 40px rgba(0,0,0,.18);
+  animation: practice-float 3.2s ease-in-out infinite;
+}
+
+.practice-game-side h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.practice-game-side p {
+  margin: 6px 0 0;
+  color: rgba(255,255,255,.76);
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 650;
+}
+
+.practice-side-stats {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.practice-side-stats div {
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 22px;
+  background: rgba(255,255,255,.10);
+  padding: 13px;
+}
+
+.practice-side-stats span {
+  display: block;
+  color: rgba(255,255,255,.58);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.practice-side-stats b {
+  display: block;
+  margin-top: 3px;
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.practice-game-card {
+  min-height: calc(100vh - 132px);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 36px;
+  background: rgba(255,255,255,.96);
+  padding: 22px;
+  box-shadow: 0 25px 80px rgba(0,0,0,.25);
+  backdrop-filter: blur(12px);
+}
+
+.practice-question-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.practice-question-head h2 {
+  margin: 10px 0 0;
+  color: #111827;
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.02;
+  font-weight: 950;
+  letter-spacing: -.05em;
+}
+
+.practice-type-pill {
+  height: fit-content;
+  border: 1px solid #bae6fd;
+  border-radius: 999px;
+  background: #f0f9ff;
+  color: #0369a1;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.practice-question-content {
+  display: grid;
+  gap: 16px;
+}
+
+.practice-media-card,
+.practice-audio-card,
+.practice-prompt-card,
+.practice-warning-card {
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 28px;
+  background: #f8fafc;
+}
+
+.practice-media-card img {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+}
+
+.practice-media-card iframe {
+  display: block;
+  width: 100%;
+  height: 360px;
+  border: 0;
+}
+
+.practice-audio-card {
+  display: grid;
+  gap: 8px;
+  border-color: #bae6fd;
+  background: #f0f9ff;
+  padding: 16px;
+}
+
+.practice-audio-card span {
+  color: #0369a1;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.practice-audio-card a {
+  color: #0369a1;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.practice-prompt-card {
+  border-color: #ddd6fe;
+  background: linear-gradient(180deg, #f5f3ff, #ffffff);
+  padding: 20px;
+}
+
+.practice-prompt-card span {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: #7c3aed;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.practice-prompt-card p {
+  margin: 0;
+  color: #111827;
+  font-size: clamp(22px, 3vw, 36px);
+  line-height: 1.2;
+  font-weight: 950;
+  letter-spacing: -.03em;
+}
+
+.practice-feedback {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 24px;
+  padding: 16px;
+  animation: practice-pop .22s ease-out;
+}
+
+.practice-feedback > span {
+  font-size: 28px;
+}
+
+.practice-feedback b,
+.practice-feedback small {
+  display: block;
+}
+
+.practice-feedback b {
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.practice-feedback small {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.practice-feedback-good {
+  border: 1px solid #bbf7d0;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.practice-feedback-bad {
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.practice-options-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.practice-answer-button {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+  background: white;
+  padding: 14px 18px;
+  text-align: left;
+  color: #1f2937;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, .06);
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+.practice-answer-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: #c4b5fd;
+  background: #f5f3ff;
+  box-shadow: 0 14px 30px rgba(124, 58, 237, .14);
+}
+
+.practice-answer-button:disabled {
+  cursor: default;
+}
+
+.practice-answer-left {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 950;
+}
+
+.practice-answer-left b {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 13px;
+}
+
+.practice-answer-left span {
+  overflow-wrap: anywhere;
+}
+
+.practice-answer-arrow {
+  color: #a78bfa;
+  font-size: 30px;
+  font-weight: 950;
+}
+
+.practice-option-right {
+  border-color: #86efac !important;
+  background: #dcfce7 !important;
+  color: #14532d !important;
+}
+
+.practice-option-wrong {
+  border-color: #fecdd3 !important;
+  background: #fff1f2 !important;
+  color: #9f1239 !important;
+}
+
+.practice-written-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+}
+
+.practice-warning-card {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+  padding: 18px;
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.practice-result-wrap {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.practice-result-card {
+  width: min(860px, 100%);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 42px;
+  background: rgba(255,255,255,.96);
+  padding: 34px;
+  text-align: center;
+  box-shadow: 0 30px 90px rgba(0,0,0,.30);
+}
+
+.practice-result-trophy {
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  margin: 0 auto 18px;
+  border-radius: 34px;
+  background: linear-gradient(135deg, #f5f3ff, #e0f2fe);
+  font-size: 68px;
+  box-shadow: inset 0 -12px 0 rgba(124, 58, 237, .08), 0 18px 40px rgba(15, 23, 42, .10);
+}
+
+.practice-result-card h1 {
+  margin: 14px 0 0;
+  color: #111827;
+  font-size: clamp(32px, 5vw, 54px);
+  line-height: .95;
+  font-weight: 950;
+  letter-spacing: -.06em;
+}
+
+.practice-result-card > p {
+  width: min(620px, 100%);
+  margin: 14px auto 0;
+  color: #6b7280;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.practice-result-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.practice-result-stats div,
+.practice-progress-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+  background: #f8fafc;
+  padding: 16px;
+}
+
+.practice-result-stats span {
+  display: block;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.practice-result-stats b {
+  display: block;
+  margin-top: 4px;
+  color: #111827;
+  font-size: 26px;
+  font-weight: 950;
+}
+
+.practice-progress-card {
+  margin-top: 16px;
+  text-align: left;
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.practice-progress-card p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.practice-progress-track {
+  overflow: hidden;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.68);
+}
+
+.practice-progress-track.small {
+  height: 9px;
+  background: rgba(255,255,255,.22);
+}
+
+.practice-progress-track > div {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #34d399, #10b981);
+  transition: width .3s ease;
+}
+
+.practice-result-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+@keyframes practice-float {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-8px) rotate(1deg); }
+}
+
+@keyframes practice-pop {
+  from { opacity: 0; transform: scale(.96) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@media (max-width: 1040px) {
+  .practice-game-main {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-game-side {
+    position: relative;
+    top: auto;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 14px;
+    align-items: center;
+  }
+
+  .practice-mini-mascot {
+    width: 76px;
+    height: 76px;
+    margin-bottom: 0;
+    border-radius: 24px;
+    font-size: 44px;
+  }
+
+  .practice-side-stats {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 880px) {
+  .practice-hero-card,
+  .practice-mission-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-hero-mascot {
+    width: 190px;
+    height: 190px;
+    border-radius: 44px;
+    font-size: 98px;
+  }
+
+  .practice-game-header {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .practice-game-title,
+  .practice-header-stats {
+    grid-column: 1 / -1;
+  }
+
+  .practice-result-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .practice-page-soft {
+    padding: 12px;
+  }
+
+  .practice-hero-card,
+  .practice-mission-card,
+  .practice-result-card {
+    border-radius: 28px;
+    padding: 20px;
+  }
+
+  .practice-hero-copy h1 {
+    font-size: 38px;
+  }
+
+  .practice-hero-copy p {
+    font-size: 14px;
+  }
+
+  .practice-hero-mascot {
+    width: 150px;
+    height: 150px;
+    border-radius: 36px;
+    font-size: 78px;
+  }
+
+  .practice-game-header {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .practice-exit-button,
+  .practice-music-button {
+    min-height: 42px;
+    border-radius: 14px;
+    padding-inline: 10px;
+    font-size: 13px;
+  }
+
+  .practice-header-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .practice-header-stats div {
+    min-height: 42px;
+    padding: 6px 8px;
+  }
+
+  .practice-game-main,
+  .practice-top-progress {
+    width: calc(100% - 14px);
+    margin-top: 8px;
+  }
+
+  .practice-game-card,
+  .practice-game-side {
+    border-radius: 26px;
+    padding: 14px;
+  }
+
+  .practice-question-head {
+    flex-direction: column;
+  }
+
+  .practice-prompt-card {
+    padding: 16px;
+  }
+
+  .practice-prompt-card p {
+    font-size: 23px;
+  }
+
+  .practice-answer-button {
+    min-height: 60px;
+    border-radius: 18px;
+    padding: 12px;
+  }
+
+  .practice-written-row {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-media-card iframe {
+    height: 250px;
+  }
+
+  .practice-side-stats,
+  .practice-result-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-result-wrap {
+    padding: 12px;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .practice-game-shell {
+    overflow-y: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+`;
 
 function shuffleArray<T>(arr: T[]): T[] {
   const copy = [...arr];
@@ -65,12 +1261,16 @@ function normalizeAudioUrl(u?: string | null) {
   return u;
 }
 
+function getAudioContextClass() {
+  return (
+    window.AudioContext ||
+    (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  );
+}
+
 function playFeedbackSound(correct: boolean) {
   try {
-    const AudioContextClass =
-      window.AudioContext ||
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-
+    const AudioContextClass = getAudioContextClass();
     if (!AudioContextClass) return;
 
     const ctx = new AudioContextClass();
@@ -128,19 +1328,7 @@ const GAME_MELODY = [
   880.00, 783.99, 659.25, 587.33,
 ];
 
-const GAME_BASS = [
-  130.81,
-  146.83,
-  164.81,
-  196.00,
-];
-
-function getAudioContextClass() {
-  return (
-    window.AudioContext ||
-    (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-  );
-}
+const GAME_BASS = [130.81, 146.83, 164.81, 196.00];
 
 function playMusicTone(
   ctx: AudioContext,
@@ -170,7 +1358,6 @@ function playMusicTone(
 }
 
 export default function StudentPractice() {
-  // --- Modo tester si vienen ?as= & set=
   const params = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search)
     : new URLSearchParams();
@@ -179,16 +1366,13 @@ export default function StudentPractice() {
   const testerSet = params.get('set') || '';
   const testerUnit = params.get('unit') ? Number(params.get('unit')) : undefined;
 
-  // --- Sets habilitados
   const [mySets, setMySets] = useState<{ set: { _id: string; title: string; units?: number }, updatedAt: string }[]>([]);
   const [setId, setSetId] = useState<string>(testerSet || '');
   const [unit, setUnit] = useState<number | ''>(typeof testerUnit === 'number' ? testerUnit : '');
   const [mode, setMode] = useState<'sets' | 'legacy'>(testerSet ? 'sets' : 'legacy');
 
-  // --- Pantallas
   const [screen, setScreen] = useState<'choose' | 'game' | 'result'>('choose');
 
-  // --- Juego
   const [qs, setQs] = useState<Q[]>([]);
   const [idx, setIdx] = useState(0);
   const [answer, setAnswer] = useState('');
@@ -212,6 +1396,46 @@ export default function StudentPractice() {
   const musicStepRef = useRef(0);
 
   const q = qs[idx];
+
+  useEffect(() => {
+    const styleId = 'student-practice-inline-css';
+
+    const previous = document.getElementById(styleId);
+    if (previous) previous.remove();
+
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = STUDENT_PRACTICE_INLINE_CSS;
+    document.head.appendChild(style);
+
+    return () => {
+      style.remove();
+    };
+  }, []);
+
+  const selectedSet = useMemo(() => {
+    return mySets.find(r => r.set._id === setId)?.set || null;
+  }, [mySets, setId]);
+
+  const unitOptions = useMemo(() => {
+    const total = selectedSet?.units || 0;
+    if (!total || total < 1) return [];
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }, [selectedSet]);
+
+  const progressPct = useMemo(() => {
+    if (!progress || progress.total === 0) return 0;
+    return Math.round((progress.seen / progress.total) * 100);
+  }, [progress]);
+
+  const roundPct = useMemo(() => {
+    if (!score.total) return 0;
+    return Math.round((score.ok / score.total) * 100);
+  }, [score]);
+
+  const gameTitle = mode === 'sets'
+    ? selectedSet?.title || 'Practice game'
+    : 'General practice';
 
   function stopGameMusic() {
     if (musicTimerRef.current !== null) {
@@ -284,44 +1508,17 @@ export default function StudentPractice() {
     stopGameMusic();
   }
 
-  const selectedSet = useMemo(() => {
-    return mySets.find(r => r.set._id === setId)?.set || null;
-  }, [mySets, setId]);
-
-  const unitOptions = useMemo(() => {
-    const total = selectedSet?.units || 0;
-
-    if (!total || total < 1) return [];
-
-    return Array.from({ length: total }, (_, i) => i + 1);
-  }, [selectedSet]);
-
-  const progressPct = useMemo(() => {
-    if (!progress || progress.total === 0) return 0;
-
-    return Math.round((progress.seen / progress.total) * 100);
-  }, [progress]);
-
-  const roundPct = useMemo(() => {
-    if (!score.total) return 0;
-
-    return Math.round((score.ok / score.total) * 100);
-  }, [score]);
-
   useEffect(() => {
     (async () => {
       try {
-        // 1) Modo tester directo
         if (testerAs && testerSet) {
           setMode('sets');
           setSetId(testerSet);
           setScreen('game');
-
           await loadBatch(testerSet, typeof testerUnit === 'number' ? testerUnit : undefined, testerAs);
           return;
         }
 
-        // 2) Sets habilitados para alumno
         const r = await api.practice.mySets().catch(() => ({ rows: [] as any[] }));
         const rows = r?.rows || [];
 
@@ -333,7 +1530,6 @@ export default function StudentPractice() {
           return;
         }
 
-        // 3) Legacy
         setMode('legacy');
         setScreen('game');
         await loadLegacy();
@@ -350,7 +1546,6 @@ export default function StudentPractice() {
   useEffect(() => {
     return () => {
       stopGameMusic();
-
       try {
         if ('speechSynthesis' in window) {
           window.speechSynthesis.cancel();
@@ -379,7 +1574,6 @@ export default function StudentPractice() {
 
     try {
       const legacy = await api.practice.play();
-
       setQs(prepareQuestions(legacy.questions || []));
       setIdx(0);
       setAnswer('');
@@ -518,19 +1712,12 @@ export default function StudentPractice() {
 
   if (loading) {
     return (
-      <div className="mx-auto w-full max-w-5xl space-y-6 px-3 py-4 sm:px-5 md:px-6 md:py-6">
-        <section className="overflow-hidden rounded-[2rem] border border-neutral-200 bg-white p-5 shadow-xl shadow-neutral-100 sm:p-7">
-          <div className="space-y-5">
-            <div className="flex items-center gap-4">
-              <div className="h-16 w-16 animate-pulse rounded-3xl bg-neutral-100" />
-
-              <div className="min-w-0 flex-1 space-y-2">
-                <div className="h-6 w-56 animate-pulse rounded-full bg-neutral-100" />
-                <div className="h-4 w-80 max-w-full animate-pulse rounded-full bg-neutral-100" />
-              </div>
-            </div>
-
-            <div className="h-72 animate-pulse rounded-[2rem] bg-neutral-100" />
+      <div className="practice-page-soft">
+        <section className="practice-loading-card">
+          <div className="practice-loading-mascot">🐉</div>
+          <div>
+            <h1>Loading your mission...</h1>
+            <p>Milo is preparing the game.</p>
           </div>
         </section>
       </div>
@@ -539,624 +1726,355 @@ export default function StudentPractice() {
 
   if (err) {
     return (
-      <div className="mx-auto w-full max-w-5xl px-3 py-4 sm:px-5 md:px-6 md:py-6">
-        <div className="rounded-[2rem] border border-rose-200 bg-rose-50 p-6 text-rose-700 shadow-sm">
-          <h1 className="text-xl font-black">
-            No se pudo cargar la práctica
-          </h1>
-
-          <p className="mt-1 text-sm font-bold">
-            {err}
-          </p>
-
+      <div className="practice-page-soft">
+        <section className="practice-error-card">
+          <div className="practice-error-icon">⚠️</div>
+          <h1>No se pudo cargar la práctica</h1>
+          <p>{err}</p>
           <button
             onClick={() => {
               setErr(null);
-              if (mode === 'sets') {
-                setScreen('choose');
-              } else {
-                restartGame();
-              }
+              if (mode === 'sets') setScreen('choose');
+              else restartGame();
             }}
-            className="mt-5 rounded-2xl bg-rose-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-rose-100"
           >
             Volver
           </button>
-        </div>
+        </section>
       </div>
     );
   }
 
   if (screen === 'choose') {
     return (
-      <div className="mx-auto w-full max-w-6xl space-y-6 px-3 py-4 sm:px-5 md:px-6 md:py-6">
-        <section className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-r from-sky-500 via-violet-600 to-fuchsia-500 p-[2px] shadow-xl shadow-violet-100">
-          <div className="relative overflow-hidden rounded-[2.5rem] bg-white p-5 sm:p-7 md:p-8">
-            <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-violet-200/60 blur-3xl" />
-            <div className="absolute -bottom-16 -left-14 h-52 w-52 rounded-full bg-sky-200/60 blur-3xl" />
+      <div className="practice-page-soft">
+        <div className="practice-shell">
+          <section className="practice-hero-card">
+            <div className="practice-blob practice-blob-one" />
+            <div className="practice-blob practice-blob-two" />
 
-            <div className="relative grid gap-6 md:grid-cols-[1fr_260px] md:items-center">
-              <div>
-                <div className="mb-3 w-fit rounded-full border border-violet-100 bg-violet-50 px-4 py-1.5 text-xs font-black uppercase tracking-wide text-violet-700">
-                  Practice game {testerAs ? '— Tester mode' : ''}
-                </div>
+            <div className="practice-hero-copy">
+              <span className="practice-kicker">
+                🎮 Practice Quest {testerAs ? '· Tester mode' : ''}
+              </span>
 
-                <h1 className="text-3xl font-black tracking-tight text-neutral-950 sm:text-4xl md:text-5xl">
-                  Choose your mission
-                </h1>
+              <h1>Milo's English Adventure</h1>
 
-                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-neutral-600 sm:text-base">
-                  Choose a practice set, select a unit if you want, and start the game.
-                  You can repeat it many times until you get a perfect score.
-                </p>
-              </div>
-
-              <div className="relative mx-auto h-56 w-56">
-                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-violet-200 to-sky-200 blur-2xl" />
-
-                <div className="relative flex h-full w-full items-center justify-center rounded-[3rem] border border-white bg-white/80 text-8xl shadow-xl">
-                  🐉
-                </div>
-
-                <div className="absolute -bottom-2 left-1/2 w-[220px] -translate-x-1/2 rounded-3xl border border-violet-100 bg-white px-4 py-3 text-center text-sm font-black text-violet-800 shadow-lg">
-                  Milo says: Let’s play!
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {mode === 'sets' ? (
-          <section className="rounded-[2.5rem] border border-neutral-200 bg-white p-5 shadow-xl shadow-neutral-100 sm:p-6">
-            <div className="mb-5">
-              <h2 className="text-2xl font-black text-neutral-950">
-                Your assigned practice
-              </h2>
-
-              <p className="mt-1 text-sm text-neutral-500">
-                The activity will open in a full-screen game view.
+              <p>
+                Choose your mission, press start, and collect points. Wrong answers are not a problem:
+                they can come back so you can master them.
               </p>
-            </div>
 
-            <div className="grid gap-4 lg:grid-cols-[1fr_220px_auto] lg:items-end">
-              {!testerAs && (
-                <label className="grid gap-2">
-                  <span className="text-sm font-black text-neutral-700">
-                    Practice set
-                  </span>
-
-                  <select
-                    value={setId}
-                    onChange={e => {
-                      setSetId(e.target.value);
-                      setUnit('');
-                    }}
-                    className="min-h-[56px] w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100"
-                  >
-                    {mySets.map(r => (
-                      <option key={r.set._id} value={r.set._id}>
-                        {r.set.title}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-
-              <label className="grid gap-2">
-                <span className="text-sm font-black text-neutral-700">
-                  Unit
-                </span>
-
-                {unitOptions.length > 0 ? (
-                  <select
-                    value={unit}
-                    onChange={e => setUnit(e.target.value ? Number(e.target.value) : '')}
-                    className="min-h-[56px] w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100"
-                  >
-                    <option value="">All units</option>
-                    {unitOptions.map(n => (
-                      <option key={n} value={n}>
-                        Unit {n}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="number"
-                    min={1}
-                    placeholder="Optional"
-                    value={unit}
-                    onChange={e => setUnit(e.target.value ? Number(e.target.value) : '')}
-                    className="min-h-[56px] w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100"
-                  />
-                )}
-              </label>
-
-              <button
-                onClick={startWithSet}
-                disabled={!setId}
-                className="min-h-[56px] w-full rounded-2xl bg-gradient-to-r from-sky-500 via-violet-600 to-fuchsia-500 px-8 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-violet-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
-              >
-                Start game
-              </button>
-            </div>
-
-            {mySets.length === 0 && !testerAs && (
-              <div className="mt-5 rounded-3xl border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center">
-                <div className="text-4xl">
-                  📭
-                </div>
-
-                <h3 className="mt-2 text-lg font-black text-neutral-800">
-                  No practice sets assigned yet
-                </h3>
-
-                <p className="mt-1 text-sm text-neutral-500">
-                  When your teacher or coordinator enables a set, it will appear here.
-                </p>
+              <div className="practice-hero-pills">
+                <span>✨ Points</span>
+                <span>🔥 Streak</span>
+                <span>🎵 Music</span>
+                <span>🏆 Replay</span>
               </div>
-            )}
+            </div>
+
+            <div className="practice-hero-mascot-wrap">
+              <div className="practice-hero-mascot">🐉</div>
+              <div className="practice-speech-bubble">Ready?</div>
+            </div>
           </section>
-        ) : (
-          <section className="rounded-[2rem] border border-violet-100 bg-violet-50 px-5 py-4 text-sm font-bold text-violet-700">
-            General practice mode is active.
-          </section>
-        )}
+
+          {mode === 'sets' ? (
+            <section className="practice-mission-card">
+              <div className="practice-mission-header">
+                <div>
+                  <span className="practice-kicker dark">Your assigned practice</span>
+                  <h2>Choose your mission</h2>
+                  <p>The activity opens in a full-screen game view.</p>
+                </div>
+              </div>
+
+              <div className="practice-mission-grid">
+                {!testerAs && (
+                  <label>
+                    <span>Practice set</span>
+                    <select
+                      value={setId}
+                      onChange={e => {
+                        setSetId(e.target.value);
+                        setUnit('');
+                      }}
+                    >
+                      {mySets.map(r => (
+                        <option key={r.set._id} value={r.set._id}>{r.set.title}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                <label>
+                  <span>Unit</span>
+                  {unitOptions.length > 0 ? (
+                    <select
+                      value={unit}
+                      onChange={e => setUnit(e.target.value ? Number(e.target.value) : '')}
+                    >
+                      <option value="">All units</option>
+                      {unitOptions.map(n => (
+                        <option key={n} value={n}>Unit {n}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder="Optional"
+                      value={unit}
+                      onChange={e => setUnit(e.target.value ? Number(e.target.value) : '')}
+                    />
+                  )}
+                </label>
+
+                <button className="practice-start-button" onClick={startWithSet} disabled={!setId}>
+                  <span>Start game</span>
+                  <b>▶</b>
+                </button>
+              </div>
+
+              {mySets.length === 0 && !testerAs && (
+                <div className="practice-empty-state">
+                  <div>📭</div>
+                  <h3>No practice sets assigned yet</h3>
+                  <p>When your coordinator enables a set, it will appear here.</p>
+                </div>
+              )}
+            </section>
+          ) : (
+            <section className="practice-mission-card">
+              <span className="practice-kicker dark">General practice mode</span>
+              <h2>Ready to play?</h2>
+              <button className="practice-start-button" onClick={restartGame}>
+                <span>Start game</span>
+                <b>▶</b>
+              </button>
+            </section>
+          )}
+        </div>
       </div>
     );
   }
 
   if (screen === 'result') {
     return (
-      <div className="fixed inset-0 z-[80] overflow-y-auto bg-gradient-to-br from-sky-50 via-violet-50 to-fuchsia-50 px-4 py-5 sm:px-6">
-        <div className="mx-auto flex min-h-full max-w-5xl items-center justify-center">
-          <section className="w-full overflow-hidden rounded-[2.5rem] border border-white bg-white/90 p-6 shadow-2xl shadow-violet-200 backdrop-blur sm:p-8">
-            <div className="text-center">
-              <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[2rem] bg-gradient-to-br from-violet-100 to-sky-100 text-6xl shadow-lg">
-                {roundPct === 100 ? '🏆' : roundPct >= 70 ? '🎉' : '💪'}
-              </div>
-
-              <h1 className="mt-5 text-3xl font-black tracking-tight text-neutral-950 sm:text-4xl">
-                {roundPct === 100 ? 'Perfect score!' : 'Round finished!'}
-              </h1>
-
-              <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-neutral-600 sm:text-base">
-                {roundPct === 100
-                  ? 'Excellent! You answered everything correctly.'
-                  : 'Good practice! You can play again to improve your score.'}
-              </p>
+      <div className="practice-game-shell">
+        <div className="practice-game-bg" />
+        <main className="practice-result-wrap">
+          <section className="practice-result-card">
+            <div className="practice-result-trophy">
+              {roundPct === 100 ? '🏆' : roundPct >= 70 ? '🎉' : '💪'}
             </div>
 
-            <div className="mt-7 grid gap-4 sm:grid-cols-4">
-              <div className="rounded-3xl border border-violet-100 bg-violet-50 p-5 text-center">
-                <p className="text-xs font-black uppercase tracking-wide text-violet-500">
-                  Score
-                </p>
+            <span className="practice-kicker dark">Round complete</span>
+            <h1>{roundPct === 100 ? 'Perfect score!' : 'Nice work!'}</h1>
+            <p>
+              {roundPct === 100
+                ? 'Excellent! You mastered this round.'
+                : 'Good practice. Play again to improve your score and master more questions.'}
+            </p>
 
-                <p className="mt-1 text-2xl font-black text-violet-900">
-                  {score.ok}/{score.total}
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-sky-100 bg-sky-50 p-5 text-center">
-                <p className="text-xs font-black uppercase tracking-wide text-sky-500">
-                  Points
-                </p>
-
-                <p className="mt-1 text-2xl font-black text-sky-900">
-                  {points}
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-amber-100 bg-amber-50 p-5 text-center">
-                <p className="text-xs font-black uppercase tracking-wide text-amber-500">
-                  Best streak
-                </p>
-
-                <p className="mt-1 text-2xl font-black text-amber-900">
-                  {bestStreak}
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-5 text-center">
-                <p className="text-xs font-black uppercase tracking-wide text-emerald-500">
-                  Accuracy
-                </p>
-
-                <p className="mt-1 text-2xl font-black text-emerald-900">
-                  {roundPct}%
-                </p>
-              </div>
+            <div className="practice-result-stats">
+              <div><span>Score</span><b>{score.ok}/{score.total}</b></div>
+              <div><span>Points</span><b>{points}</b></div>
+              <div><span>Best streak</span><b>{bestStreak}</b></div>
+              <div><span>Accuracy</span><b>{roundPct}%</b></div>
             </div>
 
             {progress && (
-              <div className="mt-6 rounded-3xl border border-emerald-100 bg-emerald-50 p-5">
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <p className="text-sm font-black text-emerald-800">
-                    Set progress
-                  </p>
-
-                  <p className="text-sm font-black text-emerald-700">
-                    {progressPct}%
-                  </p>
+              <div className="practice-progress-card">
+                <div>
+                  <span>Set progress</span>
+                  <b>{progressPct}%</b>
                 </div>
-
-                <div className="h-3 overflow-hidden rounded-full bg-white">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600"
-                    style={{ width: `${progressPct}%` }}
-                  />
+                <div className="practice-progress-track">
+                  <div style={{ width: `${progressPct}%` }} />
                 </div>
-
-                <p className="mt-2 text-xs font-semibold text-emerald-700">
-                  Mastered <b>{progress.seen}</b> of <b>{progress.total}</b> questions.
-                </p>
+                <p>Mastered <b>{progress.seen}</b> of <b>{progress.total}</b> questions.</p>
               </div>
             )}
 
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
-              <button
-                onClick={restartGame}
-                className="rounded-2xl bg-gradient-to-r from-sky-500 via-violet-600 to-fuchsia-500 px-7 py-4 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-violet-200 transition hover:-translate-y-0.5 hover:shadow-xl"
-              >
-                Play again
+            <div className="practice-result-actions">
+              <button className="practice-start-button" onClick={restartGame}>
+                <span>Play again</span>
+                <b>↻</b>
               </button>
-
-              <button
-                onClick={backToChooser}
-                className="rounded-2xl border border-neutral-200 bg-white px-7 py-4 text-sm font-black uppercase tracking-wide text-neutral-700 shadow-sm transition hover:bg-neutral-50"
-              >
-                Back
-              </button>
+              <button className="practice-secondary-button" onClick={backToChooser}>Back</button>
             </div>
           </section>
-        </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-[80] overflow-y-auto bg-gradient-to-br from-sky-50 via-violet-50 to-fuchsia-50">
-      <div className="mx-auto flex min-h-full max-w-6xl flex-col px-3 py-3 sm:px-5 sm:py-5">
-        {/* GAME HEADER */}
-        <header className="mb-4 rounded-[2rem] border border-white bg-white/85 p-3 shadow-xl shadow-violet-100 backdrop-blur sm:p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                onClick={backToChooser}
-                className="rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-black text-neutral-700 shadow-sm transition hover:bg-neutral-50"
-              >
-                ← Back
-              </button>
+    <div className="practice-game-shell">
+      <div className="practice-game-bg" />
 
-              <button
-                onClick={toggleMusic}
-                className="rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm font-black text-violet-700 shadow-sm transition hover:bg-violet-100"
-              >
-                {musicMuted ? '🔇 Music' : '🎵 Music'}
-              </button>
+      <header className="practice-game-header">
+        <button onClick={backToChooser} className="practice-exit-button">← Back</button>
+        <button onClick={toggleMusic} className="practice-music-button">
+          {musicMuted ? '🔇 Music off' : '🎵 Music on'}
+        </button>
 
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-100 to-sky-100 text-3xl shadow-sm">
-                  🐉
-                </div>
-
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-black text-neutral-950 sm:text-base">
-                    {mode === 'sets'
-                      ? selectedSet?.title || 'Practice game'
-                      : 'General practice'}
-                  </p>
-
-                  <p className="text-xs font-bold text-neutral-500">
-                    {q?.unit ? `Unit ${q.unit}` : unit ? `Unit ${unit}` : 'All units'}
-                    {completed ? ' · Replay mode' : ''}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid flex-1 grid-cols-3 gap-2 sm:flex-none sm:grid-cols-3">
-              <div className="rounded-2xl border border-violet-100 bg-violet-50 px-3 py-2 text-center">
-                <p className="text-[10px] font-black uppercase tracking-wide text-violet-500">
-                  Score
-                </p>
-
-                <p className="text-sm font-black text-violet-900">
-                  {score.ok}/{score.total}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-sky-100 bg-sky-50 px-3 py-2 text-center">
-                <p className="text-[10px] font-black uppercase tracking-wide text-sky-500">
-                  Points
-                </p>
-
-                <p className="text-sm font-black text-sky-900">
-                  {points}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2 text-center">
-                <p className="text-[10px] font-black uppercase tracking-wide text-amber-500">
-                  Streak
-                </p>
-
-                <p className="text-sm font-black text-amber-900">
-                  {streak}
-                </p>
-              </div>
-            </div>
+        <div className="practice-game-title">
+          <span>🐉</span>
+          <div>
+            <b>{gameTitle}</b>
+            <small>{q?.unit ? `Unit ${q.unit}` : unit ? `Unit ${unit}` : 'All units'}{completed ? ' · Replay mode' : ''}</small>
           </div>
+        </div>
 
-          {progress && (
-            <div className="mt-3">
-              <div className="mb-1 flex items-center justify-between text-xs font-black text-neutral-500">
-                <span>
-                  Progress
-                </span>
+        <div className="practice-header-stats">
+          <div><small>Score</small><b>{score.ok}/{score.total}</b></div>
+          <div><small>Points</small><b>{points}</b></div>
+          <div><small>Streak</small><b>{streak}</b></div>
+        </div>
+      </header>
 
-                <span>
-                  {progress.seen}/{progress.total}
-                </span>
-              </div>
+      {progress && (
+        <div className="practice-top-progress">
+          <div>
+            <span>Progress</span>
+            <b>{progress.seen}/{progress.total}</b>
+          </div>
+          <div className="practice-progress-track small">
+            <div style={{ width: `${progressPct}%` }} />
+          </div>
+        </div>
+      )}
 
-              <div className="h-2 overflow-hidden rounded-full bg-neutral-100">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600"
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
+      <main className="practice-game-main">
+        <aside className="practice-game-side">
+          <div className="practice-mini-mascot">🐉</div>
+          <div>
+            <h3>Milo tip</h3>
+            <p>Read carefully, listen if there is audio, and choose your best answer.</p>
+          </div>
+          <div className="practice-side-stats">
+            <div><span>Question</span><b>{qs.length ? idx + 1 : 0}/{qs.length}</b></div>
+            <div><span>Accuracy</span><b>{roundPct}%</b></div>
+            <div><span>Best streak</span><b>{bestStreak}</b></div>
+          </div>
+        </aside>
+
+        <section className="practice-game-card">
+          {gameLoading ? (
+            <div className="practice-game-empty">
+              <div className="practice-loading-mascot">🐉</div>
+              <h2>Loading game...</h2>
+              <p>Your mission is almost ready.</p>
             </div>
-          )}
-        </header>
-
-        {/* GAME BODY */}
-        <main className="flex flex-1 items-stretch">
-          <section className="grid w-full gap-4 lg:grid-cols-[1fr_280px]">
-            <div className="overflow-hidden rounded-[2.5rem] border border-white bg-white/90 shadow-2xl shadow-violet-100 backdrop-blur">
-              {gameLoading ? (
-                <div className="flex min-h-[520px] items-center justify-center p-8">
-                  <div className="text-center">
-                    <div className="mx-auto h-16 w-16 animate-pulse rounded-[2rem] bg-violet-100" />
-
-                    <p className="mt-4 text-sm font-black text-neutral-500">
-                      Loading game...
-                    </p>
-                  </div>
+          ) : qs.length === 0 ? (
+            <div className="practice-game-empty">
+              <div>📭</div>
+              <h2>No questions available</h2>
+              <p>This set or unit does not have questions yet.</p>
+              <button className="practice-start-button" onClick={backToChooser}>Back</button>
+            </div>
+          ) : (
+            <>
+              <div className="practice-question-head">
+                <div>
+                  <span className="practice-kicker dark">Question {idx + 1} of {qs.length}</span>
+                  <h2>{q?.type === 'MC' ? 'Choose the best answer' : 'Write the correct answer'}</h2>
                 </div>
-              ) : qs.length === 0 ? (
-                <div className="flex min-h-[520px] items-center justify-center p-8 text-center">
-                  <div>
-                    <div className="text-6xl">
-                      📭
+                <span className="practice-type-pill">{q?.type === 'MC' ? 'Multiple choice' : 'Written answer'}</span>
+              </div>
+
+              <div className="practice-question-content">
+                {q?.imageUrl && (
+                  <div className="practice-media-card">
+                    <img src={q.imageUrl} alt="" />
+                  </div>
+                )}
+
+                {q?.audioUrl && (
+                  <div className="practice-audio-card">
+                    <span>🔊 Listen</span>
+                    <audio controls src={normalizeAudioUrl(q.audioUrl)} />
+                    <a href={q.audioUrl} target="_blank" rel="noreferrer">Open audio link</a>
+                  </div>
+                )}
+
+                {q?.embedUrl && (
+                  <div className="practice-media-card">
+                    <iframe
+                      src={normalizeEmbedUrl(q.embedUrl)}
+                      title="embed"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      sandbox="allow-same-origin allow-scripts allow-popups allow-presentation"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                    />
+                  </div>
+                )}
+
+                <div className="practice-prompt-card">
+                  <span>Mission</span>
+                  <p>{q?.prompt}</p>
+                </div>
+
+                {feedback && (
+                  <div className={feedback.correct ? 'practice-feedback practice-feedback-good' : 'practice-feedback practice-feedback-bad'}>
+                    <span>{feedback.correct ? '✅' : '❌'}</span>
+                    <div>
+                      <b>{feedback.text}</b>
+                      <small>{feedback.detail}</small>
                     </div>
+                  </div>
+                )}
 
-                    <h2 className="mt-4 text-2xl font-black text-neutral-900">
-                      No questions available
-                    </h2>
+                {q?.type === 'MC' ? (
+                  <div className="practice-options-grid">
+                    {(q.shuffledOptions || []).map((opt, optIdx) => {
+                      const isSelected = selectedAnswer === opt;
+                      const cls = [
+                        'practice-answer-button',
+                        isSelected && feedback?.correct ? 'practice-option-right' : '',
+                        isSelected && feedback && !feedback.correct ? 'practice-option-wrong' : '',
+                      ].filter(Boolean).join(' ');
 
-                    <p className="mt-2 max-w-md text-sm text-neutral-500">
-                      This set or unit does not have questions yet.
-                    </p>
+                      return (
+                        <button key={`${opt}-${optIdx}`} onClick={() => submit(opt)} disabled={locked} className={cls}>
+                          <span className="practice-answer-left">
+                            <b>{String.fromCharCode(65 + optIdx)}</b>
+                            <span>{opt}</span>
+                          </span>
+                          <span className="practice-answer-arrow">›</span>
+                        </button>
+                      );
+                    })}
 
-                    <button
-                      onClick={backToChooser}
-                      className="mt-6 rounded-2xl bg-gradient-to-r from-sky-500 via-violet-600 to-fuchsia-500 px-6 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-violet-200"
-                    >
-                      Back
+                    {(q.shuffledOptions || []).length === 0 && (
+                      <div className="practice-warning-card">
+                        This multiple choice question has no options loaded.
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="practice-written-row">
+                    <input
+                      placeholder="Your answer"
+                      value={answer}
+                      onChange={e => setAnswer(e.target.value)}
+                      disabled={locked}
+                    />
+                    <button onClick={() => submit(answer)} disabled={!answer.trim() || locked} className="practice-start-button">
+                      <span>Answer</span>
+                      <b>✓</b>
                     </button>
                   </div>
-                </div>
-              ) : (
-                <div className="p-4 sm:p-6">
-                  <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-wide text-violet-500">
-                        Question {idx + 1} of {qs.length}
-                      </p>
-
-                      <h2 className="mt-1 text-xl font-black text-neutral-950 sm:text-2xl">
-                        Choose the best answer
-                      </h2>
-                    </div>
-
-                    <span className="w-fit rounded-full border border-sky-100 bg-sky-50 px-4 py-2 text-xs font-black uppercase tracking-wide text-sky-700">
-                      {q?.type === 'MC' ? 'Multiple choice' : 'Written answer'}
-                    </span>
-                  </div>
-
-                  <div className="space-y-5">
-                    {q?.imageUrl && (
-                      <div className="overflow-hidden rounded-3xl border border-neutral-200 bg-neutral-50">
-                        <img
-                          src={q.imageUrl}
-                          alt=""
-                          className="max-h-[420px] w-full object-contain"
-                        />
-                      </div>
-                    )}
-
-                    {q?.audioUrl && (
-                      <div className="rounded-3xl border border-sky-100 bg-sky-50 p-4">
-                        <p className="mb-2 text-xs font-black uppercase tracking-wide text-sky-700">
-                          Listen
-                        </p>
-
-                        <audio
-                          controls
-                          src={normalizeAudioUrl(q.audioUrl)}
-                          className="w-full"
-                        />
-
-                        <a
-                          href={q.audioUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-2 block text-xs font-bold text-sky-700 underline"
-                        >
-                          Open audio link
-                        </a>
-                      </div>
-                    )}
-
-                    {q?.embedUrl && (
-                      <div className="overflow-hidden rounded-3xl border border-neutral-200 bg-neutral-50">
-                        <iframe
-                          src={normalizeEmbedUrl(q.embedUrl)}
-                          title="embed"
-                          className="h-[260px] w-full border-0 sm:h-[360px]"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                          allowFullScreen
-                          sandbox="allow-same-origin allow-scripts allow-popups allow-presentation"
-                          referrerPolicy="strict-origin-when-cross-origin"
-                        />
-                      </div>
-                    )}
-
-                    <div className="rounded-3xl border border-violet-100 bg-violet-50 px-5 py-5">
-                      <p className="text-xl font-black leading-relaxed text-neutral-950 sm:text-2xl">
-                        {q?.prompt}
-                      </p>
-                    </div>
-
-                    {feedback && (
-                      <div
-                        className={[
-                          'rounded-3xl border px-5 py-4 shadow-sm',
-                          feedback.correct
-                            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                            : 'border-rose-200 bg-rose-50 text-rose-800',
-                        ].join(' ')}
-                      >
-                        <p className="text-lg font-black">
-                          {feedback.correct ? '✅' : '❌'} {feedback.text}
-                        </p>
-
-                        <p className="mt-1 text-sm font-bold">
-                          {feedback.detail}
-                        </p>
-                      </div>
-                    )}
-
-                    {q?.type === 'MC' ? (
-                      <div className="grid gap-3">
-                        {(q.shuffledOptions || []).map((opt, optIdx) => {
-                          const isSelected = selectedAnswer === opt;
-
-                          return (
-                            <button
-                              key={`${opt}-${optIdx}`}
-                              onClick={() => submit(opt)}
-                              disabled={locked}
-                              className={[
-                                'w-full rounded-2xl border px-5 py-4 text-left text-sm font-black shadow-sm transition sm:text-base',
-                                locked
-                                  ? 'cursor-not-allowed opacity-80'
-                                  : 'hover:-translate-y-0.5 hover:shadow-md',
-                                isSelected && feedback?.correct
-                                  ? 'border-emerald-300 bg-emerald-50 text-emerald-900'
-                                  : '',
-                                isSelected && feedback && !feedback.correct
-                                  ? 'border-rose-300 bg-rose-50 text-rose-900'
-                                  : '',
-                                !isSelected
-                                  ? 'border-neutral-200 bg-white text-neutral-800 hover:border-violet-200 hover:bg-violet-50'
-                                  : '',
-                              ].join(' ')}
-                            >
-                              <span className="mr-3 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-100 text-xs font-black text-neutral-600">
-                                {String.fromCharCode(65 + optIdx)}
-                              </span>
-
-                              {opt}
-                            </button>
-                          );
-                        })}
-
-                        {(q.shuffledOptions || []).length === 0 && (
-                          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm font-bold text-amber-800">
-                            This multiple choice question has no options loaded.
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                        <input
-                          placeholder="Your answer"
-                          value={answer}
-                          onChange={e => setAnswer(e.target.value)}
-                          disabled={locked}
-                          className="min-h-[58px] w-full rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold text-neutral-700 outline-none transition placeholder:text-neutral-400 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 disabled:opacity-70"
-                        />
-
-                        <button
-                          onClick={() => submit(answer)}
-                          disabled={!answer.trim() || locked}
-                          className="min-h-[58px] w-full rounded-2xl bg-gradient-to-r from-sky-500 via-violet-600 to-fuchsia-500 px-7 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-violet-200 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-                        >
-                          Answer
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* MASCOT SIDE PANEL */}
-            <aside className="hidden rounded-[2.5rem] border border-white bg-white/80 p-5 shadow-xl shadow-violet-100 backdrop-blur lg:block">
-              <div className="sticky top-5">
-                <div className="mx-auto flex h-44 w-44 items-center justify-center rounded-[3rem] bg-gradient-to-br from-violet-100 to-sky-100 text-8xl shadow-inner">
-                  🐉
-                </div>
-
-                <div className="mt-5 rounded-3xl border border-violet-100 bg-violet-50 p-4">
-                  <p className="text-sm font-black text-violet-900">
-                    Milo tip
-                  </p>
-
-                  <p className="mt-1 text-sm leading-relaxed text-violet-700">
-                    Read carefully, listen to the audio if there is one, and choose the best option.
-                  </p>
-                </div>
-
-                <div className="mt-4 grid gap-3">
-                  <div className="rounded-3xl border border-neutral-100 bg-white p-4">
-                    <p className="text-xs font-black uppercase tracking-wide text-neutral-400">
-                      Current question
-                    </p>
-
-                    <p className="mt-1 text-lg font-black text-neutral-900">
-                      {qs.length ? idx + 1 : 0}/{qs.length}
-                    </p>
-                  </div>
-
-                  <div className="rounded-3xl border border-neutral-100 bg-white p-4">
-                    <p className="text-xs font-black uppercase tracking-wide text-neutral-400">
-                      Accuracy
-                    </p>
-
-                    <p className="mt-1 text-lg font-black text-neutral-900">
-                      {roundPct}%
-                    </p>
-                  </div>
-
-                  <div className="rounded-3xl border border-neutral-100 bg-white p-4">
-                    <p className="text-xs font-black uppercase tracking-wide text-neutral-400">
-                      Best streak
-                    </p>
-
-                    <p className="mt-1 text-lg font-black text-neutral-900">
-                      {bestStreak}
-                    </p>
-                  </div>
-                </div>
+                )}
               </div>
-            </aside>
-          </section>
-        </main>
-      </div>
+            </>
+          )}
+        </section>
+      </main>
     </div>
   );
 }
+
