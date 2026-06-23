@@ -855,15 +855,16 @@ const STUDENT_PRACTICE_INLINE_CSS = `
   transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
 }
 
-.practice-answer-button:hover:not(:disabled) {
+.practice-answer-button:hover:not(.practice-option-locked) {
   transform: translateY(-2px);
   border-color: #c4b5fd;
   background: #f5f3ff;
   box-shadow: 0 14px 30px rgba(124, 58, 237, .14);
 }
 
-.practice-answer-button:disabled {
+.practice-answer-button.practice-option-locked {
   cursor: default;
+  opacity: .82;
 }
 
 .practice-answer-left {
@@ -872,6 +873,10 @@ const STUDENT_PRACTICE_INLINE_CSS = `
   align-items: center;
   gap: 12px;
   font-weight: 950;
+}
+
+.practice-answer-has-image .practice-answer-left {
+  align-items: flex-start;
 }
 
 .practice-answer-left b {
@@ -888,6 +893,65 @@ const STUDENT_PRACTICE_INLINE_CSS = `
 
 .practice-answer-left span {
   overflow-wrap: anywhere;
+}
+
+.practice-answer-content {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.practice-answer-content.image {
+  width: 100%;
+}
+
+.practice-option-image {
+  display: block;
+  width: min(280px, 100%);
+  max-height: 180px;
+  object-fit: contain;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  background: #f8fafc;
+  padding: 8px;
+}
+
+.practice-option-label {
+  width: fit-content;
+  border-radius: 999px;
+  background: #f5f3ff;
+  color: #6d28d9;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 950;
+  letter-spacing: .02em;
+}
+
+.practice-answer-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.practice-speak-button {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #bae6fd;
+  border-radius: 16px;
+  background: #f0f9ff;
+  color: #0369a1;
+  cursor: pointer;
+  font-size: 18px;
+  box-shadow: 0 8px 18px rgba(14, 165, 233, .10);
+  transition: transform .18s ease, background .18s ease;
+}
+
+.practice-speak-button:hover {
+  transform: translateY(-1px) scale(1.03);
+  background: #e0f2fe;
 }
 
 .practice-answer-arrow {
@@ -1188,6 +1252,21 @@ const STUDENT_PRACTICE_INLINE_CSS = `
     padding: 12px;
   }
 
+  .practice-answer-left {
+    align-items: flex-start;
+  }
+
+  .practice-option-image {
+    width: 100%;
+    max-height: 160px;
+  }
+
+  .practice-speak-button {
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
+  }
+
   .practice-written-row {
     grid-template-columns: 1fr;
   }
@@ -1259,6 +1338,105 @@ function normalizeAudioUrl(u?: string | null) {
   } catch {}
 
   return u;
+}
+
+
+type ParsedPracticeOption = {
+  raw: string;
+  isImage: boolean;
+  imageUrl: string;
+  label: string;
+  speakText: string;
+  displayText: string;
+};
+
+function isProbablyUrl(value: string) {
+  const text = value.trim();
+
+  if (!text) return false;
+
+  try {
+    const url = new URL(text);
+    return url.protocol === 'http:' || url.protocol === 'https:' || url.protocol === 'data:';
+  } catch {
+    return /^https?:\/\//i.test(text) || /^data:/i.test(text);
+  }
+}
+
+function isImageUrl(value: string) {
+  const text = value.trim();
+
+  if (!text) return false;
+  if (/^data:image\//i.test(text)) return true;
+
+  try {
+    const url = new URL(text);
+    const cleanPath = url.pathname.toLowerCase();
+
+    return /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(cleanPath);
+  } catch {
+    const clean = text.split('?')[0].toLowerCase();
+    return /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(clean);
+  }
+}
+
+function parsePracticeOption(raw: string): ParsedPracticeOption {
+  const text = String(raw || '').trim();
+
+  if (text.toLowerCase().startsWith('img:')) {
+    const withoutPrefix = text.slice(4).trim();
+    const [urlPart, ...labelParts] = withoutPrefix.split('|');
+    const imageUrl = (urlPart || '').trim();
+    const label = labelParts.join('|').trim();
+
+    return {
+      raw,
+      isImage: !!imageUrl,
+      imageUrl,
+      label,
+      speakText: label && !isProbablyUrl(label) ? label : '',
+      displayText: label || 'Image option',
+    };
+  }
+
+  if (isImageUrl(text)) {
+    return {
+      raw,
+      isImage: true,
+      imageUrl: text,
+      label: '',
+      speakText: '',
+      displayText: 'Image option',
+    };
+  }
+
+  return {
+    raw,
+    isImage: false,
+    imageUrl: '',
+    label: text,
+    speakText: text && !isProbablyUrl(text) ? text : '',
+    displayText: text,
+  };
+}
+
+function speakEnglishText(text: string) {
+  try {
+    const clean = text.trim();
+
+    if (!clean || isProbablyUrl(clean)) return;
+    if (!('speechSynthesis' in window)) return;
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 0.95;
+
+    window.speechSynthesis.speak(utterance);
+  } catch {}
 }
 
 function getAudioContextClass() {
@@ -2031,21 +2209,70 @@ export default function StudentPractice() {
                 {q?.type === 'MC' ? (
                   <div className="practice-options-grid">
                     {(q.shuffledOptions || []).map((opt, optIdx) => {
+                      const parsed = parsePracticeOption(opt);
                       const isSelected = selectedAnswer === opt;
                       const cls = [
                         'practice-answer-button',
+                        locked ? 'practice-option-locked' : '',
+                        parsed.isImage ? 'practice-answer-has-image' : '',
                         isSelected && feedback?.correct ? 'practice-option-right' : '',
                         isSelected && feedback && !feedback.correct ? 'practice-option-wrong' : '',
                       ].filter(Boolean).join(' ');
 
+                      function chooseOption() {
+                        if (locked) return;
+                        submit(opt);
+                      }
+
                       return (
-                        <button key={`${opt}-${optIdx}`} onClick={() => submit(opt)} disabled={locked} className={cls}>
+                        <div
+                          key={`${opt}-${optIdx}`}
+                          role="button"
+                          tabIndex={locked ? -1 : 0}
+                          aria-disabled={locked}
+                          onClick={chooseOption}
+                          onKeyDown={e => {
+                            if (locked) return;
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              submit(opt);
+                            }
+                          }}
+                          className={cls}
+                        >
                           <span className="practice-answer-left">
                             <b>{String.fromCharCode(65 + optIdx)}</b>
-                            <span>{opt}</span>
+
+                            {parsed.isImage ? (
+                              <span className="practice-answer-content image">
+                                <img className="practice-option-image" src={parsed.imageUrl} alt={parsed.label || `Option ${optIdx + 1}`} />
+                                {parsed.label && <span className="practice-option-label">{parsed.label}</span>}
+                              </span>
+                            ) : (
+                              <span className="practice-answer-content">
+                                <span>{parsed.displayText}</span>
+                              </span>
+                            )}
                           </span>
-                          <span className="practice-answer-arrow">›</span>
-                        </button>
+
+                          <span className="practice-answer-actions">
+                            {parsed.speakText && (
+                              <button
+                                type="button"
+                                className="practice-speak-button"
+                                aria-label={`Listen to ${parsed.speakText}`}
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  speakEnglishText(parsed.speakText);
+                                }}
+                              >
+                                🔊
+                              </button>
+                            )}
+
+                            <span className="practice-answer-arrow">›</span>
+                          </span>
+                        </div>
                       );
                     })}
 
