@@ -26,6 +26,107 @@ type Q = {
   itemId?: string | null;
 };
 
+type ParsedPracticeOption = {
+  raw: string;
+  isImage: boolean;
+  imageUrl: string;
+  label: string;
+  speakText: string;
+  displayText: string;
+};
+
+function isLikelyUrl(value: string) {
+  return /^(https?:\/\/|data:)/i.test(value.trim());
+}
+
+function isLikelyImageUrl(value: string) {
+  const v = value.trim();
+
+  if (/^data:image\//i.test(v)) return true;
+
+  return /\.(png|jpe?g|gif|webp|svg)(\?|#|$)/i.test(v);
+}
+
+function parsePracticeOption(rawValue: string): ParsedPracticeOption {
+  const raw = String(rawValue || '').trim();
+
+  if (!raw) {
+    return {
+      raw,
+      isImage: false,
+      imageUrl: '',
+      label: '',
+      speakText: '',
+      displayText: '',
+    };
+  }
+
+  const withoutPrefix = raw.toLowerCase().startsWith('img:')
+    ? raw.slice(4).trim()
+    : raw;
+
+  const pipeIndex = withoutPrefix.indexOf('|');
+  const possibleImage = pipeIndex >= 0
+    ? withoutPrefix.slice(0, pipeIndex).trim()
+    : withoutPrefix.trim();
+  const possibleLabel = pipeIndex >= 0
+    ? withoutPrefix.slice(pipeIndex + 1).trim()
+    : '';
+
+  const isExplicitImage = raw.toLowerCase().startsWith('img:');
+  const isImplicitImage = !isExplicitImage && isLikelyImageUrl(possibleImage);
+
+  if (isExplicitImage || isImplicitImage) {
+    return {
+      raw,
+      isImage: true,
+      imageUrl: possibleImage,
+      label: possibleLabel,
+      speakText: possibleLabel,
+      displayText: possibleLabel || 'Image option',
+    };
+  }
+
+  if (isLikelyUrl(raw)) {
+    return {
+      raw,
+      isImage: false,
+      imageUrl: '',
+      label: raw,
+      speakText: '',
+      displayText: raw,
+    };
+  }
+
+  return {
+    raw,
+    isImage: false,
+    imageUrl: '',
+    label: raw,
+    speakText: raw,
+    displayText: raw,
+  };
+}
+
+function speakEnglish(text: string) {
+  try {
+    const value = text.trim();
+
+    if (!value) return;
+    if (!('speechSynthesis' in window)) return;
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(value);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 0.9;
+
+    window.speechSynthesis.speak(utterance);
+  } catch {}
+}
+
 export default function CoordinatorPracticeSets() {
   const [sets, setSets] = useState<SetRow[]>([]);
   const [sel, setSel] = useState<string>('');
@@ -420,6 +521,46 @@ export default function CoordinatorPracticeSets() {
     setTimeout(()=>setMsg(null), ms);
   }
 
+  function renderOptionPreview(rawValue: string, compact = false) {
+    const parsed = parsePracticeOption(rawValue);
+
+    if (!parsed.raw) return null;
+
+    return (
+      <div className={compact ? 'pa-option-preview compact' : 'pa-option-preview'}>
+        {parsed.isImage && parsed.imageUrl && (
+          <img
+            className="pa-option-preview-img"
+            src={parsed.imageUrl}
+            alt={parsed.label || 'Option image'}
+          />
+        )}
+
+        <div className="pa-option-preview-text">
+          <span className="pa-option-preview-label">
+            {parsed.isImage ? 'Image answer' : parsed.speakText ? 'Text answer' : 'Link'}
+          </span>
+          {parsed.displayText}
+        </div>
+
+        {parsed.speakText && (
+          <button
+            type="button"
+            className="pa-speak-button"
+            title={`Leer en inglés: ${parsed.speakText}`}
+            onClick={e => {
+              e.preventDefault();
+              e.stopPropagation();
+              speakEnglish(parsed.speakText);
+            }}
+          >
+            🔊
+          </button>
+        )}
+      </div>
+    );
+  }
+
   // =================== RENDER ===================
   return (
     <div className="practice-admin-inline">
@@ -696,13 +837,124 @@ export default function CoordinatorPracticeSets() {
 
         .pa-options {
           display: grid;
-          gap: 9px;
+          gap: 11px;
         }
 
         .pa-option-row {
           display: grid;
           grid-template-columns: 1fr auto;
           gap: 8px;
+        }
+
+        .pa-option-editor-row {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto auto;
+          gap: 8px;
+          align-items: start;
+        }
+
+        .pa-option-input-wrap {
+          display: grid;
+          gap: 8px;
+          min-width: 0;
+        }
+
+        .pa-option-format-box {
+          border: 1px solid #e9d5ff;
+          border-radius: 18px;
+          background: #faf5ff;
+          color: #6d28d9;
+          padding: 12px;
+          font-size: 13px;
+          line-height: 1.5;
+          font-weight: 750;
+        }
+
+        .pa-option-format-box code {
+          display: inline-block;
+          border-radius: 8px;
+          background: #fff;
+          color: #4c1d95;
+          padding: 2px 6px;
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        .pa-option-preview {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+          border: 1px solid #e5e7eb;
+          border-radius: 16px;
+          background: #fff;
+          padding: 10px;
+        }
+
+        .pa-option-preview.compact {
+          display: inline-flex;
+          width: fit-content;
+          max-width: 100%;
+          padding: 8px 10px;
+          border-radius: 14px;
+          background: #fff;
+        }
+
+        .pa-option-preview-img {
+          display: block;
+          flex: 0 0 auto;
+          width: 74px;
+          height: 54px;
+          border-radius: 13px;
+          object-fit: cover;
+          background: #f8fafc;
+          border: 1px solid #e5e7eb;
+        }
+
+        .pa-option-preview.compact .pa-option-preview-img {
+          width: 52px;
+          height: 42px;
+          border-radius: 11px;
+        }
+
+        .pa-option-preview-text {
+          min-width: 0;
+          color: #111827;
+          font-size: 14px;
+          font-weight: 900;
+          overflow-wrap: anywhere;
+        }
+
+        .pa-option-preview-label {
+          display: block;
+          color: #6b7280;
+          font-size: 11px;
+          font-weight: 950;
+          letter-spacing: .05em;
+          text-transform: uppercase;
+          margin-bottom: 2px;
+        }
+
+        .pa-speak-button {
+          flex: 0 0 auto;
+          width: 38px !important;
+          min-width: 38px;
+          height: 38px;
+          border-radius: 14px !important;
+          padding: 0 !important;
+          display: inline-grid;
+          place-items: center;
+          background: #eef2ff !important;
+          color: #4338ca !important;
+          border-color: #c7d2fe !important;
+          box-shadow: none !important;
+        }
+
+        .pa-question-options-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 8px;
         }
 
         .pa-preview {
@@ -915,6 +1167,7 @@ export default function CoordinatorPracticeSets() {
           .pa-grid-search,
           .pa-grid-answer,
           .pa-option-row,
+          .pa-option-editor-row,
           .pa-question-item,
           .pa-item-choice {
             grid-template-columns: 1fr;
@@ -1069,10 +1322,29 @@ export default function CoordinatorPracticeSets() {
                       <span className="pa-helper">mínimo 2 opciones</span>
                     </div>
 
+                    <div className="pa-option-format-box" style={{ marginBottom: 12 }}>
+                      Para texto normal escribí <code>APPLE</code>. Para imagen escribí <code>img:https://link.com/apple.png</code>.
+                      Para imagen con lectura escribí <code>img:https://link.com/apple.png|APPLE</code>.
+                      El botón 🔊 solo lee palabras, nunca lee links.
+                    </div>
+
                     <div className="pa-options">
                       {options.map((op, i)=>(
-                        <div key={i} className="pa-option-row">
-                          <input placeholder={`Opción ${i+1}`} value={op} onChange={e=>setOpt(i, e.target.value)} />
+                        <div key={i} className="pa-option-editor-row">
+                          <div className="pa-option-input-wrap">
+                            <input placeholder={`Opción ${i+1}`} value={op} onChange={e=>setOpt(i, e.target.value)} />
+                            {renderOptionPreview(op)}
+                          </div>
+
+                          <button
+                            type="button"
+                            className="pa-btn-soft"
+                            onClick={()=>setAnswer(op)}
+                            disabled={!op.trim()}
+                          >
+                            Respuesta
+                          </button>
+
                           <button className="pa-btn-danger" onClick={()=>setOpt(i, '')}>X</button>
                         </div>
                       ))}
@@ -1178,7 +1450,14 @@ export default function CoordinatorPracticeSets() {
 
                       {Array.isArray(q.options) && q.options.length>0 && (
                         <div className="pa-question-meta">
-                          Opciones: {q.options.filter(Boolean).join(' · ')}
+                          Opciones:
+                          <div className="pa-question-options-grid">
+                            {q.options.filter(Boolean).map((op, index) => (
+                              <div key={`${q._id}-option-${index}`}>
+                                {renderOptionPreview(op, true)}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
 
@@ -1281,6 +1560,8 @@ export default function CoordinatorPracticeSets() {
             <p className="pa-modal-subtitle">
               Pegá JSON array o CSV simple con campos:<br />
               <code className="pa-code">prompt;type;answer;options(separadas por |);embedUrl;imageUrl;audioUrl</code>
+              <br />
+              Para opciones con imagen y lectura tipo <code className="pa-code">img:URL|WORD</code>, usá JSON porque el CSV simple usa | para separar opciones.
             </p>
 
             <textarea
