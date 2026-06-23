@@ -7,7 +7,6 @@ type SetRow = { _id:string; title:string; units?:number };
 type Row = {
   student: { _id:string; name:string; email:string };
   enabled: boolean;
-  // progreso (opc)
   attempts?: number;
   correct?: number;
   distinct?: number;
@@ -21,7 +20,8 @@ export default function CoordinatorCoursePractice() {
 
   const [sets, setSets] = useState<SetRow[]>([]);
   const [setId, setSetId] = useState<string>('');
-  const [goal, setGoal] = useState<number>(10); // meta de preguntas únicas
+  const [goal, setGoal] = useState<number>(10);
+  const [testUnit, setTestUnit] = useState<number|''>('');
 
   const [rows, setRows] = useState<Row[]>([]);
   const [msg, setMsg] = useState<string|null>(null);
@@ -44,19 +44,22 @@ export default function CoordinatorCoursePractice() {
 
   async function load() {
     if (!id || !setId) return;
+
     setLoading(true);
+
     try {
       const [acc, prog] = await Promise.all([
         api.practice.accessByCourseForSet(id, setId),
         api.practice.progressByCourseSet(id, setId, goal).catch(()=>({ rows: [] as any[] }))
       ]);
 
-      // merge acceso + progreso
       const progById = new Map(
         (prog.rows || []).map((p:any) => [String(p.student._id), p])
       );
+
       const merged: Row[] = acc.rows.map(r => {
         const p = progById.get(r.student._id);
+
         return {
           ...r,
           attempts: p?.attempts || 0,
@@ -67,6 +70,7 @@ export default function CoordinatorCoursePractice() {
           completed: !!p?.completed,
         };
       });
+
       setRows(merged);
     } finally {
       setLoading(false);
@@ -77,13 +81,18 @@ export default function CoordinatorCoursePractice() {
 
   async function setAccess(studentId: string, enabled: boolean) {
     await api.practice.setAccessForSet(studentId, setId, enabled, id);
+
     setRows(prev => prev.map(x => x.student._id===studentId ? { ...x, enabled } : x));
-    setMsg('Guardado'); setTimeout(()=>setMsg(null), 1200);
+
+    setMsg('Guardado');
+    setTimeout(()=>setMsg(null), 1200);
   }
 
   async function seed() {
     await api.practice.seed();
-    setMsg('Preguntas base creadas (si no existían).'); setTimeout(()=>setMsg(null), 1500);
+
+    setMsg('Preguntas base creadas (si no existían).');
+    setTimeout(()=>setMsg(null), 1500);
   }
 
   const currentSet = useMemo(()=> sets.find(s=>s._id===setId) || null, [sets, setId]);
@@ -91,11 +100,12 @@ export default function CoordinatorCoursePractice() {
   // ===== helpers modal =====
   async function openAssign(student: { _id:string; name:string }) {
     if (!id) return;
+
     setAssignFor(student);
     setAssignOpen(true);
     setAssignLoading(true);
+
     try {
-      // Carga estado set×alumno consultando set por set
       const pairs = await Promise.all(
         sets.map(async (s) => {
           const r = await api.practice.accessByCourseForSet(id, s._id);
@@ -103,8 +113,10 @@ export default function CoordinatorCoursePractice() {
           return [s._id, !!me?.enabled] as const;
         })
       );
+
       const map: Record<string, boolean> = {};
       pairs.forEach(([sid, en]) => { map[sid] = en; });
+
       setAssignMap(map);
     } finally {
       setAssignLoading(false);
@@ -113,9 +125,11 @@ export default function CoordinatorCoursePractice() {
 
   async function toggleAssign(setIdToggle: string, enabled: boolean) {
     if (!assignFor || !id) return;
+
     await api.practice.setAccessForSet(assignFor._id, setIdToggle, enabled, id);
+
     setAssignMap(m => ({ ...m, [setIdToggle]: enabled }));
-    // Si el set que se está viendo en la tabla es el que se toggleó, reflejamos el cambio en la fila
+
     if (setIdToggle === setId) {
       setRows(prev => prev.map(r => r.student._id === assignFor._id ? { ...r, enabled } : r));
     }
@@ -125,14 +139,23 @@ export default function CoordinatorCoursePractice() {
     setAssignOpen(false);
     setAssignFor(null);
     setAssignMap({});
-    await load(); // refresca progreso/habilitado del set seleccionado
+    await load();
   }
 
-  // ====== NUEVO: probar como alumno (abre en otra pestaña) ======
+  // ====== Probar como alumno ======
   function testAs(studentId: string) {
     if (!setId) return;
-    // podés pasar unidad fija si querés: &unit=1
-    window.open(`/student/practice?as=${encodeURIComponent(studentId)}&set=${encodeURIComponent(setId)}`, '_blank', 'noopener');
+
+    const params = new URLSearchParams({
+      as: studentId,
+      set: setId,
+    });
+
+    if (testUnit) {
+      params.set('unit', String(testUnit));
+    }
+
+    window.open(`/student/practice?${params.toString()}`, '_blank', 'noopener');
   }
 
   if (!id) return null;
@@ -145,29 +168,77 @@ export default function CoordinatorCoursePractice() {
       <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:12, flexWrap:'wrap' }}>
         <div style={{ display:'flex', gap:6, alignItems:'center' }}>
           <b>Set:</b>
-          <select value={setId} onChange={e=>setSetId(e.target.value)}>
-            {sets.map(s => <option key={s._id} value={s._id}>{s.title}{s.units?` — ${s.units}u`:''}</option>)}
+
+          <select
+            value={setId}
+            onChange={e=>{
+              setSetId(e.target.value);
+              setTestUnit('');
+            }}
+          >
+            {sets.map(s => (
+              <option key={s._id} value={s._id}>
+                {s.title}{s.units ? ` — ${s.units}u` : ''}
+              </option>
+            ))}
           </select>
         </div>
 
         <div style={{ display:'flex', gap:6, alignItems:'center' }}>
           <b>Meta (únicos):</b>
-          <input type="number" min={1} style={{ width:76 }} value={goal}
-                 onChange={e=>setGoal(e.target.value ? Number(e.target.value) : 10)} />
+
+          <input
+            type="number"
+            min={1}
+            style={{ width:76 }}
+            value={goal}
+            onChange={e=>setGoal(e.target.value ? Number(e.target.value) : 10)}
+          />
+        </div>
+
+        <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+          <b>Probar unidad:</b>
+
+          {currentSet?.units ? (
+            <select
+              value={testUnit}
+              onChange={e=>setTestUnit(e.target.value ? Number(e.target.value) : '')}
+            >
+              <option value="">Todas</option>
+
+              {Array.from({ length: currentSet.units }, (_, i) => i + 1).map(n => (
+                <option key={n} value={n}>
+                  Unidad {n}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="number"
+              min={1}
+              placeholder="Todas"
+              style={{ width:96 }}
+              value={testUnit}
+              onChange={e=>setTestUnit(e.target.value ? Number(e.target.value) : '')}
+            />
+          )}
         </div>
 
         <button onClick={seed}>Seed de preguntas</button>
         <button onClick={load}>Refrescar</button>
+
         {msg && <span style={{ color:'#16a34a' }}>{msg}</span>}
       </div>
 
       {currentSet && (
         <div style={{ marginBottom:8, opacity:.8 }}>
-          <small>Seleccionado: <b>{currentSet.title}</b></small>
+          <small>
+            Seleccionado: <b>{currentSet.title}</b>
+            {testUnit ? <> · Prueba en <b>Unidad {testUnit}</b></> : <> · Prueba en <b>todas las unidades</b></>}
+          </small>
         </div>
       )}
 
-      {/* 👇 Contenedor con scroll horizontal para mobile */}
       <div style={{ overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
         <table style={{ width:'100%', borderCollapse:'collapse', minWidth: 760 }}>
           <thead>
@@ -180,11 +251,14 @@ export default function CoordinatorCoursePractice() {
               <th style={th}>Sets</th>
             </tr>
           </thead>
+
           <tbody>
             {rows.map(r => (
               <tr key={r.student._id}>
                 <td style={tdLeft}>{r.student.name}</td>
+
                 <td style={td}>{r.student.email}</td>
+
                 <td style={td}>
                   <label style={{ display:'inline-flex', gap:6, alignItems:'center' }}>
                     <input
@@ -195,20 +269,25 @@ export default function CoordinatorCoursePractice() {
                     {r.enabled ? 'Sí' : 'No'}
                   </label>
                 </td>
+
                 <td style={td}>
                   <div style={{ display:'flex', gap:8, alignItems:'center' }}>
                     <span>{r.distinct || 0} únicos · {r.percent || 0}%</span>
+
                     {r.completed && (
                       <span style={{ color:'#16a34a', fontWeight:600 }}>✓ Completado</span>
                     )}
                   </div>
                 </td>
+
                 <td style={td}>{r.lastAt ? new Date(r.lastAt).toLocaleString() : '-'}</td>
+
                 <td style={td}>
                   <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                     <button onClick={()=>openAssign(r.student)}>Asignar sets</button>
-                    {/* 👉 NUEVO botón Probar */}
-                    <button onClick={()=>testAs(r.student._id)}>Probar</button>
+                    <button onClick={()=>testAs(r.student._id)}>
+                      {testUnit ? `Probar U${testUnit}` : 'Probar'}
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -233,11 +312,19 @@ export default function CoordinatorCoursePractice() {
             ) : (
               <div style={{ display:'grid', gap:8, maxHeight:360, overflow:'auto' }}>
                 {sets.map(s => (
-                  <label key={s._id} style={{
-                    display:'flex', justifyContent:'space-between', alignItems:'center',
-                    padding:'8px 10px', border:'1px solid #e5e7eb', borderRadius:10
-                  }}>
+                  <label
+                    key={s._id}
+                    style={{
+                      display:'flex',
+                      justifyContent:'space-between',
+                      alignItems:'center',
+                      padding:'8px 10px',
+                      border:'1px solid #e5e7eb',
+                      borderRadius:10
+                    }}
+                  >
                     <span>{s.title}{s.units ? ` — ${s.units}u` : ''}</span>
+
                     <input
                       type="checkbox"
                       checked={!!assignMap[s._id]}
@@ -263,4 +350,3 @@ const th: React.CSSProperties={ border, padding:6, background:'#f8fafc' };
 const thLeft: React.CSSProperties={ ...th, textAlign:'left' };
 const td: React.CSSProperties={ border, padding:6 };
 const tdLeft: React.CSSProperties={ ...td, textAlign:'left' };
-
