@@ -23,7 +23,6 @@ type Q = {
   imageUrl?:string|null;
   audioUrl?:string|null;
   embedUrl?:string|null;
-  // NUEVO: referencia a Item reutilizable
   itemId?: string | null;
 };
 
@@ -32,7 +31,7 @@ export default function CoordinatorPracticeSets() {
   const [sel, setSel] = useState<string>('');
   const [msg, setMsg] = useState<string|null>(null);
 
-  // form set (crear)
+  // form set
   const [title, setTitle] = useState('');
   const [units, setUnits] = useState<number|''>('');
   const [tags, setTags] = useState('');
@@ -50,13 +49,13 @@ export default function CoordinatorPracticeSets() {
   const [options, setOptions] = useState<string[]>(['', '', '']);
   const [answer, setAnswer] = useState('');
 
-  // media directa (opcional si no uso itemId)
+  // media directa
   const [media, setMedia] = useState<'none'|'image'|'audio'|'embed'>('none');
   const [imageUrl, setImageUrl] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
   const [embedUrl, setEmbedUrl] = useState('');
 
-  // NUEVO: item reutilizable
+  // item reutilizable
   const [itemId, setItemId] = useState<string|undefined>(undefined);
   const [itemPickOpen, setItemPickOpen] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
@@ -72,7 +71,7 @@ export default function CoordinatorPracticeSets() {
   const [loadingQs, setLoadingQs] = useState(false);
   const [editingQId, setEditingQId] = useState<string|null>(null);
 
-  // Carga masiva (modal simple)
+  // carga masiva
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState('');
 
@@ -103,20 +102,26 @@ export default function CoordinatorPracticeSets() {
     if (units) payload.units = Number(units);
     if (tags.trim()) payload.tags = tags.split(',').map((t:string)=>t.trim()).filter(Boolean);
     if (!payload.title) return alert('Título requerido');
+
     await api.practice.createSet(payload);
-    setTitle(''); setUnits(''); setTags('');
+    setTitle('');
+    setUnits('');
+    setTags('');
     flash('Set creado');
     await loadSets();
   }
 
   async function saveSetChanges() {
     if (!sel) return;
+
     const patch:any = {
       title: editTitle.trim(),
       units: editUnits ? Number(editUnits) : undefined,
       tags: editTags.trim() ? editTags.split(',').map(t=>t.trim()).filter(Boolean) : [],
     };
+
     if (!patch.title) return alert('El set necesita título.');
+
     await api.practice.updateSet(sel, patch);
     flash('Set actualizado');
     await loadSets();
@@ -125,6 +130,7 @@ export default function CoordinatorPracticeSets() {
   async function deleteSet() {
     if (!sel) return;
     if (!confirm('¿Eliminar este set y todas sus preguntas? Esta acción no se puede deshacer.')) return;
+
     await api.practice.deleteSet(sel);
     flash('Set eliminado');
     await loadSets();
@@ -143,11 +149,11 @@ export default function CoordinatorPracticeSets() {
       type,
       options: type==='MC' ? options.filter(Boolean) : undefined,
       answer: answer.trim(),
-      // media directa (opcional)
+
       imageUrl: media==='image' ? imageUrl.trim() : undefined,
       audioUrl: media==='audio' ? audioUrl.trim() : undefined,
       embedUrl: media==='embed' ? (normalizeEmbedUrl(embedUrl.trim()) || embedUrl.trim()) : undefined,
-      // NUEVO: itemId (tiene prioridad si lo enviás)
+
       itemId: itemId || undefined,
     };
 
@@ -168,13 +174,13 @@ export default function CoordinatorPracticeSets() {
       type,
       options: type==='MC' ? options.filter(Boolean) : undefined,
       answer: answer.trim(),
-      // media directa
+
       imageUrl: media==='image' ? imageUrl.trim() : (media==='none' ? '' : undefined),
       audioUrl: media==='audio' ? audioUrl.trim() : (media==='none' ? '' : undefined),
       embedUrl: media==='embed'
         ? (normalizeEmbedUrl(embedUrl.trim()) || embedUrl.trim())
         : (media==='none' ? '' : undefined),
-      // NUEVO: itemId (null para desvincular)
+
       itemId: itemId === undefined ? undefined : (itemId || null),
     };
 
@@ -187,19 +193,46 @@ export default function CoordinatorPracticeSets() {
   }
 
   async function afterSaveQuestion(okMsg: string) {
-    setPrompt(''); setAnswer(''); setOptions(['','','']); setUnit('');
-    setImageUrl(''); setAudioUrl(''); setEmbedUrl(''); setMedia('none'); setType('MC');
+    setPrompt('');
+    setAnswer('');
+    setOptions(['','','']);
+    setUnit('');
+    setImageUrl('');
+    setAudioUrl('');
+    setEmbedUrl('');
+    setMedia('none');
+    setType('MC');
     setItemId(undefined);
     setEditingQId(null);
+
     flash(okMsg);
+
     if (sel) await loadQuestionsBySet(sel);
   }
 
   async function loadQuestionsBySet(setId: string) {
     try {
       setLoadingQs(true);
+
       const r = await api.practice.listQuestionsBySet(setId);
-      setQuestions(r.questions || []);
+
+      const normalized = (r.questions || []).map((q: any) => {
+        const rawItem = q.itemId || q.item || null;
+
+        const normalizedItemId =
+          rawItem && typeof rawItem === 'object' && rawItem._id
+            ? String(rawItem._id)
+            : rawItem
+              ? String(rawItem)
+              : null;
+
+        return {
+          ...q,
+          itemId: normalizedItemId,
+        };
+      });
+
+      setQuestions(normalized);
     } finally {
       setLoadingQs(false);
     }
@@ -213,10 +246,12 @@ export default function CoordinatorPracticeSets() {
     setOptions(Array.isArray(q.options) ? (q.options.length ? q.options : ['','','']) : ['','','']);
     setAnswer(q.answer || '');
 
-    // prioridad: si tiene itemId, limpiamos media directa
     if (q.itemId) {
       setItemId(q.itemId);
-      setMedia('none'); setImageUrl(''); setAudioUrl(''); setEmbedUrl('');
+      setMedia('none');
+      setImageUrl('');
+      setAudioUrl('');
+      setEmbedUrl('');
     } else {
       setItemId(undefined);
 
@@ -248,7 +283,9 @@ export default function CoordinatorPracticeSets() {
 
   async function removeQuestion(id: string) {
     if (!confirm('¿Eliminar esta pregunta?')) return;
+
     setQuestions(qs => qs.filter(q => q._id !== id));
+
     try {
       await api.practice.deleteQuestion(id);
       flash('Pregunta eliminada');
@@ -263,9 +300,10 @@ export default function CoordinatorPracticeSets() {
     flash('Copiá, editá y guardá como nueva', 1200);
   }
 
-  // =================== ITEMS (Picker) ===================
+  // =================== ITEMS ===================
   async function loadItems() {
     setItemsLoading(true);
+
     try {
       const r = await api.practice.itemsList({ setId: sel || undefined, search: itemSearch || undefined });
       setItems(r.rows || []);
@@ -281,8 +319,10 @@ export default function CoordinatorPracticeSets() {
 
   function selectItem(it: Item) {
     setItemId(it._id);
-    // limpiar media directa
-    setMedia('none'); setImageUrl(''); setAudioUrl(''); setEmbedUrl('');
+    setMedia('none');
+    setImageUrl('');
+    setAudioUrl('');
+    setEmbedUrl('');
     setItemPickOpen(false);
   }
 
@@ -297,7 +337,14 @@ export default function CoordinatorPracticeSets() {
     };
 
     const r = await api.practice.itemsCreate(payload);
-    setQuickItemTitle(''); setQuickItemImage(''); setQuickItemAudio(''); setQuickItemEmbed('');
+
+    setItems(prev => [r.item, ...prev]);
+
+    setQuickItemTitle('');
+    setQuickItemImage('');
+    setQuickItemAudio('');
+    setQuickItemEmbed('');
+
     selectItem(r.item);
     flash('Item creado y vinculado');
   }
@@ -307,8 +354,6 @@ export default function CoordinatorPracticeSets() {
     if (!sel) return alert('Elegí un set');
     if (!bulkText.trim()) return;
 
-    // Soporta CSV simple "prompt;type;answer;option1|option2;embedUrl;imageUrl;audioUrl"
-    // o JSON [{ prompt, type, answer, options, embedUrl, imageUrl, audioUrl }]
     let rows: any[] = [];
 
     try {
@@ -321,6 +366,7 @@ export default function CoordinatorPracticeSets() {
           .filter(Boolean)
           .map(line => {
             const [prompt, type, answer, options, embedUrl, imageUrl, audioUrl] = line.split(';').map(s => (s ?? '').trim());
+
             return {
               prompt,
               type: (type as any) || 'MC',
@@ -350,7 +396,6 @@ export default function CoordinatorPracticeSets() {
 
   // =================== UI helpers ===================
   const preview = useMemo(() => {
-    // si hay itemId seleccionado, buscamos el item para mostrar su media
     const it = itemId ? items.find(i => i._id === itemId) : undefined;
 
     const effImage = it?.imageUrl || imageUrl;
@@ -371,7 +416,8 @@ export default function CoordinatorPracticeSets() {
   }, [itemId, items, imageUrl, audioUrl, embedUrl]);
 
   function flash(text: string, ms=1200) {
-    setMsg(text); setTimeout(()=>setMsg(null), ms);
+    setMsg(text);
+    setTimeout(()=>setMsg(null), ms);
   }
 
   // =================== RENDER ===================
@@ -409,7 +455,6 @@ export default function CoordinatorPracticeSets() {
             </div>
           </div>
 
-          {/* Editor de Set */}
           {selSet && (
             <div style={{ border:'1px solid #f1f5f9', borderRadius:12, padding:12, background:'#fafafa', marginBottom:14 }}>
               <div style={{ fontWeight:700, marginBottom:8 }}>Editar Set</div>
@@ -427,7 +472,6 @@ export default function CoordinatorPracticeSets() {
             </div>
           )}
 
-          {/* Form de Nueva/Editar pregunta */}
           <div style={{ fontWeight:700, marginBottom:8 }}>{editingQId ? 'Editar pregunta' : 'Nueva pregunta'}</div>
 
           <div style={{ display:'grid', gap:10, gridTemplateColumns:'1fr' }}>
@@ -450,7 +494,6 @@ export default function CoordinatorPracticeSets() {
                 <label><input type="radio" checked={type==='GAP'} onChange={()=>setType('GAP')} /> Completar</label>
               </div>
 
-              {/* VINCULAR ITEM */}
               <label>Media</label>
               <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                 <button type="button" onClick={openItemPicker} disabled={!sel}>
@@ -548,8 +591,8 @@ export default function CoordinatorPracticeSets() {
                 <>
                   <button onClick={createQuestion} disabled={!sel}>Guardar pregunta</button>
                   <button onClick={()=>{
-                    // flujo rápido para crear varias sobre el mismo item/media
-                    setPrompt(''); setAnswer('');
+                    setPrompt('');
+                    setAnswer('');
                     if (type==='MC') setOptions(['','','']);
                   }}>Guardar y nueva (mismo item)</button>
                 </>
@@ -630,7 +673,7 @@ export default function CoordinatorPracticeSets() {
         </div>
       </div>
 
-      {/* ===== Modal Items (Picker) ===== */}
+      {/* ===== Modal Items ===== */}
       {itemPickOpen && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.35)', display:'grid', placeItems:'center', zIndex:50 }}>
           <div style={{ background:'#fff', borderRadius:12, padding:16, width:760, maxWidth:'94vw', maxHeight:'88vh', overflow:'auto' }}>
@@ -709,7 +752,7 @@ export default function CoordinatorPracticeSets() {
             <div style={{ fontWeight:700, marginBottom:8 }}>Carga masiva</div>
 
             <div style={{ fontSize:13, opacity:.8, marginBottom:10 }}>
-              Pegá JSON (array) o CSV simple con campos:<br/>
+              Pegá JSON array o CSV simple con campos:<br/>
               <code>prompt;type;answer;options(separadas por |);embedUrl;imageUrl;audioUrl</code>
             </div>
 
@@ -733,5 +776,4 @@ export default function CoordinatorPracticeSets() {
     </div>
   );
 }
-
 
