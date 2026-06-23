@@ -609,7 +609,7 @@ practice: {
   playSet: (setId: string, unit?: number) =>
     request<{ questions: {
       _id:string; prompt:string; type:'MC'|'GAP';
-      options?: string[]|null; imageUrl?:string|null; embedUrl?:string|null; unit?:number|null
+      options?: string[]|null; imageUrl?:string|null; audioUrl?:string|null; embedUrl?:string|null; unit?:number|null
     }[]; completed?: boolean; progress?: { total:number; seen:number; remaining:number } }>(
       `/practice/play${qs({ setId, unit })}`
     ),
@@ -617,7 +617,7 @@ practice: {
   /* ========= NUEVO: Preguntas con media (v2) ========== */
   createQuestionV2: (payload: {
     setId:string; unit?:number; prompt:string; type:'MC'|'GAP';
-    options?:string[]; answer:string; level?:string; imageUrl?:string; embedUrl?:string; courseId?:string;
+    options?:string[]; answer:string; level?:string; imageUrl?:string; audioUrl?:string; embedUrl?:string; courseId?:string;
     // 👇 NUEVO: referenciar media compartida
     itemId?: string;
   }) =>
@@ -629,7 +629,7 @@ practice: {
   // 🔧 NUEVO: actualizar / borrar pregunta
   updateQuestion: (id: string, patch: {
     setId?:string; unit?:number; prompt?:string; type?:'MC'|'GAP';
-    options?:string[]; answer?:string; imageUrl?:string; embedUrl?:string;
+    options?:string[]; answer?:string; imageUrl?:string; audioUrl?:string; embedUrl?:string;
     // 👇 NUEVO
     itemId?: string | null;  // pasar null para desvincular
   }) =>
@@ -662,7 +662,7 @@ practice: {
   // Versión legacy (sin setId). La dejamos por compatibilidad.
   // ➕ incluye media opcional en la respuesta para futuros usos
   play: () =>
-    request<{ questions: { _id:string; prompt:string; type:'MC'|'GAP'; options?: string[]|null; imageUrl?:string|null; embedUrl?:string|null }[] }>(`/practice/play`),
+    request<{ questions: { _id:string; prompt:string; type:'MC'|'GAP'; options?: string[]|null; imageUrl?:string|null; audioUrl?:string|null; embedUrl?:string|null }[] }>(`/practice/play`),
 
   submit: (questionId: string, answer: string) =>
     request<{ correct: boolean }>(
@@ -683,7 +683,7 @@ practice: {
   // ➕ expandimos tipos para aceptar setId/unit/media (+ itemId)
   createQuestion: (payload: {
     prompt:string; type:'MC'|'GAP'; options?:string[]; answer:string; level?:string; courseId?:string;
-    setId?:string; unit?:number; imageUrl?:string; embedUrl?:string;
+    setId?:string; unit?:number; imageUrl?:string; audioUrl?:string; embedUrl?:string;
     // 👇 NUEVO
     itemId?: string;
   }) =>
@@ -705,7 +705,7 @@ practice: {
   playAs: (studentId: string, setId: string, unit?: number) =>
     request<{ questions: {
       _id:string; prompt:string; type:'MC'|'GAP';
-      options?: string[]|null; imageUrl?:string|null; embedUrl?:string|null; unit?:number|null
+      options?: string[]|null; imageUrl?:string|null; audioUrl?:string|null; embedUrl?:string|null; unit?:number|null
     }[]; completed?: boolean; progress?: { total:number; seen:number; remaining:number } }>(
       `/practice/play-as${qs({ studentId, setId, unit })}`
     ),
@@ -722,16 +722,16 @@ practice: {
   itemsList: (params?: { setId?: string; search?: string }) =>
     request<{ rows: {
       _id:string; title:string; set?:string|null; unit?:number|null;
-      imageUrl?:string|null; embedUrl?:string|null; updatedAt:string;
+      imageUrl?:string|null; audioUrl?:string|null; embedUrl?:string|null; updatedAt:string;
     }[] }>(`/practice/items${qs(params || {})}`),
 
-  itemsCreate: (payload: { title:string; setId?:string; unit?:number; imageUrl?:string; embedUrl?:string }) =>
+  itemsCreate: (payload: { title:string; setId?:string; unit?:number; imageUrl?:string; audioUrl?:string; embedUrl?:string }) =>
     request<{ ok:true; item:any }>(
       `/practice/items`,
       { method:'POST', body: JSON.stringify(payload) }
     ),
 
-  itemsUpdate: (id:string, patch: { title?:string; setId?:string|null; unit?:number; imageUrl?:string|null; embedUrl?:string|null }) =>
+  itemsUpdate: (id:string, patch: { title?:string; setId?:string|null; unit?:number; imageUrl?:string|null; audioUrl?:string|null; embedUrl?:string|null }) =>
     request<{ ok:true; item:any }>(
       `/practice/items/${id}`,
       { method:'PUT', body: JSON.stringify(patch) }
@@ -747,7 +747,7 @@ practice: {
     rows: Array<{
       prompt:string; type:'MC'|'GAP';
       options?: string[]; answer:string;
-      imageUrl?: string; embedUrl?: string; level?: string; courseId?: string;
+      imageUrl?: string; audioUrl?: string; embedUrl?: string; level?: string; courseId?: string;
       // 👇 opcional: podés mezclar filas con itemId
       itemId?: string;
     }>;
