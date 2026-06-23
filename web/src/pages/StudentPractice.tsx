@@ -1420,6 +1420,30 @@ function parsePracticeOption(raw: string): ParsedPracticeOption {
   };
 }
 
+let lastSpeechText = '';
+let lastSpeechAt = 0;
+let cachedEnglishVoice: SpeechSynthesisVoice | null = null;
+
+function getEnglishVoice() {
+  try {
+    if (!('speechSynthesis' in window)) return null;
+
+    const voices = window.speechSynthesis.getVoices?.() || [];
+
+    const voice =
+      voices.find(v => v.lang?.toLowerCase() === 'en-us') ||
+      voices.find(v => v.lang?.toLowerCase().startsWith('en-us')) ||
+      voices.find(v => v.lang?.toLowerCase().startsWith('en-')) ||
+      voices.find(v => v.name?.toLowerCase().includes('english')) ||
+      null;
+
+    cachedEnglishVoice = voice;
+    return voice;
+  } catch {
+    return null;
+  }
+}
+
 function speakEnglishText(text: string) {
   try {
     const clean = text.trim();
@@ -1427,15 +1451,52 @@ function speakEnglishText(text: string) {
     if (!clean || isProbablyUrl(clean)) return;
     if (!('speechSynthesis' in window)) return;
 
-    window.speechSynthesis.cancel();
+    const now = Date.now();
+    if (lastSpeechText === clean && now - lastSpeechAt < 350) return;
+
+    lastSpeechText = clean;
+    lastSpeechAt = now;
+
+    const synth = window.speechSynthesis;
+
+    synth.cancel();
+
+    if (synth.paused) {
+      synth.resume();
+    }
 
     const utterance = new SpeechSynthesisUtterance(clean);
     utterance.lang = 'en-US';
-    utterance.rate = 0.9;
-    utterance.pitch = 1;
-    utterance.volume = 0.95;
+    utterance.rate = 0.85;
+    utterance.pitch = 1.05;
+    utterance.volume = 1;
 
-    window.speechSynthesis.speak(utterance);
+    const voice = cachedEnglishVoice || getEnglishVoice();
+    if (voice) utterance.voice = voice;
+
+    // Mobile browsers, especially iPhone/Safari/WebView, need this to run
+    // directly from the tap event. That is why the button calls this on pointer down.
+    synth.speak(utterance);
+
+    // Small safety retry for browsers that load voices a fraction later.
+    window.setTimeout(() => {
+      try {
+        if (synth.speaking || synth.pending) return;
+
+        const retry = new SpeechSynthesisUtterance(clean);
+        retry.lang = 'en-US';
+        retry.rate = 0.85;
+        retry.pitch = 1.05;
+        retry.volume = 1;
+
+        const retryVoice = cachedEnglishVoice || getEnglishVoice();
+        if (retryVoice) retry.voice = retryVoice;
+
+        synth.cancel();
+        if (synth.paused) synth.resume();
+        synth.speak(retry);
+      } catch {}
+    }, 120);
   } catch {}
 }
 
@@ -1589,6 +1650,38 @@ export default function StudentPractice() {
     return () => {
       style.remove();
     };
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (!('speechSynthesis' in window)) return;
+
+      const synth = window.speechSynthesis;
+
+      const prepareVoices = () => {
+        getEnglishVoice();
+      };
+
+      prepareVoices();
+
+      if ('addEventListener' in synth) {
+        synth.addEventListener('voiceschanged', prepareVoices);
+
+        return () => {
+          synth.removeEventListener('voiceschanged', prepareVoices);
+        };
+      }
+
+      synth.onvoiceschanged = prepareVoices;
+
+      return () => {
+        if (synth.onvoiceschanged === prepareVoices) {
+          synth.onvoiceschanged = null;
+        }
+      };
+    } catch {
+      return;
+    }
   }, []);
 
   const selectedSet = useMemo(() => {
@@ -2261,9 +2354,23 @@ export default function StudentPractice() {
                                 type="button"
                                 className="practice-speak-button"
                                 aria-label={`Listen to ${parsed.speakText}`}
-                                onClick={e => {
+                                onPointerDown={e => {
+                                  e.preventDefault();
                                   e.stopPropagation();
                                   speakEnglishText(parsed.speakText);
+                                }}
+                                onClick={e => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  speakEnglishText(parsed.speakText);
+                                }}
+                                onKeyDown={e => {
+                                  e.stopPropagation();
+
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    speakEnglishText(parsed.speakText);
+                                  }
                                 }}
                               >
                                 🔊
@@ -2304,4 +2411,3 @@ export default function StudentPractice() {
     </div>
   );
 }
-
