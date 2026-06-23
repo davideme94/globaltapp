@@ -32,6 +32,7 @@ export interface IPracticeItem extends ItemDocBase {
   set?: Types.ObjectId | null;     // asociación opcional a un set
   unit?: number | null;            // unidad opcional
   imageUrl?: string | null;
+  audioUrl?: string | null;
   embedUrl?: string | null;
   createdBy: Types.ObjectId;
   createdAt: Date;
@@ -44,6 +45,7 @@ const itemSchema = new Schema<IPracticeItem>(
     set:      { type: Schema.Types.ObjectId, ref: 'PracticeSet', default: null, index: true },
     unit:     { type: Number, min: 1, max: 99 },
     imageUrl: { type: String, default: null },
+    audioUrl: { type: String, default: null },
     embedUrl: { type: String, default: null },
     createdBy:{ type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
@@ -60,10 +62,12 @@ type DocBase = Omit<Document<Types.ObjectId>, 'set'>;
 
 export interface IPracticeQuestion extends DocBase {
   set?: Types.ObjectId | null;   // pack (opcional para compatibilidad)
+  item?: Types.ObjectId | null;  // media reutilizable opcional
   unit?: number;                 // unidad (1..n)
   prompt: string;
-  imageUrl?: string;
-  embedUrl?: string;
+  imageUrl?: string | null;
+  audioUrl?: string | null;
+  embedUrl?: string | null;
   type: 'MC' | 'GAP';
   options?: string[];
   answer: string;
@@ -77,10 +81,12 @@ export interface IPracticeQuestion extends DocBase {
 const questionSchema = new Schema<IPracticeQuestion>(
   {
     set:       { type: Schema.Types.ObjectId, ref: 'PracticeSet', index: true, default: null },
+    item:      { type: Schema.Types.ObjectId, ref: 'PracticeItem', index: true, default: null },
     unit:      { type: Number, min: 1, max: 99 },
     prompt:    { type: String, required: true },
-    imageUrl:  { type: String },
-    embedUrl:  { type: String },
+    imageUrl:  { type: String, default: null },
+    audioUrl:  { type: String, default: null },
+    embedUrl:  { type: String, default: null },
     type:      { type: String, enum: ['MC', 'GAP'], required: true, index: true },
     options:   { type: [String], default: undefined },
     answer:    { type: String, required: true },
@@ -92,6 +98,7 @@ const questionSchema = new Schema<IPracticeQuestion>(
 );
 
 questionSchema.index({ set: 1, unit: 1 });
+questionSchema.index({ item: 1 });
 
 export const PracticeQuestion = model<IPracticeQuestion>('PracticeQuestion', questionSchema);
 
