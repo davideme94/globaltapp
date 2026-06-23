@@ -1,109 +1,99 @@
-/* ========== Student Practice – Responsive ========== */
-.sp {
-  padding: 16px;
-  max-width: 1000px;
-  margin: 0 auto;
+/* web/src/styles/student-practice.css */
+
+/* Helps the practice game feel like a mobile app inside WebView */
+html,
+body {
+  overscroll-behavior-y: none;
 }
 
-.sp-header {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin: 8px 0 12px;
+/* Better scrolling on iPhone / Android WebView */
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
-.sp-controls select,
-.sp-controls input,
-.sp-controls button {
-  height: 40px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
+button,
+select,
+input,
+audio {
+  font-family: inherit;
 }
 
-.sp-score {
-  margin-left: auto;
-  font-weight: 600;
-  color: #374151;
+/* Prevents accidental zoom on iPhone inputs */
+input,
+select,
+textarea {
+  font-size: 16px;
 }
 
-.sp-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 16px;
-  background: #fff;
-  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.06);
+/* Smooth media rendering */
+img,
+iframe,
+video,
+audio {
+  max-width: 100%;
 }
 
-.sp-card .sp-meta {
-  margin-bottom: 8px;
-  font-size: 12px;
-  opacity: .7;
-}
-
-/* opciones en 2 columnas en pantallas grandes */
-.sp-options {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.sp-btn {
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  background: #f8fafc;
-  cursor: pointer;
-  font-weight: 600;
-}
-.sp-btn:hover { filter: brightness(0.98); }
-
-/* progress bar */
-.sp-progress-wrap {
-  margin-top: 14px;
-}
-.sp-progress {
+/* Audio player spacing */
+audio {
+  display: block;
   width: 100%;
-  height: 12px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #fde68a, #86efac);
-  box-shadow: inset 0 0 0 1px #e5e7eb;
-}
-.sp-progress > div {
-  height: 100%;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, .2);
 }
 
-/* ======= Breakpoints ======= */
-
-/* <= 900px: acolchados + 1 columna de opciones si hay poco ancho */
-@media (max-width: 900px) {
-  .sp { padding: 12px; }
-  .sp-card { padding: 14px; }
-  .sp-options { grid-template-columns: 1fr; }
+/* Fullscreen game safe area for phones with notches */
+.fixed.inset-0.z-\[80\] {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
-/* <= 640px: controles apilados, tipografías más compactas */
-@media (max-width: 640px) {
-  .sp-header {
-    flex-direction: column;
-    align-items: stretch;
+/* Makes the game screen more comfortable on small phones */
+@media (max-width: 480px) {
+  .fixed.inset-0.z-\[80\] {
+    font-size: 14px;
   }
-  .sp-score {
-    margin-left: 0;
+
+  .fixed.inset-0.z-\[80\] button {
+    min-height: 48px;
   }
-  .sp-controls select,
-  .sp-controls input,
-  .sp-controls button {
-    width: 100%;
+
+  .fixed.inset-0.z-\[80\] audio {
+    min-height: 42px;
   }
-  .sp-btn { padding: 12px; }
+
+  .fixed.inset-0.z-\[80\] iframe {
+    min-height: 220px;
+  }
 }
 
-/* respeta accesibilidad si el usuario pide menos animación */
+/* Avoids too much animation for users who prefer reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; animation: none !important; }
+  * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Slightly improves embedded Drive / YouTube display */
+iframe {
+  background: #f5f5f5;
+}
+
+/* Makes answer buttons feel better on touch screens */
+button {
+  touch-action: manipulation;
+}
+
+/* Prevents long option text from breaking the layout */
+button {
+  word-break: break-word;
+}
+
+/* Mobile landscape support */
+@media (max-height: 520px) and (orientation: landscape) {
+  .fixed.inset-0.z-\[80\] {
+    overflow-y: auto;
+  }
 }
