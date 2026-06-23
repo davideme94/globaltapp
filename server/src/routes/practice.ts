@@ -569,20 +569,36 @@ router.get(
         { $lookup: { from: 'practicequestions', localField: 'question', foreignField: '_id', as: 'q' } },
         { $unwind: '$q' },
         { $match: { 'q.set': new mongoose.Types.ObjectId(setId) } },
+
+        // Primero agrupamos por alumno + pregunta.
+        // Así sabemos si esa pregunta fue dominada alguna vez.
         { $group: {
-          _id: '$student',
+          _id: {
+            student: '$student',
+            question: '$question',
+          },
           attempts: { $sum: 1 },
-          correct:  { $sum: { $cond: ['$correct', 1, 0] } },
-          distinctSet: { $addToSet: '$question' },
-          lastAt: { $max: '$createdAt' }
+          correctAttempts: { $sum: { $cond: ['$correct', 1, 0] } },
+          mastered: { $max: { $cond: ['$correct', 1, 0] } },
+          lastAt: { $max: '$createdAt' },
         }},
+
+        // Después agrupamos por alumno.
+        { $group: {
+          _id: '$_id.student',
+          attempts: { $sum: '$attempts' },
+          correct: { $sum: '$correctAttempts' },
+          distinct: { $sum: '$mastered' }, // ✅ únicas correctas
+          lastAt: { $max: '$lastAt' },
+        }},
+
         { $project: {
           _id: 1,
           attempts: 1,
           correct: 1,
-          distinct: { $size: '$distinctSet' },
-          lastAt: 1
-        }}
+          distinct: 1,
+          lastAt: 1,
+        }},
       ]);
 
       const progById = new Map(attempts.map((a:any)=> [String(a._id), a]));
@@ -627,20 +643,33 @@ router.get(
         { $lookup: { from: 'practicequestions', localField: 'question', foreignField: '_id', as: 'q' } },
         { $unwind: '$q' },
         { $match: { 'q.set': new mongoose.Types.ObjectId(setId) } },
+
+        // Primero agrupamos por pregunta.
+        // Una pregunta cuenta como dominada solo si alguna vez fue correcta.
+        { $group: {
+          _id: '$question',
+          attempts: { $sum: 1 },
+          correctAttempts: { $sum: { $cond: ['$correct', 1, 0] } },
+          mastered: { $max: { $cond: ['$correct', 1, 0] } },
+          lastAt: { $max: '$createdAt' },
+        }},
+
+        // Después calculamos el progreso general del alumno.
         { $group: {
           _id: null,
-          attempts: { $sum: 1 },
-          correct:  { $sum: { $cond: ['$correct', 1, 0] } },
-          distinctQ: { $addToSet: '$question' },
-          lastAt: { $max: '$createdAt' }
+          attempts: { $sum: '$attempts' },
+          correct: { $sum: '$correctAttempts' },
+          distinct: { $sum: '$mastered' }, // ✅ únicas correctas
+          lastAt: { $max: '$lastAt' },
         }},
+
         { $project: {
           _id: 0,
           attempts: 1,
           correct: 1,
-          distinct: { $size: '$distinctQ' },
-          lastAt: 1
-        }}
+          distinct: 1,
+          lastAt: 1,
+        }},
       ]);
 
       const p = agg[0] || { attempts:0, correct:0, distinct:0, lastAt:null };
