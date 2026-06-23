@@ -422,293 +422,823 @@ export default function CoordinatorPracticeSets() {
 
   // =================== RENDER ===================
   return (
-    <div style={{ padding:16, maxWidth:1200, margin:'0 auto' }}>
-      <h1>Prácticas — Sets, Items y preguntas</h1>
+    <div className="practice-admin-inline">
+      <style>{`
+        .practice-admin-inline {
+          max-width: 1180px;
+          margin: 0 auto;
+          padding: 18px;
+          color: #111827;
+        }
 
-      <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:12, marginTop:8 }}>
-        {/* ===== Crear Set ===== */}
-        <div style={{ border:'1px solid #e5e7eb', borderRadius:12, padding:12, background:'#fff' }}>
-          <div style={{ fontWeight:700, marginBottom:8 }}>Crear Set</div>
+        .practice-admin-inline * {
+          box-sizing: border-box;
+        }
 
-          <div style={{ display:'grid', gap:8, gridTemplateColumns:'2fr 1fr 2fr auto' }}>
-            <input placeholder="Título (ej. Kids 1 - 2025)" value={title} onChange={e=>setTitle(e.target.value)} />
-            <input type="number" placeholder="Unidades" value={units} onChange={e=>setUnits(e.target.value ? Number(e.target.value) : '')} />
-            <input placeholder="Tags (coma)" value={tags} onChange={e=>setTags(e.target.value)} />
-            <button onClick={createSet}>Crear</button>
+        .practice-admin-inline input,
+        .practice-admin-inline textarea,
+        .practice-admin-inline select {
+          width: 100%;
+          border: 1px solid #e5e7eb;
+          border-radius: 16px;
+          background: #f8fafc;
+          padding: 12px 14px;
+          outline: none;
+          font: inherit;
+          font-size: 15px;
+          color: #111827;
+          transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+        }
+
+        .practice-admin-inline textarea {
+          min-height: 104px;
+          resize: vertical;
+        }
+
+        .practice-admin-inline input:focus,
+        .practice-admin-inline textarea:focus,
+        .practice-admin-inline select:focus {
+          border-color: #8b5cf6;
+          background: #fff;
+          box-shadow: 0 0 0 4px rgba(139, 92, 246, .12);
+        }
+
+        .practice-admin-inline label {
+          font-size: 14px;
+          font-weight: 850;
+          color: #374151;
+        }
+
+        .practice-admin-inline button {
+          border: 1px solid #e5e7eb;
+          border-radius: 16px;
+          background: #fff;
+          color: #111827;
+          padding: 11px 15px;
+          font: inherit;
+          font-size: 14px;
+          font-weight: 850;
+          cursor: pointer;
+          transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+          box-shadow: 0 4px 14px rgba(15, 23, 42, .05);
+          white-space: nowrap;
+        }
+
+        .practice-admin-inline button:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 10px 24px rgba(15, 23, 42, .10);
+          background: #f8fafc;
+        }
+
+        .practice-admin-inline button:disabled {
+          opacity: .55;
+          cursor: not-allowed;
+        }
+
+        .pa-hero {
+          position: relative;
+          overflow: hidden;
+          border-radius: 30px;
+          padding: 22px;
+          background: linear-gradient(135deg, #0ea5e9 0%, #7c3aed 52%, #d946ef 100%);
+          color: #fff;
+          box-shadow: 0 22px 55px rgba(124, 58, 237, .20);
+          margin-bottom: 18px;
+        }
+
+        .pa-hero::before,
+        .pa-hero::after {
+          content: '';
+          position: absolute;
+          width: 230px;
+          height: 230px;
+          border-radius: 999px;
+          background: rgba(255,255,255,.18);
+          filter: blur(12px);
+        }
+
+        .pa-hero::before { right: -70px; top: -110px; }
+        .pa-hero::after { left: -80px; bottom: -130px; }
+
+        .pa-hero-content {
+          position: relative;
+          z-index: 1;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+        }
+
+        .pa-kicker {
+          display: inline-flex;
+          width: fit-content;
+          align-items: center;
+          gap: 8px;
+          border-radius: 999px;
+          background: rgba(255,255,255,.18);
+          border: 1px solid rgba(255,255,255,.25);
+          padding: 7px 12px;
+          font-size: 12px;
+          font-weight: 900;
+          letter-spacing: .04em;
+          text-transform: uppercase;
+          backdrop-filter: blur(10px);
+        }
+
+        .pa-title {
+          margin: 10px 0 0;
+          font-size: clamp(28px, 4vw, 44px);
+          line-height: 1;
+          font-weight: 950;
+          letter-spacing: -0.05em;
+        }
+
+        .pa-subtitle {
+          margin: 10px 0 0;
+          max-width: 700px;
+          font-size: 14px;
+          line-height: 1.6;
+          color: rgba(255,255,255,.86);
+        }
+
+        .pa-mascot {
+          display: grid;
+          place-items: center;
+          min-width: 116px;
+          height: 116px;
+          border-radius: 32px;
+          background: rgba(255,255,255,.88);
+          border: 1px solid rgba(255,255,255,.65);
+          box-shadow: 0 16px 34px rgba(15, 23, 42, .20);
+          color: #111827;
+          font-size: 64px;
+        }
+
+        .pa-shell {
+          display: grid;
+          gap: 16px;
+        }
+
+        .pa-card {
+          overflow: hidden;
+          border: 1px solid #e5e7eb;
+          border-radius: 28px;
+          background: rgba(255,255,255,.94);
+          box-shadow: 0 14px 35px rgba(15, 23, 42, .06);
+        }
+
+        .pa-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 14px;
+          padding: 20px 22px 0;
+        }
+
+        .pa-card-body {
+          padding: 20px 22px 22px;
+        }
+
+        .pa-section-title {
+          margin: 0;
+          font-size: 21px;
+          font-weight: 950;
+          letter-spacing: -0.04em;
+          color: #111827;
+        }
+
+        .pa-section-subtitle {
+          margin: 5px 0 0;
+          font-size: 13px;
+          line-height: 1.5;
+          color: #6b7280;
+        }
+
+        .pa-grid {
+          display: grid;
+          gap: 12px;
+        }
+
+        .pa-grid-create { grid-template-columns: 2fr 1fr 2fr auto; }
+        .pa-grid-edit { grid-template-columns: 2fr 1fr 2fr auto; }
+        .pa-grid-form { grid-template-columns: 140px 1fr; }
+        .pa-grid-quick { grid-template-columns: 1.6fr 1.6fr 1.6fr 1.8fr auto; }
+        .pa-grid-search { grid-template-columns: 1fr auto; }
+        .pa-grid-answer { grid-template-columns: 140px 1fr; }
+
+        .pa-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .pa-spacer { margin-left: auto; }
+
+        .pa-muted-panel {
+          border: 1px solid #eef2f7;
+          border-radius: 22px;
+          background: linear-gradient(180deg, #fafafa, #fff);
+          padding: 15px;
+        }
+
+        .pa-btn-primary {
+          border-color: transparent !important;
+          background: linear-gradient(90deg, #0ea5e9 0%, #7c3aed 55%, #d946ef 100%) !important;
+          color: white !important;
+          box-shadow: 0 12px 26px rgba(124, 58, 237, .20) !important;
+        }
+
+        .pa-btn-danger {
+          color: #dc2626 !important;
+          border-color: #fecdd3 !important;
+          background: #fff1f2 !important;
+        }
+
+        .pa-btn-soft {
+          background: #f8fafc !important;
+        }
+
+        .pa-btn-small {
+          padding: 8px 12px !important;
+          border-radius: 13px !important;
+        }
+
+        .pa-radio-group {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+
+        .pa-radio-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          border: 1px solid #e5e7eb;
+          border-radius: 999px;
+          background: #fff;
+          padding: 8px 11px;
+          font-size: 13px;
+          font-weight: 850;
+          color: #374151;
+        }
+
+        .pa-radio-pill input {
+          width: auto;
+          padding: 0;
+        }
+
+        .pa-helper {
+          font-size: 13px;
+          color: #6b7280;
+        }
+
+        .pa-options {
+          display: grid;
+          gap: 9px;
+        }
+
+        .pa-option-row {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 8px;
+        }
+
+        .pa-preview {
+          border: 1px dashed #c4b5fd;
+          border-radius: 24px;
+          background: linear-gradient(180deg, #faf5ff 0%, #ffffff 100%);
+          padding: 16px;
+        }
+
+        .pa-preview-title {
+          margin: 0 0 10px;
+          font-size: 14px;
+          font-weight: 950;
+          color: #6d28d9;
+        }
+
+        .pa-preview img {
+          width: 100%;
+          max-height: 420px;
+          object-fit: contain;
+          border-radius: 18px;
+          background: #fff;
+        }
+
+        .pa-preview audio { width: 100%; margin-top: 8px; }
+        .pa-preview iframe {
+          width: 100%;
+          height: 360px;
+          border: 1px solid #e5e7eb;
+          border-radius: 18px;
+          margin-top: 8px;
+          background: #fff;
+        }
+
+        .pa-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          border-radius: 999px;
+          padding: 4px 9px;
+          font-size: 11px;
+          font-weight: 950;
+          text-transform: uppercase;
+        }
+
+        .pa-badge-item { background: #e0e7ff; color: #4338ca; }
+        .pa-badge-img { background: #fee2e2; color: #b91c1c; }
+        .pa-badge-audio { background: #dbeafe; color: #1d4ed8; }
+        .pa-badge-embed { background: #dcfce7; color: #15803d; }
+        .pa-badge-type { background: #f5f3ff; color: #6d28d9; }
+
+        .pa-question-list {
+          display: grid;
+          gap: 12px;
+        }
+
+        .pa-question-item {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 14px;
+          border: 1px solid #e5e7eb;
+          border-radius: 22px;
+          background: #fafafa;
+          padding: 15px;
+        }
+
+        .pa-question-top {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          flex-wrap: wrap;
+          margin-bottom: 8px;
+        }
+
+        .pa-question-prompt {
+          white-space: pre-wrap;
+          color: #111827;
+          font-weight: 700;
+          line-height: 1.45;
+        }
+
+        .pa-question-meta {
+          margin-top: 6px;
+          font-size: 13px;
+          color: #4b5563;
+        }
+
+        .pa-question-links {
+          margin-top: 8px;
+          font-size: 12px;
+          color: #6b7280;
+          line-height: 1.5;
+          word-break: break-all;
+        }
+
+        .pa-empty {
+          border: 1px dashed #d1d5db;
+          border-radius: 24px;
+          background: #f9fafb;
+          padding: 32px;
+          text-align: center;
+          color: #6b7280;
+          font-weight: 700;
+        }
+
+        .pa-flash {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          border-radius: 999px;
+          background: #ecfdf5;
+          border: 1px solid #bbf7d0;
+          color: #15803d;
+          padding: 7px 12px;
+          font-size: 13px;
+          font-weight: 900;
+        }
+
+        .pa-modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 80;
+          display: grid;
+          place-items: center;
+          padding: 18px;
+          background: rgba(15, 23, 42, .42);
+          backdrop-filter: blur(6px);
+        }
+
+        .pa-modal {
+          width: min(790px, 96vw);
+          max-height: 88vh;
+          overflow: auto;
+          border-radius: 30px;
+          background: #fff;
+          box-shadow: 0 25px 60px rgba(15, 23, 42, .25);
+          padding: 22px;
+        }
+
+        .pa-modal-small { width: min(740px, 96vw); }
+
+        .pa-modal-title {
+          margin: 0;
+          font-size: 24px;
+          font-weight: 950;
+          letter-spacing: -0.04em;
+          color: #111827;
+        }
+
+        .pa-modal-subtitle {
+          margin: 6px 0 14px;
+          font-size: 13px;
+          color: #6b7280;
+        }
+
+        .pa-item-list {
+          display: grid;
+          gap: 9px;
+        }
+
+        .pa-item-choice {
+          display: grid;
+          grid-template-columns: auto 1fr auto;
+          gap: 12px;
+          align-items: center;
+          border: 1px solid #e5e7eb;
+          border-radius: 19px;
+          background: #fff;
+          padding: 13px;
+          cursor: pointer;
+        }
+
+        .pa-item-choice:hover {
+          border-color: #c4b5fd;
+          background: #faf5ff;
+        }
+
+        .pa-item-choice input {
+          width: auto;
+        }
+
+        .pa-item-name {
+          font-weight: 950;
+          color: #111827;
+        }
+
+        .pa-item-date,
+        .pa-item-links {
+          font-size: 12px;
+          color: #6b7280;
+          line-height: 1.45;
+        }
+
+        .pa-code {
+          display: inline-block;
+          border-radius: 10px;
+          background: #f1f5f9;
+          padding: 3px 7px;
+          font-size: 12px;
+        }
+
+        @media (max-width: 900px) {
+          .practice-admin-inline { padding: 12px; }
+          .pa-hero-content { flex-direction: column; align-items: flex-start; }
+          .pa-mascot { width: 100%; min-width: 0; height: 92px; font-size: 48px; }
+          .pa-grid-create,
+          .pa-grid-edit,
+          .pa-grid-form,
+          .pa-grid-quick,
+          .pa-grid-search,
+          .pa-grid-answer,
+          .pa-option-row,
+          .pa-question-item,
+          .pa-item-choice {
+            grid-template-columns: 1fr;
+          }
+          .pa-card-header { flex-direction: column; }
+          .pa-spacer { margin-left: 0; }
+          .practice-admin-inline button { width: 100%; white-space: normal; }
+          .pa-row { align-items: stretch; }
+          .pa-radio-group { align-items: stretch; }
+          .pa-radio-pill { width: 100%; justify-content: flex-start; }
+        }
+      `}</style>
+
+      <section className="pa-hero">
+        <div className="pa-hero-content">
+          <div>
+            <div className="pa-kicker">🎮 Practice creator</div>
+            <h1 className="pa-title">Prácticas</h1>
+            <p className="pa-subtitle">
+              Creá sets, items reutilizables y preguntas con imagen, audio o video para que los alumnos practiquen como un juego.
+            </p>
           </div>
-
-          {msg && <div style={{ color:'#16a34a', marginTop:6 }}>{msg}</div>}
+          <div className="pa-mascot">🐉</div>
         </div>
+      </section>
 
-        {/* ===== Seleccionar + editar Set ===== */}
-        <div style={{ border:'1px solid #e5e7eb', borderRadius:12, padding:12, background:'#fff' }}>
-          <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:8, flexWrap:'wrap' }}>
-            <div style={{ fontWeight:700 }}>Set seleccionado:</div>
+      <div className="pa-shell">
+        <section className="pa-card">
+          <div className="pa-card-header">
+            <div>
+              <h2 className="pa-section-title">Crear set</h2>
+              <p className="pa-section-subtitle">Un set agrupa preguntas por curso, libro o unidad.</p>
+            </div>
+            {msg && <span className="pa-flash">✓ {msg}</span>}
+          </div>
+          <div className="pa-card-body">
+            <div className="pa-grid pa-grid-create">
+              <input placeholder="Título (ej. Kids 1 - 2025)" value={title} onChange={e=>setTitle(e.target.value)} />
+              <input type="number" placeholder="Unidades" value={units} onChange={e=>setUnits(e.target.value ? Number(e.target.value) : '')} />
+              <input placeholder="Tags (coma)" value={tags} onChange={e=>setTags(e.target.value)} />
+              <button className="pa-btn-primary" onClick={createSet}>Crear</button>
+            </div>
+          </div>
+        </section>
 
-            <select value={sel} onChange={e=>setSel(e.target.value)}>
-              <option value="" disabled>Elegí un set…</option>
-              {sets.map(s=> <option key={s._id} value={s._id}>{s.title}{s.units?` — ${s.units}u`:''}</option>)}
-            </select>
-
-            <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
-              <button onClick={()=>setBulkOpen(true)} disabled={!sel}>Carga masiva</button>
+        <section className="pa-card">
+          <div className="pa-card-header">
+            <div>
+              <h2 className="pa-section-title">Set seleccionado</h2>
+              <p className="pa-section-subtitle">Elegí el set para editar preguntas y media.</p>
+            </div>
+            <div className="pa-row">
+              <select value={sel} onChange={e=>setSel(e.target.value)}>
+                <option value="" disabled>Elegí un set…</option>
+                {sets.map(s=> <option key={s._id} value={s._id}>{s.title}{s.units?` — ${s.units}u`:''}</option>)}
+              </select>
+              <button className="pa-btn-soft" onClick={()=>setBulkOpen(true)} disabled={!sel}>Carga masiva</button>
             </div>
           </div>
 
-          {selSet && (
-            <div style={{ border:'1px solid #f1f5f9', borderRadius:12, padding:12, background:'#fafafa', marginBottom:14 }}>
-              <div style={{ fontWeight:700, marginBottom:8 }}>Editar Set</div>
+          <div className="pa-card-body">
+            {selSet && (
+              <div className="pa-muted-panel" style={{ marginBottom: 16 }}>
+                <div className="pa-row" style={{ marginBottom: 10 }}>
+                  <h3 className="pa-section-title" style={{ fontSize: 17 }}>Editar set</h3>
+                </div>
+                <div className="pa-grid pa-grid-edit">
+                  <input placeholder="Título" value={editTitle} onChange={e=>setEditTitle(e.target.value)} />
+                  <input type="number" placeholder="Unidades" value={editUnits} onChange={e=>setEditUnits(e.target.value ? Number(e.target.value) : '')} />
+                  <input placeholder="Tags (coma)" value={editTags} onChange={e=>setEditTags(e.target.value)} />
+                  <div className="pa-row">
+                    <button className="pa-btn-primary" onClick={saveSetChanges}>Guardar</button>
+                    <button className="pa-btn-danger" onClick={deleteSet}>Eliminar</button>
+                  </div>
+                </div>
+              </div>
+            )}
 
-              <div style={{ display:'grid', gap:8, gridTemplateColumns:'2fr 1fr 2fr auto' }}>
-                <input placeholder="Título" value={editTitle} onChange={e=>setEditTitle(e.target.value)} />
-                <input type="number" placeholder="Unidades" value={editUnits} onChange={e=>setEditUnits(e.target.value ? Number(e.target.value) : '')} />
-                <input placeholder="Tags (coma)" value={editTags} onChange={e=>setEditTags(e.target.value)} />
+            <div className="pa-card" style={{ boxShadow: 'none', borderRadius: 24 }}>
+              <div className="pa-card-header">
+                <div>
+                  <h2 className="pa-section-title">{editingQId ? 'Editar pregunta' : 'Nueva pregunta'}</h2>
+                  <p className="pa-section-subtitle">Escribí la consigna, la respuesta correcta y agregá media si hace falta.</p>
+                </div>
+              </div>
 
-                <div style={{ display:'flex', gap:8 }}>
-                  <button onClick={saveSetChanges}>Guardar</button>
-                  <button onClick={deleteSet} style={{ color:'#dc2626' }}>Eliminar</button>
+              <div className="pa-card-body">
+                <div className="pa-grid pa-grid-form">
+                  <label>Unidad</label>
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="(opcional)"
+                    value={unit}
+                    onChange={e=>setUnit(e.target.value ? Number(e.target.value) : '')}
+                  />
+
+                  <label>Enunciado</label>
+                  <textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Escribí el enunciado..." />
+
+                  <label>Tipo</label>
+                  <div className="pa-radio-group">
+                    <label className="pa-radio-pill"><input type="radio" checked={type==='MC'} onChange={()=>setType('MC')} /> Múltiple opción</label>
+                    <label className="pa-radio-pill"><input type="radio" checked={type==='GAP'} onChange={()=>setType('GAP')} /> Completar</label>
+                  </div>
+
+                  <label>Media</label>
+                  <div className="pa-radio-group">
+                    <button type="button" className="pa-btn-soft" onClick={openItemPicker} disabled={!sel}>
+                      {itemId ? 'Cambiar item' : 'Elegir item'}
+                    </button>
+
+                    {itemId && <button type="button" className="pa-btn-danger" onClick={()=>setItemId(undefined)}>Quitar item</button>}
+
+                    <span className="pa-helper">o media directa:</span>
+
+                    <label className="pa-radio-pill"><input type="radio" checked={media==='none'} onChange={()=>setMedia('none')} /> Sin media</label>
+                    <label className="pa-radio-pill"><input type="radio" checked={media==='image'} onChange={()=>setMedia('image')} /> Imagen</label>
+                    <label className="pa-radio-pill"><input type="radio" checked={media==='audio'} onChange={()=>setMedia('audio')} /> Audio</label>
+                    <label className="pa-radio-pill"><input type="radio" checked={media==='embed'} onChange={()=>setMedia('embed')} /> Video / Embed</label>
+                  </div>
+
+                  {media==='image' && (<>
+                    <label>Imagen URL</label>
+                    <input placeholder="https://..." value={imageUrl} onChange={e=>setImageUrl(e.target.value)} />
+                  </>)}
+
+                  {media==='audio' && (<>
+                    <label>Audio URL</label>
+                    <input
+                      placeholder="https://... MP3 / Drive audio link"
+                      value={audioUrl}
+                      onChange={e=>setAudioUrl(e.target.value)}
+                    />
+                  </>)}
+
+                  {media==='embed' && (<>
+                    <label>Embed URL</label>
+                    <input
+                      placeholder="https://... (YouTube/Drive)"
+                      value={embedUrl}
+                      onChange={e=>setEmbedUrl(e.target.value)}
+                      onBlur={()=> setEmbedUrl(prev => (normalizeEmbedUrl(prev) || prev))}
+                    />
+                  </>)}
+                </div>
+
+                {type==='MC' && (
+                  <div className="pa-muted-panel" style={{ marginTop: 16 }}>
+                    <div className="pa-row" style={{ marginBottom: 10 }}>
+                      <h3 className="pa-section-title" style={{ fontSize: 17 }}>Opciones</h3>
+                      <span className="pa-helper">mínimo 2 opciones</span>
+                    </div>
+
+                    <div className="pa-options">
+                      {options.map((op, i)=>(
+                        <div key={i} className="pa-option-row">
+                          <input placeholder={`Opción ${i+1}`} value={op} onChange={e=>setOpt(i, e.target.value)} />
+                          <button className="pa-btn-danger" onClick={()=>setOpt(i, '')}>X</button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="pa-row" style={{ marginTop: 10 }}>
+                      <button className="pa-btn-soft" onClick={()=>setOptions(o=>[...o, ''])}>+ opción</button>
+                      <button className="pa-btn-soft" onClick={()=>{
+                        const first = options.find(o=>o.trim());
+                        if (first) setAnswer(first);
+                      }}>Usar 1ra como respuesta</button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="pa-grid pa-grid-answer" style={{ marginTop: 16 }}>
+                  <label>Respuesta</label>
+                  <input placeholder="Correcta (texto exacto)" value={answer} onChange={e=>setAnswer(e.target.value)} />
+                </div>
+
+                {(preview.showImg || preview.showAudio || preview.showEmbed) && (
+                  <div className="pa-preview" style={{ marginTop: 16 }}>
+                    <p className="pa-preview-title">Preview {preview.hasItem ? 'del item' : 'directa'}</p>
+
+                    {preview.showImg && <img src={preview.imgSrc} alt="" />}
+
+                    {preview.showAudio && (
+                      <audio controls src={preview.audioSrc} />
+                    )}
+
+                    {preview.showEmbed && (
+                      preview.isAudio
+                        ? <audio controls src={preview.embedSrc} />
+                        : <iframe
+                            src={preview.embedSrc}
+                            title="embed"
+                            sandbox="allow-same-origin allow-scripts allow-popups"
+                          />
+                    )}
+                  </div>
+                )}
+
+                <div className="pa-row" style={{ marginTop: 18 }}>
+                  {!editingQId ? (
+                    <>
+                      <button className="pa-btn-primary" onClick={createQuestion} disabled={!sel}>Guardar pregunta</button>
+                      <button className="pa-btn-soft" onClick={()=>{
+                        setPrompt('');
+                        setAnswer('');
+                        if (type==='MC') setOptions(['','','']);
+                      }}>Guardar y nueva (mismo item)</button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="pa-btn-primary" onClick={updateQuestion}>Actualizar pregunta</button>
+                      <button className="pa-btn-soft" onClick={()=>{
+                        setEditingQId(null);
+                        flash('Edición cancelada');
+                      }}>Cancelar</button>
+                      <button className="pa-btn-soft" onClick={duplicateCurrentToForm}>Duplicar en formulario</button>
+                    </>
+                  )}
+
+                  {msg && <span className="pa-flash">✓ {msg}</span>}
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        </section>
 
-          <div style={{ fontWeight:700, marginBottom:8 }}>{editingQId ? 'Editar pregunta' : 'Nueva pregunta'}</div>
-
-          <div style={{ display:'grid', gap:10, gridTemplateColumns:'1fr' }}>
-            <div style={{ display:'grid', gap:8, gridTemplateColumns:'120px 1fr' }}>
-              <label>Unidad</label>
-              <input
-                type="number"
-                min={1}
-                placeholder="(opcional)"
-                value={unit}
-                onChange={e=>setUnit(e.target.value ? Number(e.target.value) : '')}
-              />
-
-              <label>Enunciado</label>
-              <textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Escribí el enunciado..." />
-
-              <label>Tipo</label>
-              <div>
-                <label><input type="radio" checked={type==='MC'} onChange={()=>setType('MC')} /> Múltiple opción</label>{'  '}
-                <label><input type="radio" checked={type==='GAP'} onChange={()=>setType('GAP')} /> Completar</label>
-              </div>
-
-              <label>Media</label>
-              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                <button type="button" onClick={openItemPicker} disabled={!sel}>
-                  {itemId ? 'Cambiar item' : 'Elegir item'}
-                </button>
-
-                {itemId && <button type="button" onClick={()=>setItemId(undefined)}>Quitar item</button>}
-
-                <span style={{ opacity:.6 }}>o media directa:</span>
-
-                <label><input type="radio" checked={media==='none'} onChange={()=>setMedia('none')} /> Sin media</label>
-                <label><input type="radio" checked={media==='image'} onChange={()=>setMedia('image')} /> Imagen (URL)</label>
-                <label><input type="radio" checked={media==='audio'} onChange={()=>setMedia('audio')} /> Audio (URL)</label>
-                <label><input type="radio" checked={media==='embed'} onChange={()=>setMedia('embed')} /> Video / Embed (URL)</label>
-              </div>
-
-              {media==='image' && (<>
-                <label>Imagen URL</label>
-                <input placeholder="https://..." value={imageUrl} onChange={e=>setImageUrl(e.target.value)} />
-              </>)}
-
-              {media==='audio' && (<>
-                <label>Audio URL</label>
-                <input
-                  placeholder="https://... MP3 / Drive audio link"
-                  value={audioUrl}
-                  onChange={e=>setAudioUrl(e.target.value)}
-                />
-              </>)}
-
-              {media==='embed' && (<>
-                <label>Embed URL</label>
-                <input
-                  placeholder="https://... (YouTube/Drive)"
-                  value={embedUrl}
-                  onChange={e=>setEmbedUrl(e.target.value)}
-                  onBlur={()=> setEmbedUrl(prev => (normalizeEmbedUrl(prev) || prev))}
-                />
-              </>)}
+        <section className="pa-card">
+          <div className="pa-card-header">
+            <div>
+              <h2 className="pa-section-title">Preguntas del set</h2>
+              <p className="pa-section-subtitle">Editá, duplicá o eliminá preguntas ya cargadas.</p>
             </div>
+          </div>
 
-            {type==='MC' && (
-              <div>
-                <div style={{ fontWeight:700, marginBottom:6 }}>Opciones (mín. 2)</div>
+          <div className="pa-card-body">
+            {!sel && <div className="pa-empty">Elegí un set para ver sus preguntas.</div>}
 
-                {options.map((op, i)=>(
-                  <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:8, marginBottom:6 }}>
-                    <input placeholder={`Opción ${i+1}`} value={op} onChange={e=>setOpt(i, e.target.value)} />
-                    <button onClick={()=>setOpt(i, '')}>X</button>
+            {sel && (loadingQs ? (
+              <div className="pa-empty">Cargando…</div>
+            ) : questions.length === 0 ? (
+              <div className="pa-empty">No hay preguntas en este set.</div>
+            ) : (
+              <div className="pa-question-list">
+                {questions.map(q=>(
+                  <div key={q._id} className="pa-question-item">
+                    <div>
+                      <div className="pa-question-top">
+                        <span className="pa-badge pa-badge-type">
+                          {q.type==='MC' ? 'MC' : 'GAP'} · {q.unit ? `Unidad ${q.unit}` : 'Sin unidad'}
+                        </span>
+
+                        {q.itemId && <span className="pa-badge pa-badge-item">Item</span>}
+                        {q.imageUrl && <span className="pa-badge pa-badge-img">IMG</span>}
+                        {q.audioUrl && <span className="pa-badge pa-badge-audio">Audio</span>}
+                        {q.embedUrl && <span className="pa-badge pa-badge-embed">Embed</span>}
+                      </div>
+
+                      <div className="pa-question-prompt">{q.prompt}</div>
+
+                      {Array.isArray(q.options) && q.options.length>0 && (
+                        <div className="pa-question-meta">
+                          Opciones: {q.options.filter(Boolean).join(' · ')}
+                        </div>
+                      )}
+
+                      <div className="pa-question-meta">
+                        Respuesta: <b>{q.answer}</b>
+                      </div>
+
+                      {(q.imageUrl || q.audioUrl || q.embedUrl) && (
+                        <div className="pa-question-links">
+                          {q.imageUrl && <>Imagen: {q.imageUrl}<br /></>}
+                          {q.audioUrl && <>Audio: {q.audioUrl}<br /></>}
+                          {q.embedUrl && <>Embed: {q.embedUrl}</>}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pa-row" style={{ alignItems: 'flex-start' }}>
+                      <button className="pa-btn-soft" onClick={()=>startEditQuestion(q)}>Editar</button>
+                      <button className="pa-btn-danger" onClick={()=>removeQuestion(q._id)}>Eliminar</button>
+                    </div>
                   </div>
                 ))}
-
-                <div style={{ display:'flex', gap:8, marginBottom:8, flexWrap:'wrap' }}>
-                  <button onClick={()=>setOptions(o=>[...o, ''])}>+ opción</button>
-                  <button onClick={()=>{
-                    const first = options.find(o=>o.trim());
-                    if (first) setAnswer(first);
-                  }}>Usar 1ra como respuesta</button>
-                </div>
               </div>
-            )}
-
-            <div style={{ display:'grid', gridTemplateColumns:'120px 1fr', gap:8 }}>
-              <label>Respuesta</label>
-              <input placeholder="Correcta (texto exacto)" value={answer} onChange={e=>setAnswer(e.target.value)} />
-            </div>
-
-            {(preview.showImg || preview.showAudio || preview.showEmbed) && (
-              <div>
-                <div style={{ fontWeight:700, marginBottom:6 }}>
-                  Preview {preview.hasItem ? 'del item' : 'directa'}
-                </div>
-
-                {preview.showImg && <img src={preview.imgSrc} alt="" style={{ maxWidth:'100%', borderRadius:12 }} />}
-
-                {preview.showAudio && (
-                  <audio controls src={preview.audioSrc} style={{ width:'100%', marginTop:8 }} />
-                )}
-
-                {preview.showEmbed && (
-                  preview.isAudio
-                    ? <audio controls src={preview.embedSrc} style={{ width:'100%', marginTop:8 }} />
-                    : <iframe
-                        src={preview.embedSrc}
-                        title="embed"
-                        style={{ width:'100%', height:360, border:'1px solid #e5e7eb', borderRadius:12, marginTop:8 }}
-                        sandbox="allow-same-origin allow-scripts allow-popups"
-                      />
-                )}
-              </div>
-            )}
-
-            <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-              {!editingQId ? (
-                <>
-                  <button onClick={createQuestion} disabled={!sel}>Guardar pregunta</button>
-                  <button onClick={()=>{
-                    setPrompt('');
-                    setAnswer('');
-                    if (type==='MC') setOptions(['','','']);
-                  }}>Guardar y nueva (mismo item)</button>
-                </>
-              ) : (
-                <>
-                  <button onClick={updateQuestion}>Actualizar pregunta</button>
-                  <button onClick={()=>{
-                    setEditingQId(null);
-                    flash('Edición cancelada');
-                  }}>Cancelar</button>
-                  <button onClick={duplicateCurrentToForm}>Duplicar en formulario</button>
-                </>
-              )}
-
-              {msg && <span style={{ color:'#16a34a' }}>{msg}</span>}
-            </div>
+            ))}
           </div>
-        </div>
-
-        {/* ===== Listado de preguntas del set ===== */}
-        <div style={{ border:'1px solid #e5e7eb', borderRadius:12, padding:12, background:'#fff' }}>
-          <div style={{ fontWeight:700, marginBottom:8 }}>Preguntas del set</div>
-
-          {!sel && <div>Elegí un set para ver sus preguntas.</div>}
-
-          {sel && (loadingQs ? (
-            <div>Cargando…</div>
-          ) : questions.length === 0 ? (
-            <div>No hay preguntas en este set.</div>
-          ) : (
-            <div style={{ display:'grid', gap:8 }}>
-              {questions.map(q=>(
-                <div key={q._id} style={{
-                  border:'1px solid #e5e7eb', borderRadius:10, padding:10, background:'#fafafa',
-                  display:'grid', gridTemplateColumns:'1fr auto', gap:8
-                }}>
-                  <div>
-                    <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:4, flexWrap:'wrap' }}>
-                      <span style={{ fontWeight:600 }}>
-                        {q.type==='MC' ? 'MC' : 'GAP'} · {q.unit ? `Unidad ${q.unit}` : 'Sin unidad'}
-                      </span>
-
-                      {q.itemId && <span style={{ fontSize:12, background:'#e0e7ff', padding:'2px 6px', borderRadius:999 }}>Item</span>}
-                      {q.imageUrl && <span style={{ fontSize:12, background:'#fee2e2', padding:'2px 6px', borderRadius:999 }}>IMG</span>}
-                      {q.audioUrl && <span style={{ fontSize:12, background:'#dbeafe', padding:'2px 6px', borderRadius:999 }}>AUDIO</span>}
-                      {q.embedUrl && <span style={{ fontSize:12, background:'#dcfce7', padding:'2px 6px', borderRadius:999 }}>EMBED</span>}
-                    </div>
-
-                    <div style={{ whiteSpace:'pre-wrap' }}>{q.prompt}</div>
-
-                    {Array.isArray(q.options) && q.options.length>0 && (
-                      <div style={{ marginTop:6, fontSize:13, opacity:.85 }}>
-                        Opciones: {q.options.filter(Boolean).join(' · ')}
-                      </div>
-                    )}
-
-                    <div style={{ marginTop:4, fontSize:13, opacity:.85 }}>
-                      Respuesta: <b>{q.answer}</b>
-                    </div>
-
-                    {(q.imageUrl || q.audioUrl || q.embedUrl) && (
-                      <div style={{ marginTop:6, fontSize:12, opacity:.75 }}>
-                        {q.imageUrl && <>Imagen: {q.imageUrl}<br /></>}
-                        {q.audioUrl && <>Audio: {q.audioUrl}<br /></>}
-                        {q.embedUrl && <>Embed: {q.embedUrl}</>}
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ display:'flex', gap:8, alignItems:'start' }}>
-                    <button onClick={()=>startEditQuestion(q)}>Editar</button>
-                    <button onClick={()=>removeQuestion(q._id)} style={{ color:'#dc2626' }}>Eliminar</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
+        </section>
       </div>
 
-      {/* ===== Modal Items ===== */}
       {itemPickOpen && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.35)', display:'grid', placeItems:'center', zIndex:50 }}>
-          <div style={{ background:'#fff', borderRadius:12, padding:16, width:760, maxWidth:'94vw', maxHeight:'88vh', overflow:'auto' }}>
-            <div style={{ fontWeight:700, marginBottom:8 }}>Elegir / crear Item</div>
+        <div className="pa-modal-overlay">
+          <div className="pa-modal">
+            <h2 className="pa-modal-title">Elegir / crear item</h2>
+            <p className="pa-modal-subtitle">Los items sirven para reutilizar una imagen, audio o video en muchas preguntas.</p>
 
-            <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:8, alignItems:'center', marginBottom:10 }}>
-              <input placeholder="Buscar en items (título o filtra por set actual)" value={itemSearch} onChange={e=>setItemSearch(e.target.value)} />
-              <button onClick={loadItems}>Buscar</button>
+            <div className="pa-grid pa-grid-search" style={{ marginBottom: 12 }}>
+              <input placeholder="Buscar en items" value={itemSearch} onChange={e=>setItemSearch(e.target.value)} />
+              <button className="pa-btn-primary" onClick={loadItems}>Buscar</button>
             </div>
 
-            <div style={{ border:'1px solid #f1f5f9', borderRadius:10, padding:10, background:'#fafafa', marginBottom:12 }}>
-              <div style={{ fontWeight:600, marginBottom:6 }}>Crear rápido</div>
-
-              <div style={{ display:'grid', gridTemplateColumns:'2fr 2fr 2fr 2fr auto', gap:8 }}>
+            <div className="pa-muted-panel" style={{ marginBottom: 14 }}>
+              <h3 className="pa-section-title" style={{ fontSize: 17, marginBottom: 10 }}>Crear rápido</h3>
+              <div className="pa-grid pa-grid-quick">
                 <input placeholder="Título" value={quickItemTitle} onChange={e=>setQuickItemTitle(e.target.value)} />
                 <input placeholder="Imagen (URL)" value={quickItemImage} onChange={e=>setQuickItemImage(e.target.value)} />
                 <input placeholder="Audio (URL)" value={quickItemAudio} onChange={e=>setQuickItemAudio(e.target.value)} />
-                <input placeholder="Video / Embed (YouTube/Drive)" value={quickItemEmbed} onChange={e=>setQuickItemEmbed(e.target.value)} />
-                <button onClick={quickCreateItem} disabled={!sel}>Crear y usar</button>
+                <input placeholder="Video / Embed" value={quickItemEmbed} onChange={e=>setQuickItemEmbed(e.target.value)} />
+                <button className="pa-btn-primary" onClick={quickCreateItem} disabled={!sel}>Crear y usar</button>
               </div>
             </div>
 
-            <div style={{ marginBottom:10, opacity:.7 }}>Resultados</div>
+            <p className="pa-section-subtitle" style={{ marginBottom: 10 }}>Resultados</p>
 
             {itemsLoading ? (
-              <div>Cargando…</div>
+              <div className="pa-empty">Cargando…</div>
             ) : items.length===0 ? (
-              <div>No hay items para mostrar.</div>
+              <div className="pa-empty">No hay items para mostrar.</div>
             ) : (
-              <div style={{ display:'grid', gap:8 }}>
+              <div className="pa-item-list">
                 {items.map(it=>(
-                  <label key={it._id} style={{
-                    display:'grid', gridTemplateColumns:'auto 1fr auto', gap:10,
-                    border:'1px solid #e5e7eb', borderRadius:10, padding:10, alignItems:'center'
-                  }}>
+                  <label key={it._id} className="pa-item-choice">
                     <input
                       type="radio"
                       name="pickItem"
@@ -717,14 +1247,13 @@ export default function CoordinatorPracticeSets() {
                     />
 
                     <div>
-                      <div style={{ fontWeight:600 }}>{it.title}</div>
-
-                      <div style={{ fontSize:12, opacity:.75 }}>
+                      <div className="pa-item-name">{it.title}</div>
+                      <div className="pa-item-date">
                         {it.unit ? `Unidad ${it.unit} · `: ''}{new Date(it.updatedAt).toLocaleString()}
                       </div>
 
                       {(it.imageUrl || it.audioUrl || it.embedUrl) && (
-                        <div style={{ marginTop:6, fontSize:12, opacity:.85 }}>
+                        <div className="pa-item-links">
                           {it.imageUrl && <>IMG: {it.imageUrl}<br /></>}
                           {it.audioUrl && <>AUDIO: {it.audioUrl}<br /></>}
                           {it.embedUrl && <>EMBED: {it.embedUrl}</>}
@@ -732,29 +1261,27 @@ export default function CoordinatorPracticeSets() {
                       )}
                     </div>
 
-                    <button onClick={()=>selectItem(it)}>Usar</button>
+                    <button type="button" className="pa-btn-primary" onClick={()=>selectItem(it)}>Usar</button>
                   </label>
                 ))}
               </div>
             )}
 
-            <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:14 }}>
-              <button onClick={()=>setItemPickOpen(false)}>Cerrar</button>
+            <div className="pa-row" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
+              <button className="pa-btn-soft" onClick={()=>setItemPickOpen(false)}>Cerrar</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ===== Modal Carga Masiva ===== */}
       {bulkOpen && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.35)', display:'grid', placeItems:'center', zIndex:50 }}>
-          <div style={{ background:'#fff', borderRadius:12, padding:16, width:720, maxWidth:'94vw', maxHeight:'88vh', overflow:'auto' }}>
-            <div style={{ fontWeight:700, marginBottom:8 }}>Carga masiva</div>
-
-            <div style={{ fontSize:13, opacity:.8, marginBottom:10 }}>
-              Pegá JSON array o CSV simple con campos:<br/>
-              <code>prompt;type;answer;options(separadas por |);embedUrl;imageUrl;audioUrl</code>
-            </div>
+        <div className="pa-modal-overlay">
+          <div className="pa-modal pa-modal-small">
+            <h2 className="pa-modal-title">Carga masiva</h2>
+            <p className="pa-modal-subtitle">
+              Pegá JSON array o CSV simple con campos:<br />
+              <code className="pa-code">prompt;type;answer;options(separadas por |);embedUrl;imageUrl;audioUrl</code>
+            </p>
 
             <textarea
               placeholder='[
@@ -763,12 +1290,12 @@ export default function CoordinatorPracticeSets() {
 ]'
               value={bulkText}
               onChange={e=>setBulkText(e.target.value)}
-              style={{ width:'100%', minHeight:240 }}
+              style={{ minHeight: 250 }}
             />
 
-            <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:12 }}>
-              <button onClick={()=>setBulkOpen(false)}>Cancelar</button>
-              <button onClick={submitBulk} disabled={!sel}>Subir</button>
+            <div className="pa-row" style={{ justifyContent: 'flex-end', marginTop: 14 }}>
+              <button className="pa-btn-soft" onClick={()=>setBulkOpen(false)}>Cancelar</button>
+              <button className="pa-btn-primary" onClick={submitBulk} disabled={!sel}>Subir</button>
             </div>
           </div>
         </div>
@@ -776,4 +1303,3 @@ export default function CoordinatorPracticeSets() {
     </div>
   );
 }
-
