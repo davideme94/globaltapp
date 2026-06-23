@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { normalizeEmbedUrl } from '../lib/media';
 import '../styles/student-practice.css';
@@ -121,6 +121,54 @@ function speakFeedback(correct: boolean) {
   } catch {}
 }
 
+const GAME_MELODY = [
+  523.25, 659.25, 783.99, 659.25,
+  587.33, 739.99, 880.00, 739.99,
+  523.25, 659.25, 783.99, 987.77,
+  880.00, 783.99, 659.25, 587.33,
+];
+
+const GAME_BASS = [
+  130.81,
+  146.83,
+  164.81,
+  196.00,
+];
+
+function getAudioContextClass() {
+  return (
+    window.AudioContext ||
+    (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  );
+}
+
+function playMusicTone(
+  ctx: AudioContext,
+  output: AudioNode,
+  freq: number,
+  duration: number,
+  volume: number,
+  type: OscillatorType,
+) {
+  try {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+    gain.gain.setValueAtTime(0.001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(volume, ctx.currentTime + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
+    osc.connect(gain);
+    gain.connect(output);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration + 0.02);
+  } catch {}
+}
+
 export default function StudentPractice() {
   // --- Modo tester si vienen ?as= & set=
   const params = typeof window !== 'undefined'
@@ -156,8 +204,85 @@ export default function StudentPractice() {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [locked, setLocked] = useState(false);
+  const [musicMuted, setMusicMuted] = useState(false);
+
+  const musicCtxRef = useRef<AudioContext | null>(null);
+  const musicGainRef = useRef<GainNode | null>(null);
+  const musicTimerRef = useRef<number | null>(null);
+  const musicStepRef = useRef(0);
 
   const q = qs[idx];
+
+  function stopGameMusic() {
+    if (musicTimerRef.current !== null) {
+      window.clearInterval(musicTimerRef.current);
+      musicTimerRef.current = null;
+    }
+
+    const ctx = musicCtxRef.current;
+
+    musicCtxRef.current = null;
+    musicGainRef.current = null;
+    musicStepRef.current = 0;
+
+    if (ctx && ctx.state !== 'closed') {
+      ctx.close().catch(() => {});
+    }
+  }
+
+  function startGameMusic(force = false) {
+    if (musicCtxRef.current) return;
+    if (musicMuted && !force) return;
+
+    try {
+      const AudioContextClass = getAudioContextClass();
+      if (!AudioContextClass) return;
+
+      const ctx = new AudioContextClass();
+      const mainGain = ctx.createGain();
+
+      mainGain.gain.value = 0.035;
+      mainGain.connect(ctx.destination);
+
+      musicCtxRef.current = ctx;
+      musicGainRef.current = mainGain;
+      musicStepRef.current = 0;
+
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+
+      const tick = () => {
+        if (!musicCtxRef.current || !musicGainRef.current) return;
+
+        const step = musicStepRef.current;
+        const melodyFreq = GAME_MELODY[step % GAME_MELODY.length];
+
+        playMusicTone(ctx, mainGain, melodyFreq, 0.12, 0.22, 'square');
+
+        if (step % 4 === 0) {
+          const bassFreq = GAME_BASS[Math.floor(step / 4) % GAME_BASS.length];
+          playMusicTone(ctx, mainGain, bassFreq, 0.2, 0.16, 'triangle');
+        }
+
+        musicStepRef.current = step + 1;
+      };
+
+      tick();
+      musicTimerRef.current = window.setInterval(tick, 180);
+    } catch {}
+  }
+
+  function toggleMusic() {
+    if (musicMuted) {
+      setMusicMuted(false);
+      startGameMusic(true);
+      return;
+    }
+
+    setMusicMuted(true);
+    stopGameMusic();
+  }
 
   const selectedSet = useMemo(() => {
     return mySets.find(r => r.set._id === setId)?.set || null;
@@ -222,6 +347,20 @@ export default function StudentPractice() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    return () => {
+      stopGameMusic();
+
+      try {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+        }
+      } catch {}
+    };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function resetRound() {
     setIdx(0);
     setAnswer('');
@@ -248,6 +387,7 @@ export default function StudentPractice() {
       setCompleted(false);
       setProgress(null);
     } catch (e: any) {
+      stopGameMusic();
       setErr(e.message);
     } finally {
       setGameLoading(false);
@@ -270,6 +410,7 @@ export default function StudentPractice() {
       setProgress(r.progress || null);
       setCompleted(!!r.completed);
     } catch (e: any) {
+      stopGameMusic();
       setErr(e.message);
     } finally {
       setGameLoading(false);
@@ -281,6 +422,7 @@ export default function StudentPractice() {
 
     resetRound();
     setScreen('game');
+    startGameMusic();
 
     await loadBatch(setId, unit ? Number(unit) : undefined, testerAs || undefined);
   }
@@ -288,6 +430,7 @@ export default function StudentPractice() {
   async function restartGame() {
     resetRound();
     setScreen('game');
+    startGameMusic();
 
     if (mode === 'sets' && setId) {
       await loadBatch(setId, unit ? Number(unit) : undefined, testerAs || undefined);
@@ -297,6 +440,7 @@ export default function StudentPractice() {
   }
 
   function backToChooser() {
+    stopGameMusic();
     setFeedback(null);
     setLocked(false);
     setAnswer('');
@@ -319,6 +463,7 @@ export default function StudentPractice() {
   async function submit(a: string) {
     if (!q || locked || !a.trim()) return;
 
+    startGameMusic();
     setLocked(true);
     setSelectedAnswer(a);
 
@@ -361,6 +506,7 @@ export default function StudentPractice() {
           return;
         }
 
+        stopGameMusic();
         setScreen('result');
       }, 950);
     } catch (e: any) {
@@ -681,6 +827,13 @@ export default function StudentPractice() {
                 className="rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-black text-neutral-700 shadow-sm transition hover:bg-neutral-50"
               >
                 ← Back
+              </button>
+
+              <button
+                onClick={toggleMusic}
+                className="rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm font-black text-violet-700 shadow-sm transition hover:bg-violet-100"
+              >
+                {musicMuted ? '🔇 Music' : '🎵 Music'}
               </button>
 
               <div className="flex min-w-0 items-center gap-3">
